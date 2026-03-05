@@ -769,10 +769,34 @@ function CoachDashboard({ members, loadMembers, onBack }) {
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
+  const [confirmWipeAll, setConfirmWipeAll] = useState(false);
+
   async function handleRefresh() {
     setRefreshing(true);
     await loadMembers();
     setTimeout(() => setRefreshing(false), 600);
+  }
+
+  async function deleteMember(member) {
+    if (!window.confirm(`Delete ${member.name}? This cannot be undone.`)) return;
+    try {
+      await window.storage.delete("gbsc-member:" + member.id, true);
+    } catch {}
+    await loadMembers();
+    setSelected(null);
+  }
+
+  async function deleteAllMembers() {
+    try {
+      const result = await window.storage.list("gbsc-member:", true);
+      if (result && result.keys) {
+        for (const key of result.keys) {
+          try { await window.storage.delete(key, true); } catch {}
+        }
+      }
+    } catch {}
+    await loadMembers();
+    setConfirmWipeAll(false);
   }
 
   function downloadCSV() {
@@ -942,6 +966,14 @@ function CoachDashboard({ members, loadMembers, onBack }) {
               </div>
             </div>
           )}
+
+          {/* Delete member */}
+          <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "1px solid #eee" }}>
+            <button onClick={() => deleteMember(selected)}
+              style={{ width: "100%", background: "none", border: "2px solid #e74c3c", color: "#e74c3c", borderRadius: "12px", padding: "0.8rem", fontSize: "0.95rem", fontWeight: "bold", cursor: "pointer" }}>
+              🗑 Delete {selected.name}'s Profile
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1013,7 +1045,35 @@ function CoachDashboard({ members, loadMembers, onBack }) {
             </div>
           );
         })}
+
+        {/* ── Wipe all data ── */}
+        {members.length > 0 && (
+          <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "1px solid #eee" }}>
+            {!confirmWipeAll ? (
+              <button onClick={() => setConfirmWipeAll(true)}
+                style={{ width: "100%", background: "none", border: "2px solid #e74c3c", color: "#e74c3c", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer" }}>
+                🗑 Wipe All Member Data
+              </button>
+            ) : (
+              <div style={{ background: "#fff5f5", border: "2px solid #e74c3c", borderRadius: "12px", padding: "1.2rem", textAlign: "center" }}>
+                <div style={{ fontWeight: "bold", color: "#e74c3c", marginBottom: "0.5rem" }}>⚠️ This will delete ALL {members.length} member profiles permanently.</div>
+                <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "1rem" }}>Use this to clear test data before the real program starts.</div>
+                <div style={{ display: "flex", gap: "0.8rem" }}>
+                  <button onClick={() => setConfirmWipeAll(false)}
+                    style={{ flex: 1, background: "#eee", border: "none", borderRadius: "8px", padding: "0.7rem", fontWeight: "bold", cursor: "pointer", color: DARK }}>
+                    Cancel
+                  </button>
+                  <button onClick={deleteAllMembers}
+                    style={{ flex: 1, background: "#e74c3c", border: "none", borderRadius: "8px", padding: "0.7rem", fontWeight: "bold", cursor: "pointer", color: "#fff" }}>
+                    Yes, Delete All
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
