@@ -280,7 +280,42 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [lastCheckScore, setLastCheckScore] = useState(null);
   const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
 
-  async function handleRegister() {
+  const [editForm, setEditForm] = useState(null);
+
+  function startEdit() {
+    setEditForm({
+      name: currentMember.name,
+      email: currentMember.email,
+      age: String(currentMember.age),
+      sex: currentMember.sex,
+      weight: String(currentMember.weight),
+      grip: String(currentMember.grip_pre),
+      vo2: String(currentMember.vo2_pre),
+    });
+    setView("editProfile");
+  }
+
+  async function handleSaveEdit() {
+    if (!editForm.name || !editForm.age || !editForm.weight || !editForm.grip || !editForm.vo2) {
+      alert("Please fill in all fields.");
+      return;
+    }
+    const vo2Score = getVO2Score(parseFloat(editForm.vo2), parseInt(editForm.age), editForm.sex);
+    const gripScore = getGripScore(parseFloat(editForm.grip), parseFloat(editForm.weight), parseInt(editForm.age), editForm.sex);
+    const updated = {
+      ...currentMember,
+      name: editForm.name,
+      age: parseInt(editForm.age),
+      sex: editForm.sex,
+      weight: parseFloat(editForm.weight),
+      grip_pre: parseFloat(editForm.grip),
+      vo2_pre: parseFloat(editForm.vo2),
+      vo2Score_pre: vo2Score,
+      gripScore_pre: gripScore,
+    };
+    await saveMember(updated);
+    setView("profile");
+  }
     if (!form.name || !form.email || !form.age || !form.weight || !form.grip || !form.vo2) {
       alert("Please fill in all fields.");
       return;
@@ -476,11 +511,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         const mChecks = m.weeklyChecks || [];
         const mHabitAvg = mChecks.length ? Math.round(mChecks.reduce((s,c) => s+c.score, 0) / mChecks.length) : null;
         const mCI = mHabitAvg !== null ? calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, mHabitAvg) : null;
-        // Previous CI excluding the most recent check
         const prevChecks = mChecks.slice(0, -1);
         const prevHabitAvg = prevChecks.length ? Math.round(prevChecks.reduce((s,c) => s+c.score, 0) / prevChecks.length) : null;
         const prevCI = prevHabitAvg !== null ? calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, prevHabitAvg) : null;
-        return { ci: mCI, prevCI, vo2Score: m.vo2Score_pre, gripScore: m.gripScore_pre };
+        return { ci: mCI, prevCI, vo2Score: m.vo2Score_pre, gripScore: m.gripScore_pre, member: m };
       }).filter(m => m.ci !== null);
 
       if (!withCI.length) return null;
@@ -488,7 +522,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       const avgVO2  = Math.round(withCI.reduce((s,m) => s + m.vo2Score, 0) / withCI.length);
       const avgGrip = Math.round(withCI.reduce((s,m) => s + m.gripScore, 0) / withCI.length);
 
-      // Week-over-week CI change (only members who have a previous CI)
       const withPrev = withCI.filter(m => m.prevCI !== null);
       let ciChange = null;
       if (withPrev.length > 0) {
@@ -496,7 +529,30 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         const curAvg  = Math.round(withPrev.reduce((s,m) => s + m.ci, 0) / withPrev.length);
         ciChange = curAvg - prevAvg;
       }
-      return { avgCI, avgVO2, avgGrip, ciChange, memberCount: withCI.length };
+
+      // ── Per-week gym average trend ──────────────────────────────────────────
+      // Find all week numbers that exist across members
+      const weekNums = new Set();
+      all.forEach(m => (m.weeklyChecks || []).forEach(c => {
+        if (!c.isBaseline) weekNums.add(c.week);
+      }));
+      const sortedWeeks = Array.from(weekNums).sort((a, b) => a - b);
+      const weeklyAvgs = sortedWeeks.map(wk => {
+        const scores = [];
+        all.forEach(m => {
+          const c = (m.weeklyChecks || []).find(c => c.week === wk);
+          if (c) {
+            // Compute CI using only checks up to this week
+            const checksUpTo = (m.weeklyChecks || []).filter(ch => !ch.isBaseline && ch.week <= wk);
+            const avg = checksUpTo.length ? Math.round(checksUpTo.reduce((s,ch) => s + ch.score, 0) / checksUpTo.length) : null;
+            const ci = avg !== null ? calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, avg) : null;
+            if (ci !== null) scores.push(ci);
+          }
+        });
+        return { week: wk, avg: scores.length ? Math.round(scores.reduce((a,b) => a+b,0) / scores.length) : null };
+      }).filter(w => w.avg !== null);
+
+      return { avgCI, avgVO2, avgGrip, ciChange, memberCount: withCI.length, weeklyAvgs };
     }
     const community = getCommunityStats();
 
@@ -517,7 +573,101 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ fontSize: "0.85rem", color: "#aaa", marginBottom: "0.5rem", letterSpacing: "0.08em" }}>THIS WEEK'S HABIT SCORE</div>
             <div style={{ fontSize: "5rem", fontWeight: "bold", color: G, lineHeight: 1 }}>{lastCheckScore ?? checks[checks.length-1]?.score ?? "—"}</div>
             <div style={{ fontSize: "0.85rem", color: "#888", marginTop: "0.3rem" }}>out of 100</div>
+            <div style={{ fontSize: "0.75rem", color: "#777", marginTop: "0.9rem", lineHeight: 1.5, borderTop: "1px solid #ffffff18", paddingTop: "0.9rem" }}>
+              Capacity Index measures how well your habits support training, recovery, and resilience. Higher scores = greater ability to train and recover.
+            </div>
           </div>
+
+          {/* ── Habit Scorecard ─────────────────────────────────────────── */}
+          {(() => {
+            const latest = checks[checks.length - 1];
+            if (!latest) return null;
+
+            const workoutMap  = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
+            const aerobicMap  = { "No": 0, "Close": 1, "Yes": 2 };
+            const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
+            const regMap      = { "No": 0, "1-2x": 1, "Yes": 2 };
+
+            const rows = [
+              {
+                label: "Training",
+                value: workoutMap[latest.workouts] ?? 0,
+                max: 4,
+                display: latest.workouts ?? "—",
+                suffix: "workouts",
+              },
+              {
+                label: "Aerobic",
+                value: aerobicMap[latest.aerobic90] ?? 0,
+                max: 2,
+                display: latest.aerobic90 ?? "—",
+                suffix: "90 min effort",
+              },
+              {
+                label: "Strength",
+                value: latest.strengthRPE === "Yes" ? 1 : 0,
+                max: 1,
+                display: latest.strengthRPE ?? "—",
+                suffix: "RPE 7+",
+              },
+              {
+                label: "Sleep",
+                value: parseInt(latest.sleepQuality) || 0,
+                max: 5,
+                display: latest.sleepQuality ?? "—",
+                suffix: "/ 5",
+              },
+              {
+                label: "Energy",
+                value: parseInt(latest.energyLevel) || 0,
+                max: 5,
+                display: latest.energyLevel ?? "—",
+                suffix: "/ 5",
+              },
+              {
+                label: "Recovery",
+                value: parseInt(latest.physicalRecovery) || 0,
+                max: 5,
+                display: latest.physicalRecovery ?? "—",
+                suffix: "/ 5",
+              },
+              {
+                label: "Protein",
+                value: proteinMap[latest.proteinFloor] ?? 0,
+                max: 3,
+                display: latest.proteinFloor ?? "—",
+                suffix: "",
+              },
+              {
+                label: "Regulation",
+                value: regMap[latest.regulation] ?? 0,
+                max: 2,
+                display: latest.regulation ?? "—",
+                suffix: "",
+              },
+            ];
+
+            return (
+              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
+                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "1rem" }}>📊 CAPACITY DRIVERS</div>
+                {rows.map(row => {
+                  const pct = Math.round((row.value / row.max) * 100);
+                  const barColor = pct >= 80 ? G : pct >= 50 ? "#8ab85a" : pct >= 25 ? "#e0a030" : "#e05030";
+                  return (
+                    <div key={row.label} style={{ marginBottom: "0.75rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.25rem" }}>
+                        <span style={{ fontSize: "0.82rem", fontWeight: "bold", color: DARK, width: "90px" }}>{row.label}</span>
+                        <span style={{ fontSize: "0.78rem", color: "#888" }}>{row.display}{row.suffix ? ` ${row.suffix}` : ""}</span>
+                      </div>
+                      <div style={{ background: "#e0e0e0", borderRadius: "999px", height: "8px", overflow: "hidden" }}>
+                        <div style={{ background: barColor, width: `${pct}%`, height: "100%", borderRadius: "999px", transition: "width 0.5s ease" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* Tier card */}
           {tier && (
@@ -564,11 +714,271 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ fontSize: "1rem", color: DARK, fontStyle: "italic", lineHeight: 1.5 }}>{encouragement}</div>
           </div>
 
+          {/* ── Capacity Insight Engine ──────────────────────────────────── */}
+          {(() => {
+            const nonBaseline = checks.filter(c => !c.isBaseline);
+            if (nonBaseline.length < 2) return null; // Need at least 2 weeks to compare
+            const thisWeek = nonBaseline[nonBaseline.length - 1];
+            const lastWeek = nonBaseline[nonBaseline.length - 2];
+            const scoreDiff = thisWeek.score - lastWeek.score;
+
+            // Score each driver
+            const drivers = [];
+
+            // Sleep
+            const sleepDiff = (parseInt(thisWeek.sleepQuality) || 0) - (parseInt(lastWeek.sleepQuality) || 0);
+            if (sleepDiff >= 1) drivers.push({ icon: "✔", label: "Sleep improvement", positive: true, weight: sleepDiff * 2 });
+            else if (sleepDiff <= -1) drivers.push({ icon: "⚠", label: "Reduced sleep quality", positive: false, weight: Math.abs(sleepDiff) * 2 });
+
+            // Energy
+            const energyDiff = (parseInt(thisWeek.energyLevel) || 0) - (parseInt(lastWeek.energyLevel) || 0);
+            if (energyDiff >= 1) drivers.push({ icon: "✔", label: "Higher energy levels", positive: true, weight: energyDiff * 1.5 });
+            else if (energyDiff <= -1) drivers.push({ icon: "⚠", label: "Lower energy this week", positive: false, weight: Math.abs(energyDiff) * 1.5 });
+
+            // Recovery
+            const recoveryDiff = (parseInt(thisWeek.physicalRecovery) || 0) - (parseInt(lastWeek.physicalRecovery) || 0);
+            if (recoveryDiff >= 1) drivers.push({ icon: "✔", label: "Better physical recovery", positive: true, weight: recoveryDiff * 1.5 });
+            else if (recoveryDiff <= -1) drivers.push({ icon: "⚠", label: "Reduced recovery", positive: false, weight: Math.abs(recoveryDiff) * 1.5 });
+
+            // Strength session
+            const hadStrength = thisWeek.strengthRPE === "Yes";
+            const hadStrengthLast = lastWeek.strengthRPE === "Yes";
+            if (hadStrength && !hadStrengthLast) drivers.push({ icon: "✔", label: "Added a strength session", positive: true, weight: 2 });
+            else if (!hadStrength && hadStrengthLast) drivers.push({ icon: "⚠", label: "Missed strength session", positive: false, weight: 2 });
+
+            // Aerobic
+            const aerobicMap = { "Yes": 2, "Close": 1, "No": 0 };
+            const aerobicDiff = (aerobicMap[thisWeek.aerobic90] || 0) - (aerobicMap[lastWeek.aerobic90] || 0);
+            if (aerobicDiff > 0) drivers.push({ icon: "✔", label: "More aerobic effort", positive: true, weight: aerobicDiff * 1.5 });
+            else if (aerobicDiff < 0) drivers.push({ icon: "⚠", label: "Less aerobic effort", positive: false, weight: Math.abs(aerobicDiff) * 1.5 });
+
+            // Workouts
+            const workoutMap = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
+            const workoutDiff = (workoutMap[thisWeek.workouts] || 0) - (workoutMap[lastWeek.workouts] || 0);
+            if (workoutDiff >= 1) drivers.push({ icon: "✔", label: "More workouts this week", positive: true, weight: workoutDiff });
+            else if (workoutDiff <= -1) drivers.push({ icon: "⚠", label: "Fewer workouts", positive: false, weight: Math.abs(workoutDiff) });
+
+            // Protein
+            const proteinMap = { "Yes": 3, "Most days": 2, "Some days": 1, "Rarely": 0 };
+            const proteinDiff = (proteinMap[thisWeek.proteinFloor] || 0) - (proteinMap[lastWeek.proteinFloor] || 0);
+            if (proteinDiff >= 1) drivers.push({ icon: "✔", label: "Improved protein intake", positive: true, weight: proteinDiff });
+            else if (proteinDiff <= -1) drivers.push({ icon: "⚠", label: "Lower protein consistency", positive: false, weight: Math.abs(proteinDiff) });
+
+            // Regulation
+            const regMap = { "Yes": 2, "1-2x": 1, "No": 0 };
+            const regDiff = (regMap[thisWeek.regulation] || 0) - (regMap[lastWeek.regulation] || 0);
+            if (regDiff >= 1) drivers.push({ icon: "✔", label: "More stress regulation", positive: true, weight: regDiff });
+            else if (regDiff <= -1) drivers.push({ icon: "⚠", label: "Less stress regulation", positive: false, weight: Math.abs(regDiff) });
+
+            // Filter to match the direction of score change, sort by weight, take top 3
+            const relevantDrivers = drivers
+              .filter(d => scoreDiff >= 0 ? d.positive : !d.positive)
+              .sort((a, b) => b.weight - a.weight)
+              .slice(0, 3);
+
+            // If no relevant drivers found, show all top drivers regardless
+            const topDrivers = relevantDrivers.length > 0 ? relevantDrivers : drivers.sort((a, b) => b.weight - a.weight).slice(0, 2);
+
+            if (topDrivers.length === 0) return null;
+
+            const isUp = scoreDiff > 0;
+            const isFlat = scoreDiff === 0;
+            const bgColor = isUp ? "linear-gradient(135deg, #f0f7ec, #e6f0df)" : isFlat ? "#f7f7f7" : "linear-gradient(135deg, #fff7f0, #ffeedd)";
+            const borderColor = isUp ? G : isFlat ? "#ddd" : "#e8a060";
+
+            return (
+              <div style={{ background: bgColor, border: `1.5px solid ${borderColor}`, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "1.5rem" }}>
+                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "0.6rem" }}>🔍 CAPACITY INSIGHT</div>
+                <div style={{ fontSize: "1rem", fontWeight: "bold", color: DARK, marginBottom: "0.8rem" }}>
+                  {isFlat
+                    ? "Your score held steady this week."
+                    : `Your capacity ${isUp ? "increased" : "dropped"} by ${isUp ? "+" : ""}${scoreDiff} point${Math.abs(scoreDiff) !== 1 ? "s" : ""} this week.`}
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "#666", marginBottom: "0.5rem" }}>
+                  {topDrivers.length === 1 ? "Primary driver:" : "Biggest drivers:"}
+                </div>
+                {topDrivers.map((d, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.4rem" }}>
+                    <span style={{ color: d.positive ? G : "#e07030", fontWeight: "bold", fontSize: "1rem" }}>{d.icon}</span>
+                    <span style={{ fontSize: "0.9rem", color: DARK }}>{d.label}</span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* ── Capacity Identity Badges ─────────────────────────────────── */}
+          {(() => {
+            const nonBaseline = checks.filter(c => !c.isBaseline);
+            if (nonBaseline.length < 1) return null;
+
+            const workoutMap = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
+            const aerobicMap = { "No": 0, "Close": 1, "Yes": 2 };
+            const proteinMap = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
+            const last3 = nonBaseline.slice(-3);
+            const last2 = nonBaseline.slice(-2);
+            const latest = nonBaseline[nonBaseline.length - 1];
+
+            const earned = [];
+
+            // 🏋 Consistent Trainer — 3+ workouts for 3 weeks in a row
+            if (last3.length === 3 && last3.every(c => (workoutMap[c.workouts] || 0) >= 3))
+              earned.push({ emoji: "🏋", title: "Consistent Trainer", desc: "3+ workouts every week for 3 weeks straight." });
+
+            // ⚡ Recovery Builder — sleep improved 2 weeks in a row
+            if (last3.length === 3 && (parseInt(last3[2].sleepQuality)||0) > (parseInt(last3[1].sleepQuality)||0) && (parseInt(last3[1].sleepQuality)||0) > (parseInt(last3[0].sleepQuality)||0))
+              earned.push({ emoji: "⚡", title: "Recovery Builder", desc: "Sleep score improved 2 weeks running." });
+
+            // 🔥 Momentum — capacity score up 3 weeks in a row
+            if (last3.length === 3 && last3[2].score > last3[1].score && last3[1].score > last3[0].score)
+              earned.push({ emoji: "🔥", title: "Momentum", desc: "Capacity score increased 3 weeks in a row." });
+
+            // 💪 Strength Streak — strength session every week for 3 weeks
+            if (last3.length === 3 && last3.every(c => c.strengthRPE === "Yes"))
+              earned.push({ emoji: "💪", title: "Strength Streak", desc: "Logged a challenging strength session 3 weeks in a row." });
+
+            // 🫁 Aerobic Engine — hit aerobic target 3 weeks running
+            if (last3.length === 3 && last3.every(c => c.aerobic90 === "Yes"))
+              earned.push({ emoji: "🫁", title: "Aerobic Engine", desc: "Hit your aerobic target 3 weeks straight." });
+
+            // 🥩 Protein Pro — top protein score 2 weeks in a row
+            if (last2.length === 2 && last2.every(c => proteinMap[c.proteinFloor] >= 2))
+              earned.push({ emoji: "🥩", title: "Protein Pro", desc: "Hit your protein floor most days, 2 weeks running." });
+
+            // 🧘 Regulated — regulation practice 2 weeks in a row
+            if (last2.length === 2 && last2.every(c => c.regulation === "Yes"))
+              earned.push({ emoji: "🧘", title: "Regulated", desc: "Intentional stress regulation 3x per week, 2 weeks straight." });
+
+            // 🌱 First Step — completed first real check-in
+            if (nonBaseline.length === 1)
+              earned.push({ emoji: "🌱", title: "First Step", desc: "Completed your first weekly check-in. The journey starts here." });
+
+            // ⬆️ Bounce Back — score improved after a drop
+            if (last3.length === 3 && last3[1].score < last3[0].score && last3[2].score > last3[1].score)
+              earned.push({ emoji: "↗️", title: "Bounce Back", desc: "Score dropped last week and you came back stronger." });
+
+            // 🏆 High Performer — score 80+ this week
+            if (latest.score >= 80)
+              earned.push({ emoji: "🏆", title: "High Performer", desc: `Habit score of ${latest.score} — you're operating at an elite level.` });
+
+            if (earned.length === 0) return null;
+
+            return (
+              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
+                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "1rem" }}>🏅 CAPACITY IDENTITY BADGES</div>
+                {earned.map((badge, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.9rem", marginBottom: i < earned.length - 1 ? "0.9rem" : 0, paddingBottom: i < earned.length - 1 ? "0.9rem" : 0, borderBottom: i < earned.length - 1 ? "1px solid #e8e8e8" : "none" }}>
+                    <div style={{ fontSize: "1.8rem", lineHeight: 1, flexShrink: 0 }}>{badge.emoji}</div>
+                    <div>
+                      <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem" }}>{badge.title}</div>
+                      <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.15rem", lineHeight: 1.4 }}>{badge.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* ── Capacity Coaching Tip ────────────────────────────────────── */}
+          {(() => {
+            const latest = checks[checks.length - 1];
+            if (!latest) return null;
+
+            const sleep    = parseInt(latest.sleepQuality) || 0;
+            const energy   = parseInt(latest.energyLevel) || 0;
+            const recovery = parseInt(latest.physicalRecovery) || 0;
+            const workouts = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[latest.workouts] || 0;
+            const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 }[latest.proteinFloor] || 0;
+            const reg      = { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0;
+            const strength = latest.strengthRPE === "Yes";
+            const aerobic  = latest.aerobic90 === "Yes";
+
+            // Score each area as a % of max, find the weakest
+            const areas = [
+              { key: "sleep",    pct: sleep / 5 },
+              { key: "energy",   pct: energy / 5 },
+              { key: "recovery", pct: recovery / 5 },
+              { key: "protein",  pct: protein / 3 },
+              { key: "reg",      pct: reg / 2 },
+              { key: "workouts", pct: workouts / 4 },
+              { key: "strength", pct: strength ? 1 : 0 },
+              { key: "aerobic",  pct: aerobic ? 1 : 0 },
+            ].sort((a, b) => a.pct - b.pct);
+
+            const weakest = areas[0];
+
+            const tips = {
+              sleep: {
+                icon: "😴",
+                observation: `Your sleep score was low this week (${sleep}/5).`,
+                insight: "Improving sleep by just 1 point typically raises your Capacity Index more than adding another workout.",
+                focus: "Try locking in a consistent bedtime this week — even 30 minutes earlier makes a difference.",
+              },
+              energy: {
+                icon: "⚡",
+                observation: `Your energy was low this week (${energy}/5).`,
+                insight: "Low energy is usually a signal of under-recovery, not under-training. More work won't fix it.",
+                focus: "Prioritize sleep, reduce late-night screens, and keep meals consistent this week.",
+              },
+              recovery: {
+                icon: "🔄",
+                observation: `Your physical recovery score was low this week (${recovery}/5).`,
+                insight: "Poor recovery means your body isn't absorbing the training you're doing. Volume isn't the answer right now.",
+                focus: "Focus on sleep quality, hydration, and at least one active recovery session this week.",
+              },
+              protein: {
+                icon: "🥩",
+                observation: `Your protein consistency was below target this week (${latest.proteinFloor}).`,
+                insight: "Protein is the raw material for recovery. Without it, training adaptation stalls regardless of effort.",
+                focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast.",
+              },
+              reg: {
+                icon: "🧘",
+                observation: `Your stress regulation practice was low this week (${latest.regulation}).`,
+                insight: "Chronic stress without regulation suppresses recovery hormones — it's a hidden drag on capacity.",
+                focus: "Schedule one 10-minute regulation practice daily: breathwork, a quiet walk, or journaling.",
+              },
+              workouts: {
+                icon: "🏋️",
+                observation: `You logged ${latest.workouts} workout${latest.workouts === "1" ? "" : "s"} this week.`,
+                insight: "Training frequency is the foundation. Even one additional session per week compounds significantly over 8 weeks.",
+                focus: "Can you find one more 30-minute window this week? It doesn't have to be intense.",
+              },
+              strength: {
+                icon: "💪",
+                observation: "You didn't log a challenging strength session this week.",
+                insight: "Strength training at RPE 7+ is one of the highest-leverage inputs for long-term capacity.",
+                focus: "Schedule one dedicated strength session this week — even 30 minutes of compound movements counts.",
+              },
+              aerobic: {
+                icon: "🫁",
+                observation: "You didn't hit your aerobic target this week.",
+                insight: "Sustained aerobic effort builds your cardiovascular engine — the foundation everything else sits on.",
+                focus: "Aim for one 90-minute session at a pace where you can hold a conversation but not comfortably.",
+              },
+            };
+
+            const tip = tips[weakest.key];
+            if (!tip) return null;
+
+            return (
+              <div style={{ background: "#fff", border: `2px solid ${G}`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
+                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "0.9rem" }}>
+                  🎙 CAPACITY COACHING TIP
+                </div>
+                <div style={{ display: "flex", gap: "0.7rem", alignItems: "flex-start", marginBottom: "0.8rem" }}>
+                  <div style={{ fontSize: "1.8rem", lineHeight: 1, flexShrink: 0 }}>{tip.icon}</div>
+                  <div style={{ fontSize: "0.9rem", color: DARK, fontWeight: "bold", lineHeight: 1.4 }}>{tip.observation}</div>
+                </div>
+                <div style={{ fontSize: "0.85rem", color: "#555", lineHeight: 1.6, marginBottom: "0.8rem" }}>{tip.insight}</div>
+                <div style={{ background: CARD, borderRadius: "10px", padding: "0.7rem 1rem", fontSize: "0.82rem", color: DARK, lineHeight: 1.5 }}>
+                  <strong>Focus this week:</strong> {tip.focus}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* ── Community Scoreboard ─────────────────────────────────────── */}
-          {community && (
-            <div style={{ marginBottom: "1.5rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.9rem" }}>
-                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>🏠 GBSC COMMUNITY SCOREBOARD</div>
                 <div style={{ fontSize: "0.72rem", color: "#999", marginLeft: "auto" }}>{community.memberCount} member{community.memberCount !== 1 ? "s" : ""}</div>
               </div>
 
@@ -588,7 +998,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               )}
 
               {/* Three community stat tiles */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.8rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.8rem", marginBottom: "1rem" }}>
                 {[
                   { label: "Avg Capacity Index", val: community.avgCI, icon: "⚡", desc: "Our combined score" },
                   { label: "Avg VO₂ Score",       val: community.avgVO2,  icon: "🫁", desc: "Cardio engine" },
@@ -602,6 +1012,45 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   </div>
                 ))}
               </div>
+
+              {/* Gym weekly average trend */}
+              {community.weeklyAvgs && community.weeklyAvgs.length >= 2 && (() => {
+                const pts = community.weeklyAvgs;
+                const minV = Math.max(0, Math.min(...pts.map(p => p.avg)) - 8);
+                const maxV = Math.min(100, Math.max(...pts.map(p => p.avg)) + 8);
+                const range = maxV - minV || 1;
+                const W = 400, H = 90, PAD = 24;
+                const plotW = W - PAD * 2, plotH = H - PAD;
+                const x = i => PAD + (i / (pts.length - 1)) * plotW;
+                const y = v => PAD / 2 + (1 - (v - minV) / range) * plotH;
+                const line = pts.map((p,i) => `${i===0?"M":"L"} ${x(i)} ${y(p.avg)}`).join(" ");
+                const area = `${line} L ${x(pts.length-1)} ${H} L ${x(0)} ${H} Z`;
+                const totalChange = pts[pts.length-1].avg - pts[0].avg;
+                return (
+                  <div style={{ background: DARK, borderRadius: "14px", padding: "1rem 1.2rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.6rem" }}>
+                      <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: "#fff", letterSpacing: "0.05em" }}>GBSC CAPACITY AVERAGE</div>
+                      <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: totalChange >= 0 ? G : "#e07030" }}>
+                        {totalChange >= 0 ? "+" : ""}{totalChange} pts
+                      </div>
+                    </div>
+                    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", display: "block" }}>
+                      {[0.25,0.5,0.75].map(t => (
+                        <line key={t} x1={PAD} y1={PAD/2+t*plotH} x2={W-PAD} y2={PAD/2+t*plotH} stroke="#ffffff18" strokeWidth="1" />
+                      ))}
+                      <path d={area} fill={G} fillOpacity="0.15" />
+                      <path d={line} fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      {pts.map((p, i) => (
+                        <g key={i}>
+                          <circle cx={x(i)} cy={y(p.avg)} r="4" fill={G} />
+                          <text x={x(i)} y={H-2} textAnchor="middle" fontSize="9" fill="#888">W{p.week}</text>
+                          <text x={x(i)} y={y(p.avg)-8} textAnchor="middle" fontSize="9" fill="#fff" fontWeight="bold">{p.avg}</text>
+                        </g>
+                      ))}
+                    </svg>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -665,6 +1114,98 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               </div>
             ))}
           </div>
+
+          {/* ── Tier Progress Bar ─────────────────────────────────────────── */}
+          {ci !== null && (() => {
+            const tierOrder = [
+              { name: "Foundation Capacity", min: 0,  max: 39,  emoji: "🔧", next: "Emerging Capacity",  color: "#b0c090" },
+              { name: "Emerging Capacity",   min: 40, max: 54,  emoji: "🌱", next: "Building Capacity",  color: "#8ab85a" },
+              { name: "Building Capacity",   min: 55, max: 69,  emoji: "📈", next: "Durable Capacity",   color: "#4a9e38" },
+              { name: "Durable Capacity",    min: 70, max: 84,  emoji: "💪", next: "Elite Capacity",     color: G },
+              { name: "Elite Capacity",      min: 85, max: 100, emoji: "🏆", next: null,                  color: "#1a7a00" },
+            ];
+            const currentTierData = tierOrder.find(t => ci >= t.min && ci <= t.max) || tierOrder[0];
+            const pointsToNext = currentTierData.next ? (currentTierData.max + 1) - ci : 0;
+            const progressPct = Math.min(100, Math.round(((ci - currentTierData.min) / (currentTierData.max - currentTierData.min + 1)) * 100));
+            return (
+              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
+                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "1rem" }}>🎯 TIER PROGRESS</div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#888", marginBottom: "0.35rem" }}>
+                  <span style={{ fontWeight: "bold", color: tier.color }}>{currentTierData.emoji} {currentTierData.name}</span>
+                  {currentTierData.next && <span>{tierOrder.find(t => t.name === currentTierData.next)?.emoji} {currentTierData.next}</span>}
+                </div>
+                <div style={{ background: "#e0e0e0", borderRadius: "999px", height: "12px", overflow: "hidden", marginBottom: "0.7rem" }}>
+                  <div style={{ background: `linear-gradient(90deg, ${tier.color}, ${G})`, width: `${progressPct}%`, height: "100%", borderRadius: "999px", transition: "width 0.6s ease" }} />
+                </div>
+                {currentTierData.next ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                    <div style={{ fontSize: "1.1rem" }}>🎯</div>
+                    <div style={{ fontSize: "0.85rem", color: DARK }}>
+                      <span style={{ fontWeight: "bold", color: G, fontSize: "1.1rem" }}>{pointsToNext}</span> point{pointsToNext !== 1 ? "s" : ""} to <strong>{currentTierData.next}</strong>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                    <div style={{ fontSize: "1.1rem" }}>👑</div>
+                    <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#1a7a00" }}>You've reached the top tier. Maintain the standard.</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Capacity Trend Chart ─────────────────────────────────────── */}
+          {checks.length >= 2 && (() => {
+            const points = [
+              ...(baseline ? [{ label: "Base", score: baseline.score }] : []),
+              ...checks.map((c, i) => ({ label: `W${c.week}`, score: c.score }))
+            ];
+            const minScore = Math.max(0, Math.min(...points.map(p => p.score)) - 10);
+            const maxScore = Math.min(100, Math.max(...points.map(p => p.score)) + 10);
+            const range = maxScore - minScore || 1;
+            const W = 400, H = 100, PAD = 24;
+            const plotW = W - PAD * 2;
+            const plotH = H - PAD;
+            const x = (i) => PAD + (i / (points.length - 1)) * plotW;
+            const y = (score) => PAD / 2 + (1 - (score - minScore) / range) * plotH;
+
+            const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p.score)}`).join(" ");
+            const areaPath = `${linePath} L ${x(points.length - 1)} ${H} L ${x(0)} ${H} Z`;
+            const latestScore = points[points.length - 1].score;
+            const firstScore = points[0].score;
+            const totalChange = latestScore - firstScore;
+
+            return (
+              <div style={{ background: DARK, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.8rem" }}>
+                  <div style={{ fontWeight: "bold", color: "#fff", fontSize: "0.85rem", letterSpacing: "0.06em" }}>📈 MY CAPACITY TREND</div>
+                  <div style={{ fontSize: "0.82rem", color: totalChange >= 0 ? G : "#e07030", fontWeight: "bold" }}>
+                    {totalChange >= 0 ? "+" : ""}{totalChange} pts overall
+                  </div>
+                </div>
+                <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", display: "block" }}>
+                  {/* Grid lines */}
+                  {[0.25, 0.5, 0.75].map(t => (
+                    <line key={t} x1={PAD} y1={PAD / 2 + t * plotH} x2={W - PAD} y2={PAD / 2 + t * plotH}
+                      stroke="#ffffff18" strokeWidth="1" />
+                  ))}
+                  {/* Area fill */}
+                  <path d={areaPath} fill={G} fillOpacity="0.15" />
+                  {/* Line */}
+                  <path d={linePath} fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  {/* Dots + labels */}
+                  {points.map((p, i) => (
+                    <g key={i}>
+                      <circle cx={x(i)} cy={y(p.score)} r="4" fill={G} />
+                      <text x={x(i)} y={H - 2} textAnchor="middle" fontSize="9" fill="#888">{p.label}</text>
+                      <text x={x(i)} y={y(p.score) - 8} textAnchor="middle" fontSize="9" fill="#fff" fontWeight="bold">{p.score}</text>
+                    </g>
+                  ))}
+                </svg>
+              </div>
+            );
+          })()}
+
           {(baseline || checks.length > 0) && (
             <div style={{ marginBottom: "1.5rem" }}>
               <div style={{ fontWeight: "bold", marginBottom: "0.8rem", color: DARK }}>Check-In History</div>
@@ -686,6 +1227,36 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
             + Log This Week's Check-In
           </button>
+          <button onClick={startEdit}
+            style={{ width: "100%", background: "none", border: "2px solid #ddd", color: "#666", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.7rem" }}>
+            ✏️ Edit My Profile
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "editProfile" && editForm) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
+        {hdr}
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
+          <button onClick={() => setView("profile")} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>← Back to Profile</button>
+          <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: DARK, marginBottom: "1.5rem" }}>✏️ Edit My Profile</div>
+          <F label="Full Name"><input type="text" value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="Age"><input type="number" value={editForm.age} onChange={e => setEditForm(f => ({...f, age: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="Sex"><RadioGroup options={["male","female"]} value={editForm.sex} onChange={v => setEditForm(f => ({...f, sex: v}))} /></F>
+          <F label="Bodyweight (lbs)"><input type="number" value={editForm.weight} onChange={e => setEditForm(f => ({...f, weight: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="Grip Strength (lbs) — from dynamometer"><input type="number" value={editForm.grip} onChange={e => setEditForm(f => ({...f, grip: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="VO₂ Estimate — from Polar test"><input type="number" value={editForm.vo2} onChange={e => setEditForm(f => ({...f, vo2: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <div style={{ background: "#fff8e6", border: "1px solid #f0c040", borderRadius: "10px", padding: "0.8rem 1rem", fontSize: "0.82rem", color: "#7a5c00", marginBottom: "1.2rem" }}>
+            ⚠️ Updating VO₂ or Grip will recalculate your Capacity Index scores.
+          </div>
+          <button onClick={handleSaveEdit}
+            style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
+            Save Changes ✓
+          </button>
+          <button onClick={() => setView("profile")} style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>Cancel</button>
         </div>
       </div>
     );
