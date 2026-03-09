@@ -979,6 +979,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           })()}
 
           {/* ── Community Scoreboard ─────────────────────────────────────── */}
+          {community && (
+            <div style={{ marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.9rem" }}>
+                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>🏠 GBSC COMMUNITY SCOREBOARD</div>
                 <div style={{ fontSize: "0.72rem", color: "#999", marginLeft: "auto" }}>{community.memberCount} member{community.memberCount !== 1 ? "s" : ""}</div>
               </div>
 
