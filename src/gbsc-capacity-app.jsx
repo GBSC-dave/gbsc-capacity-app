@@ -316,6 +316,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     await saveMember(updated);
     setView("profile");
   }
+
+  async function handleRegister() {
     if (!form.name || !form.email || !form.age || !form.weight || !form.grip || !form.vo2) {
       alert("Please fill in all fields.");
       return;
