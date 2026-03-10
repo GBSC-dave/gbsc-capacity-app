@@ -40,25 +40,36 @@ function getVO2Score(vo2, age, sex) {
 }
 
 function getGripScore(grip, bw, age, sex) {
-  const relGrip = grip / bw;
+  const gbr = grip / bw; // grip-to-bodyweight ratio
+
+  // GBSC Robust Grip Standards — Jamar (Age + Bodyweight Adjusted, 12 tiers)
+  // Each entry: [min GBR (inclusive), score]
+  // T1 Critical=8, T2 Very Low=16, T3 Low=24, T4 Below Avg=32, T5 Avg-=40,
+  // T6 Average=50, T7 Avg+=58, T8 Strong=66, T9 Very Strong=74,
+  // T10 Elite=82, T11 Top 1-3%=90, T12 Freak=98
   const tables = {
     male: {
-      young: [[0.90,95],[0.81,85],[0.71,70],[0.61,55],[0.51,40],[0.40,25],[0,10]],
-      mid:   [[0.85,95],[0.77,85],[0.68,70],[0.58,55],[0.48,40],[0.38,25],[0,10]],
-      older: [[0.76,95],[0.69,85],[0.61,70],[0.53,55],[0.44,40],[0.35,25],[0,10]],
+      "18-34": [[0.91,98],[0.83,90],[0.76,82],[0.71,74],[0.66,66],[0.61,58],[0.56,50],[0.51,40],[0.46,32],[0.41,24],[0.36,16],[0,8]],
+      "35-44": [[0.89,98],[0.81,90],[0.74,82],[0.69,74],[0.64,66],[0.59,58],[0.54,50],[0.49,40],[0.44,32],[0.39,24],[0.34,16],[0,8]],
+      "45-54": [[0.87,98],[0.79,90],[0.72,82],[0.67,74],[0.62,66],[0.57,58],[0.52,50],[0.47,40],[0.42,32],[0.37,24],[0.32,16],[0,8]],
+      "55-64": [[0.85,98],[0.77,90],[0.70,82],[0.65,74],[0.60,66],[0.55,58],[0.50,50],[0.45,40],[0.40,32],[0.35,24],[0.30,16],[0,8]],
+      "65+":   [[0.83,98],[0.75,90],[0.68,82],[0.63,74],[0.58,66],[0.53,58],[0.48,50],[0.43,40],[0.38,32],[0.33,24],[0.28,16],[0,8]],
     },
     female: {
-      young: [[0.65,95],[0.58,85],[0.51,70],[0.44,55],[0.36,40],[0.28,25],[0,10]],
-      mid:   [[0.60,95],[0.54,85],[0.47,70],[0.40,55],[0.33,40],[0.26,25],[0,10]],
-      older: [[0.54,95],[0.48,85],[0.42,70],[0.36,55],[0.30,40],[0.23,25],[0,10]],
+      "18-34": [[0.73,98],[0.65,90],[0.58,82],[0.54,74],[0.50,66],[0.46,58],[0.42,50],[0.38,40],[0.34,32],[0.30,24],[0.26,16],[0,8]],
+      "35-44": [[0.72,98],[0.64,90],[0.57,82],[0.53,74],[0.49,66],[0.45,58],[0.41,50],[0.37,40],[0.33,32],[0.29,24],[0.25,16],[0,8]],
+      "45-54": [[0.71,98],[0.63,90],[0.56,82],[0.52,74],[0.48,66],[0.44,58],[0.40,50],[0.36,40],[0.32,32],[0.28,24],[0.24,16],[0,8]],
+      "55-64": [[0.69,98],[0.61,90],[0.54,82],[0.50,74],[0.46,66],[0.42,58],[0.38,50],[0.34,40],[0.30,32],[0.26,24],[0.22,16],[0,8]],
+      "65+":   [[0.67,98],[0.59,90],[0.52,82],[0.48,74],[0.44,66],[0.40,58],[0.36,50],[0.32,40],[0.28,32],[0.24,24],[0.20,16],[0,8]],
     }
   };
-  const ageKey = age < 40 ? "young" : age < 50 ? "mid" : "older";
-  const chart = tables[sex]?.[ageKey] || tables.male.mid;
+
+  const ageKey = age < 35 ? "18-34" : age < 45 ? "35-44" : age < 55 ? "45-54" : age < 65 ? "55-64" : "65+";
+  const chart = tables[sex]?.[ageKey] || tables.male["45-54"];
   for (const [threshold, score] of chart) {
-    if (relGrip >= threshold) return score;
+    if (gbr >= threshold) return score;
   }
-  return 10;
+  return 8;
 }
 
 function calcCapacityIndex(vo2Score, gripScore, habitScore) {
@@ -143,8 +154,10 @@ export default function GBSCApp() {
   // ── LOADING ───────────────────────────────────────────────────────────────
   if (view === "loading") {
     return (
-      <div style={{ minHeight: "100vh", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: G, fontSize: "1.2rem", fontFamily: "'Georgia', serif" }}>Loading…</div>
+      <div style={{ minHeight: "100vh", background: DARK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2rem" }}>
+        <img src={LOGO_HORIZ} alt="GBSC" style={{ width: "min(280px, 70vw)" }} />
+        <div style={{ width: "48px", height: "48px", border: `4px solid rgba(255,255,255,0.15)`, borderTop: `4px solid ${G}`, borderRadius: "50%", animation: "spin 0.9s linear infinite" }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
@@ -276,10 +289,29 @@ function ScaleGroup({ value, onChange, field, setCheck, labels }) {
 // ─── MEMBER PORTAL ────────────────────────────────────────────────────────────
 function MemberPortal({ view, setView, members, currentMember, setCurrentMember, saveMember, onRegistered, onCoachAccess }) {
   const [form, setForm] = useState({ name: "", email: "", age: "", sex: "male", weight: "", grip: "", vo2: "" });
-  const [check, setCheck] = useState({ workouts: "", aerobic90: "", strengthRPE: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", regulation: "", proteinFloor: "" });
+  const [check, setCheck] = useState({ workouts: "", aerobic90: "", strengthRPE: "", dailyMovement: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", regulation: "", proteinFloor: "", disruption: "" });
   const [saved, setSaved] = useState(false);
   const [lastCheckScore, setLastCheckScore] = useState(null);
+  const [displayedScore, setDisplayedScore] = useState(0);
   const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
+
+  useEffect(() => {
+    if (lastCheckScore === null) return;
+    const target = lastCheckScore;
+    const duration = 900;
+    const steps = 40;
+    const interval = duration / steps;
+    let current = 0;
+    setDisplayedScore(0);
+    const timer = setInterval(() => {
+      current += 1;
+      const progress = current / steps;
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayedScore(Math.round(eased * target));
+      if (current >= steps) { setDisplayedScore(target); clearInterval(timer); }
+    }, interval);
+    return () => clearInterval(timer);
+  }, [lastCheckScore]);
 
   const [editForm, setEditForm] = useState(null);
 
@@ -358,7 +390,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     await saveMember(member);
     setCurrentMember(member);
     setLastCheckScore(weekScore);
-    setCheck({ workouts: "", aerobic90: "", strengthRPE: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", regulation: "", proteinFloor: "" });
+    setCheck({ workouts: "", aerobic90: "", strengthRPE: "", dailyMovement: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", regulation: "", proteinFloor: "", disruption: "" });
     onRegistered();
     setView("checkFeedback");
   }
@@ -368,10 +400,18 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       alert("Please answer at least the first 3 questions.");
       return;
     }
-    const nextWeekNum = (currentMember.weeklyChecks?.filter(c => !c.isBaseline).length || 0) + 1;
-    const alreadySubmitted = (currentMember.weeklyChecks || []).some(c => !c.isBaseline && c.week === nextWeekNum);
+    const existingWeeks = (currentMember.weeklyChecks || []).filter(c => !c.isBaseline);
+    const nextWeekNum = existingWeeks.length + 1;
+    // Guard: if they already have a check-in for this week number, block it
+    // This catches the case where someone navigates back and resubmits
+    const alreadySubmitted = existingWeeks.some(c => c.week === nextWeekNum);
     if (alreadySubmitted) {
       alert(`You've already submitted a check-in for Week ${nextWeekNum}. Come back next week!`);
+      return;
+    }
+    // Also block if they somehow already have 8 weeks
+    if (existingWeeks.length >= 8) {
+      alert("You've completed all 8 weeks — the program is done. Great work!");
       return;
     }
     const weekScore = calcWeeklyScore(check);
@@ -387,7 +427,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     await saveMember(updatedMember);
     setCurrentMember(updatedMember);
     setLastCheckScore(weekScore);
-    setCheck({ workouts: "", aerobic90: "", strengthRPE: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", regulation: "", proteinFloor: "" });
+    setCheck({ workouts: "", aerobic90: "", strengthRPE: "", dailyMovement: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", regulation: "", proteinFloor: "", disruption: "" });
     setView("checkFeedback");
   }
 
@@ -433,11 +473,26 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
-          <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-            <div style={{ display: "inline-block", background: CARD, borderRadius: "999px", padding: "0.3rem 1.1rem", fontSize: "0.78rem", color: "#888", marginBottom: "0.7rem", letterSpacing: "0.06em" }}>STEP 2 OF 2</div>
-            <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK }}>Baseline Check-In</div>
-            <div style={{ color: "#666", fontSize: "0.9rem", marginTop: "0.3rem" }}>This gives us your starting point. ~45 seconds · First instinct is fine.</div>
-          </div>
+          {(() => {
+            const fields = ["workouts","aerobic90","strengthRPE","dailyMovement","regulation","proteinFloor","sleepQuality","energyLevel","physicalRecovery","disruption"];
+            const answered = fields.filter(f => check[f] !== "" && check[f] !== undefined).length;
+            const pct = Math.round((answered / fields.length) * 100);
+            return (
+              <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+                <div style={{ display: "inline-block", background: CARD, borderRadius: "999px", padding: "0.3rem 1.1rem", fontSize: "0.78rem", color: "#888", marginBottom: "0.7rem", letterSpacing: "0.06em" }}>STEP 2 OF 2</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK }}>Baseline Check-In</div>
+                <div style={{ color: "#666", fontSize: "0.9rem", marginTop: "0.3rem", marginBottom: "0.8rem" }}>This gives us your starting point. ~45 seconds · First instinct is fine.</div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <div style={{ flex: 1, background: "#eee", borderRadius: "999px", height: "5px" }}>
+                    <div style={{ background: G, borderRadius: "999px", height: "5px", width: `${pct}%`, transition: "width 0.3s ease" }} />
+                  </div>
+                  <div style={{ fontSize: "0.8rem", color: answered === fields.length ? G : "#888", fontWeight: answered === fields.length ? "bold" : "normal", whiteSpace: "nowrap" }}>
+                    {answered === fields.length ? "✓ All done!" : `${answered} of ${fields.length}`}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {[
             { label: "1. Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, Peloton all count" },
@@ -530,6 +585,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     // Compute from already-loaded members state (refreshed on each check-in save)
     function getCommunityStats() {
       const all = members.length > 0 ? members : [currentMember];
+
+      // VO2 and Grip averages include ALL enrolled members, not just those with check-ins
+      const allWithScores = all.filter(m => m.vo2Score_pre != null && m.gripScore_pre != null);
+      const avgVO2  = allWithScores.length ? Math.round(allWithScores.reduce((s,m) => s + m.vo2Score_pre, 0) / allWithScores.length) : null;
+      const avgGrip = allWithScores.length ? Math.round(allWithScores.reduce((s,m) => s + m.gripScore_pre, 0) / allWithScores.length) : null;
+
+      // CI averages only from members who have at least one check-in
       const withCI = all.map(m => {
         const mChecks = m.weeklyChecks || [];
         const mHabitAvg = mChecks.length ? Math.round(mChecks.reduce((s,c) => s+c.score, 0) / mChecks.length) : null;
@@ -540,10 +602,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         return { ci: mCI, prevCI, vo2Score: m.vo2Score_pre, gripScore: m.gripScore_pre, member: m };
       }).filter(m => m.ci !== null);
 
-      if (!withCI.length) return null;
-      const avgCI   = Math.round(withCI.reduce((s,m) => s + m.ci, 0) / withCI.length);
-      const avgVO2  = Math.round(withCI.reduce((s,m) => s + m.vo2Score, 0) / withCI.length);
-      const avgGrip = Math.round(withCI.reduce((s,m) => s + m.gripScore, 0) / withCI.length);
+      if (!allWithScores.length) return null;
+      const avgCI = withCI.length ? Math.round(withCI.reduce((s,m) => s + m.ci, 0) / withCI.length) : null;
 
       const withPrev = withCI.filter(m => m.prevCI !== null);
       let ciChange = null;
@@ -575,26 +635,75 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         return { week: wk, avg: scores.length ? Math.round(scores.reduce((a,b) => a+b,0) / scores.length) : null };
       }).filter(w => w.avg !== null);
 
-      return { avgCI, avgVO2, avgGrip, ciChange, memberCount: withCI.length, weeklyAvgs };
+      return { avgCI, avgVO2, avgGrip, ciChange, memberCount: allWithScores.length, weeklyAvgs };
     }
     const community = getCommunityStats();
 
+    const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
+
     return (
       <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
+        <style>{`
+          @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
+          @keyframes gbscShimmer {
+            0%,100% { opacity: 1; }
+            50% { opacity: 0.65; }
+          }
+          .gbsc-tier-shimmer { animation: gbscShimmer 2.8s ease-in-out infinite; }
+        `}</style>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
+          {/* Week progress bar */}
+          {weekNum > 0 && (
+            <div style={{ marginBottom: "1.5rem", ...fadeUp(0) }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.4rem" }}>
+                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem" }}>Week {weekNum} of 8</div>
+                <div style={{ fontSize: "0.75rem", color: "#888" }}>{8 - weekNum} week{8 - weekNum !== 1 ? "s" : ""} to go</div>
+              </div>
+              <div style={{ background: "#e0e0e0", borderRadius: "999px", height: "8px", overflow: "hidden" }}>
+                <div style={{ background: `linear-gradient(90deg, ${G}, #1a7a00)`, width: `${(weekNum / 8) * 100}%`, height: "100%", borderRadius: "999px", transition: "width 0.6s ease" }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.3rem" }}>
+                {[1,2,3,4,5,6,7,8].map(w => (
+                  <div key={w} style={{ width: "10px", height: "10px", borderRadius: "50%", background: w <= weekNum ? G : "#ddd", transition: "background 0.3s" }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quick nav back — visible immediately */}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>
+            <button onClick={() => setView("profile")}
+              style={{ background: "none", border: `1.5px solid ${G}`, color: G, borderRadius: "999px", padding: "0.3rem 0.9rem", fontSize: "0.8rem", fontWeight: "bold", cursor: "pointer" }}>
+              ← My Profile
+            </button>
+          </div>
+
+          {/* Welcome moment for new registrations */}
+          {weekNum === 0 && (
+            <div style={{ background: `linear-gradient(135deg, ${DARK}, #2a4a1a)`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", textAlign: "center", ...fadeUp(0) }}>
+              <div style={{ fontSize: "2rem", marginBottom: "0.4rem" }}>👋</div>
+              <div style={{ fontWeight: "bold", color: "#fff", fontSize: "1.1rem", marginBottom: "0.3rem" }}>
+                Welcome to the program, {currentMember.name.split(" ")[0]}!
+              </div>
+              <div style={{ fontSize: "0.82rem", color: "#aaa", lineHeight: 1.5 }}>
+                Your baseline is set. Check in every week and watch your Capacity Index grow over 8 weeks.
+              </div>
+            </div>
+          )}
+
           {/* Week badge */}
-          <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          <div style={{ textAlign: "center", marginBottom: "1.5rem", ...fadeUp(50) }}>
             <div style={{ display: "inline-block", background: DARK, color: "#fff", borderRadius: "999px", padding: "0.35rem 1.1rem", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "0.07em" }}>
               {weekNum === 0 ? "📍 BASELINE CHECK-IN COMPLETE ✓" : `WEEK ${weekNum} CHECK-IN COMPLETE ✓`}
             </div>
           </div>
 
           {/* Main score card */}
-          <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #2a4a1a 100%)`, borderRadius: "20px", padding: "2rem 1.5rem", color: "#fff", textAlign: "center", marginBottom: "1.5rem", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #2a4a1a 100%)`, borderRadius: "20px", padding: "2rem 1.5rem", color: "#fff", textAlign: "center", marginBottom: "1.5rem", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", ...fadeUp(150) }}>
             <div style={{ fontSize: "0.85rem", color: "#aaa", marginBottom: "0.5rem", letterSpacing: "0.08em" }}>THIS WEEK'S HABIT SCORE</div>
-            <div style={{ fontSize: "5rem", fontWeight: "bold", color: G, lineHeight: 1 }}>{lastCheckScore ?? checks[checks.length-1]?.score ?? "—"}</div>
+            <div style={{ fontSize: "5rem", fontWeight: "bold", color: G, lineHeight: 1, fontVariantNumeric: "tabular-nums", minWidth: "3ch", display: "inline-block" }}>{displayedScore}</div>
             <div style={{ fontSize: "0.85rem", color: "#888", marginTop: "0.3rem" }}>out of 100</div>
             <div style={{ fontSize: "0.75rem", color: "#777", marginTop: "0.9rem", lineHeight: 1.5, borderTop: "1px solid #ffffff18", paddingTop: "0.9rem" }}>
               Capacity Index measures how well your habits support training, recovery, and resilience. Higher scores = greater ability to train and recover.
@@ -679,7 +788,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             ];
 
             return (
-              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
+              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(320) }}>
                 <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "1rem" }}>📊 CAPACITY DRIVERS</div>
                 {rows.map(row => {
                   const pct = Math.round((row.value / row.max) * 100);
@@ -702,12 +811,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* Tier card */}
           {tier && (
-            <div style={{ background: CARD, borderRadius: "16px", padding: "1.5rem", marginBottom: "1.5rem" }}>
+            <div style={{ background: CARD, borderRadius: "16px", padding: "1.5rem", marginBottom: "1.5rem", ...fadeUp(450) }}>
               <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
                 <div style={{ fontSize: "2.8rem", lineHeight: 1 }}>{tier.emoji}</div>
                 <div>
                   <div style={{ fontSize: "0.75rem", color: "#888", letterSpacing: "0.07em" }}>CAPACITY IDENTITY</div>
-                  <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color }}>{tier.tier}</div>
+                  <div className="gbsc-tier-shimmer" style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color }}>{tier.tier}</div>
                   <div style={{ fontSize: "0.8rem", color: "#666" }}>Capacity Index: <strong style={{ color: DARK }}>{ci}</strong></div>
                 </div>
               </div>
@@ -741,7 +850,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           )}
 
           {/* Encouragement message */}
-          <div style={{ background: `linear-gradient(135deg, #f0f7ec, #e6f0df)`, border: `1.5px solid ${G}`, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "1.5rem", textAlign: "center" }}>
+          <div style={{ background: `linear-gradient(135deg, #f0f7ec, #e6f0df)`, border: `1.5px solid ${G}`, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "1.5rem", textAlign: "center", ...fadeUp(570) }}>
             <div style={{ fontSize: "1rem", color: DARK, fontStyle: "italic", lineHeight: 1.5 }}>{encouragement}</div>
           </div>
 
@@ -840,7 +949,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const borderColor = isUp ? G : isFlat ? "#ddd" : "#e8a060";
 
             return (
-              <div style={{ background: bgColor, border: `1.5px solid ${borderColor}`, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "1.5rem" }}>
+              <div style={{ background: bgColor, border: `1.5px solid ${borderColor}`, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(680) }}>
                 <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "0.6rem" }}>🔍 CAPACITY INSIGHT</div>
                 <div style={{ fontSize: "1rem", fontWeight: "bold", color: DARK, marginBottom: "0.8rem" }}>
                   {isFlat
@@ -917,7 +1026,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             if (earned.length === 0) return null;
 
             return (
-              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
+              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(790) }}>
                 <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "1rem" }}>🏅 CAPACITY IDENTITY BADGES</div>
                 {earned.map((badge, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.9rem", marginBottom: i < earned.length - 1 ? "0.9rem" : 0, paddingBottom: i < earned.length - 1 ? "0.9rem" : 0, borderBottom: i < earned.length - 1 ? "1px solid #e8e8e8" : "none" }}>
@@ -1023,7 +1132,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             if (!tip) return null;
 
             return (
-              <div style={{ background: "#fff", border: `2px solid ${G}`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
+              <div style={{ background: "#fff", border: `2px solid ${G}`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(900) }}>
                 <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "0.9rem" }}>
                   🎙 CAPACITY COACHING TIP
                 </div>
@@ -1041,7 +1150,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* ── Community Scoreboard ─────────────────────────────────────── */}
           {community && (
-            <div style={{ marginBottom: "1.5rem" }}>
+            <div style={{ marginBottom: "1.5rem", ...fadeUp(1010) }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.9rem" }}>
                 <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>🏠 GBSC COMMUNITY SCOREBOARD</div>
                 <div style={{ fontSize: "0.72rem", color: "#999", marginLeft: "auto" }}>{community.memberCount} member{community.memberCount !== 1 ? "s" : ""}</div>
@@ -1065,8 +1174,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               {/* Three community stat tiles */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.8rem", marginBottom: "1rem" }}>
                 {[
-                  { label: "Avg Capacity Index", val: community.avgCI, icon: "⚡", desc: "Our combined score" },
-                  { label: "Avg VO₂ Score",       val: community.avgVO2,  icon: "🫁", desc: "Cardio engine" },
+                  { label: "Avg Capacity Index", val: community.avgCI ?? "—", icon: "⚡", desc: "Our combined score" },
+                  { label: "Avg VO₂ Score",       val: community.avgVO2  ?? "—", icon: "🫁", desc: "Cardio engine" },
                   { label: "Avg Grip Score",       val: community.avgGrip, icon: "🤝", desc: "Strength anchor" },
                 ].map(({ label, val, icon, desc }) => (
                   <div key={label} style={{ background: CARD, borderRadius: "14px", padding: "1rem 0.7rem", textAlign: "center" }}>
@@ -1119,24 +1228,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
-          {/* Tier ladder — all 5 tiers */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "0.7rem" }}>CAPACITY IDENTITY TIERS</div>
-            {tierOrder.slice().reverse().map((t) => {
-              const isCurrent = t.name === tier?.tier;
-              return (
-                <div key={t.name} style={{ display: "flex", alignItems: "center", gap: "0.8rem", padding: "0.65rem 1rem", borderRadius: "10px", marginBottom: "0.4rem", background: isCurrent ? DARK : "#f5f5f5", border: isCurrent ? `2px solid ${G}` : "2px solid transparent", transition: "all 0.2s" }}>
-                  <div style={{ fontSize: "1.4rem" }}>{t.emoji}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: "bold", color: isCurrent ? "#fff" : t.color, fontSize: "0.9rem" }}>{t.name}</div>
-                    <div style={{ fontSize: "0.72rem", color: isCurrent ? "#aaa" : "#999" }}>Score {t.min}–{t.max}</div>
-                  </div>
-                  {isCurrent && <div style={{ fontSize: "0.72rem", background: G, color: "#fff", borderRadius: "999px", padding: "0.2rem 0.7rem", fontWeight: "bold" }}>YOU</div>}
-                </div>
-              );
-            })}
-          </div>
-
           <button onClick={() => setView("profile")}
             style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
             Back to My Profile →
@@ -1162,7 +1253,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ color: "#aaa", fontSize: "0.85rem" }}>Week {checks.length} of 8</div>
             {ci !== null && (
               <>
-                <div style={{ fontSize: "3rem", fontWeight: "bold", color: G, margin: "0.5rem 0" }}>{ci}</div>
+                <div style={{ fontSize: "3rem", fontWeight: "bold", color: G, margin: "0.5rem 0", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{ci}</div>
                 <div style={{ color: tier.color, fontSize: "1rem", fontWeight: "bold" }}>{tier.emoji} {tier.tier}</div>
               </>
             )}
@@ -1295,10 +1386,36 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               ))}
             </div>
           )}
-          <button onClick={() => setView("checkin")}
-            style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
-            + Log This Week's Check-In
-          </button>
+          {(() => {
+            const today = new Date().toISOString().split("T")[0];
+            const lastCheck = checks[checks.length - 1];
+            const submittedToday = lastCheck?.date === today;
+            const completedProgram = checks.length >= 8;
+            if (completedProgram) {
+              return (
+                <div style={{ background: CARD, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "0.7rem" }}>
+                  <div style={{ fontSize: "1.3rem", marginBottom: "0.3rem" }}>🏆</div>
+                  <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem" }}>Program Complete</div>
+                  <div style={{ fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }}>You've finished all 8 weeks. Outstanding work.</div>
+                </div>
+              );
+            }
+            if (submittedToday) {
+              return (
+                <div style={{ background: "#f0f7ec", border: `1.5px solid ${G}`, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "0.7rem" }}>
+                  <div style={{ fontSize: "1.3rem", marginBottom: "0.3rem" }}>✅</div>
+                  <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem" }}>Week {lastCheck.week} check-in submitted</div>
+                  <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.2rem" }}>See you next week!</div>
+                </div>
+              );
+            }
+            return (
+              <button onClick={() => setView("checkin")}
+                style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
+                + Log This Week's Check-In
+              </button>
+            );
+          })()}
           {checks.length > 0 && (
             <button onClick={() => setView("checkFeedback")}
               style={{ width: "100%", background: "none", border: `2px solid ${G}`, color: G, borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.7rem" }}>
@@ -1346,10 +1463,25 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
-          <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: DARK }}>Week {weekNum} Check-In</div>
-            <div style={{ color: "#666", fontSize: "0.85rem" }}>~45 seconds · First instinct is fine</div>
-          </div>
+          {(() => {
+            const fields = ["workouts","aerobic90","strengthRPE","dailyMovement","regulation","proteinFloor","sleepQuality","energyLevel","physicalRecovery","disruption"];
+            const answered = fields.filter(f => check[f] !== "" && check[f] !== undefined).length;
+            const pct = Math.round((answered / fields.length) * 100);
+            return (
+              <div style={{ marginBottom: "1.5rem" }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.3rem" }}>
+                  <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: DARK }}>Week {weekNum} Check-In</div>
+                  <div style={{ fontSize: "0.8rem", color: answered === fields.length ? G : "#888", fontWeight: answered === fields.length ? "bold" : "normal" }}>
+                    {answered === fields.length ? "✓ All done!" : `${answered} of ${fields.length}`}
+                  </div>
+                </div>
+                <div style={{ background: "#eee", borderRadius: "999px", height: "5px", marginBottom: "0.5rem" }}>
+                  <div style={{ background: G, borderRadius: "999px", height: "5px", width: `${pct}%`, transition: "width 0.3s ease" }} />
+                </div>
+                <div style={{ color: "#666", fontSize: "0.85rem" }}>~45 seconds · First instinct is fine</div>
+              </div>
+            );
+          })()}
 
           {[
             { label: "1. Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, Peloton all count" },
