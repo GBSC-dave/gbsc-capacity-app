@@ -76,15 +76,16 @@ function getCapacityTier(score) {
 // ─── Weekly Check Score Calculator ────────────────────────────────────────────
 function calcWeeklyScore(check) {
   let score = 0;
-  const workoutMap = { "0": 0, "1": 10, "2": 20, "3": 25, "4+": 30 };
+  const workoutMap = { "0": 0, "1": 10, "2": 18, "3": 23, "4+": 27 };
   score += workoutMap[check.workouts] || 0;
-  score += check.aerobic90 === "Yes" ? 15 : check.aerobic90 === "Close" ? 8 : 0;
-  score += check.strengthRPE === "Yes" ? 15 : 0;
+  score += check.aerobic90 === "Yes" ? 13 : check.aerobic90 === "Close" ? 7 : 0;
+  score += check.strengthRPE === "Yes" ? 13 : 0;
   score += ((parseInt(check.sleepQuality) || 0) / 5) * 10;
   score += ((parseInt(check.energyLevel) || 0) / 5) * 10;
   score += ((parseInt(check.physicalRecovery) || 0) / 5) * 10;
   score += check.regulation === "Yes" ? 5 : check.regulation === "1-2x" ? 3 : 0;
   score += check.proteinFloor === "Yes" ? 5 : check.proteinFloor === "Most days" ? 3 : 0;
+  score += check.dailyMovement === "High" ? 7 : check.dailyMovement === "Moderate" ? 4 : 0;
   return Math.min(Math.round(score), 100);
 }
 
@@ -367,12 +368,18 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       alert("Please answer at least the first 3 questions.");
       return;
     }
+    const nextWeekNum = (currentMember.weeklyChecks?.filter(c => !c.isBaseline).length || 0) + 1;
+    const alreadySubmitted = (currentMember.weeklyChecks || []).some(c => !c.isBaseline && c.week === nextWeekNum);
+    if (alreadySubmitted) {
+      alert(`You've already submitted a check-in for Week ${nextWeekNum}. Come back next week!`);
+      return;
+    }
     const weekScore = calcWeeklyScore(check);
     const updatedMember = {
       ...currentMember,
       weeklyChecks: [...(currentMember.weeklyChecks || []), {
         date: new Date().toISOString().split("T")[0],
-        week: (currentMember.weeklyChecks?.filter(c => !c.isBaseline).length || 0) + 1,
+        week: nextWeekNum,
         ...check,
         score: weekScore
       }]
@@ -436,8 +443,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             { label: "1. Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, Peloton all count" },
             { label: "2. ~90 min moderate effort?", field: "aerobic90", options: ["Yes","Close","No"], hint: "Breathing elevated but sustainable" },
             { label: "3. Challenging strength session?", field: "strengthRPE", options: ["Yes","No"], hint: "RPE 7+ · 2–3 reps left in tank" },
-            { label: "7. Intentional regulation 3x?", field: "regulation", options: ["Yes","1-2x","No"], hint: "Breathwork, quiet walk, journaling, low-stim time" },
-            { label: "8. Protein floor most meals?", field: "proteinFloor", options: ["Yes","Most days","Some days","Rarely"], hint: "20–40g per meal, 2–3 meals/day" },
+            { label: "4. Daily movement outside workouts?", field: "dailyMovement", options: ["High","Moderate","Low"], hint: "Walks, active job, steps — not counting workouts" },
+            { label: "5. Intentional regulation 3x?", field: "regulation", options: ["Yes","1-2x","No"], hint: "Breathwork, quiet walk, journaling, low-stim time" },
+            { label: "6. Protein floor most meals?", field: "proteinFloor", options: ["Yes","Most days","Some days","Rarely"], hint: "20–40g per meal, 2–3 meals/day" },
           ].map(q => (
             <div key={q.field} style={{ marginBottom: "1.5rem" }}>
               <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>{q.label}</div>
@@ -454,16 +462,29 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           ))}
 
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>4. Sleep Quality</div>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>7. Sleep Quality</div>
             <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor","Inconsistent","Adequate","Good","Excellent"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>5. Energy This Week</div>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>8. Energy This Week</div>
             <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Drained","Low","Stable","Strong","High & Steady"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>6. Physical Recovery</div>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>9. Physical Recovery</div>
             <ScaleGroup field="physicalRecovery" value={check.physicalRecovery} setCheck={setCheck} labels={["Beat Up","Tight","Normal","Recovered","Fresh"]} />
+          </div>
+
+          <div style={{ marginBottom: "1.5rem" }}>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>10. Any significant disruption this week?</div>
+            <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Illness, travel, sick kids, work chaos — this won't affect your score, just helps interpret it</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+              {["None","Some disruption","Major disruption"].map(opt => (
+                <button key={opt} onClick={() => setCheck(c => ({...c, disruption: opt}))}
+                  style={{ padding: "0.5rem 1rem", border: `2px solid ${check.disruption === opt ? G : "#ddd"}`, borderRadius: "8px", background: check.disruption === opt ? G : "#fff", color: check.disruption === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check.disruption === opt ? "bold" : "normal" }}>
+                  {opt}
+                </button>
+              ))}
+            </div>
           </div>
 
           <button onClick={handleRegisterWithBaseline}
@@ -589,6 +610,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const aerobicMap  = { "No": 0, "Close": 1, "Yes": 2 };
             const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
             const regMap      = { "No": 0, "1-2x": 1, "Yes": 2 };
+            const movementMap = { "Low": 0, "Moderate": 1, "High": 2 };
 
             const rows = [
               {
@@ -611,6 +633,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 max: 1,
                 display: latest.strengthRPE ?? "—",
                 suffix: "RPE 7+",
+              },
+              {
+                label: "Movement",
+                value: movementMap[latest.dailyMovement] ?? 0,
+                max: 2,
+                display: latest.dailyMovement ?? "—",
+                suffix: "daily activity",
               },
               {
                 label: "Sleep",
@@ -715,6 +744,28 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <div style={{ background: `linear-gradient(135deg, #f0f7ec, #e6f0df)`, border: `1.5px solid ${G}`, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "1.5rem", textAlign: "center" }}>
             <div style={{ fontSize: "1rem", color: DARK, fontStyle: "italic", lineHeight: 1.5 }}>{encouragement}</div>
           </div>
+
+          {/* ── Disruption Context Banner ────────────────────────────────── */}
+          {(() => {
+            const latest = checks.filter(c => !c.isBaseline).slice(-1)[0];
+            if (!latest || latest.disruption === "None" || !latest.disruption) return null;
+            const isMajor = latest.disruption === "Major disruption";
+            return (
+              <div style={{ background: isMajor ? "#fff7f0" : "#fffbf0", border: `1.5px solid ${isMajor ? "#e8a060" : "#e0c040"}`, borderRadius: "14px", padding: "1rem 1.2rem", marginBottom: "1.5rem", display: "flex", gap: "0.8rem", alignItems: "flex-start" }}>
+                <div style={{ fontSize: "1.6rem", lineHeight: 1, flexShrink: 0 }}>{isMajor ? "🌊" : "〰️"}</div>
+                <div>
+                  <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.9rem", marginBottom: "0.2rem" }}>
+                    {isMajor ? "Major disruption logged this week" : "Some disruption logged this week"}
+                  </div>
+                  <div style={{ fontSize: "0.82rem", color: "#666", lineHeight: 1.5 }}>
+                    {isMajor
+                      ? "Your score reflects a tough week, not your true capacity. Showing up at all during disruption is a sign of resilience — not failure."
+                      : "Life happened this week. Your score may not reflect your full potential. Consistency over time matters more than any single week."}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* ── Capacity Insight Engine ──────────────────────────────────── */}
           {(() => {
@@ -894,6 +945,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const reg      = { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0;
             const strength = latest.strengthRPE === "Yes";
             const aerobic  = latest.aerobic90 === "Yes";
+            const movement = { "Low": 0, "Moderate": 1, "High": 2 }[latest.dailyMovement] ?? null;
 
             // Score each area as a % of max, find the weakest
             const areas = [
@@ -905,6 +957,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               { key: "workouts", pct: workouts / 4 },
               { key: "strength", pct: strength ? 1 : 0 },
               { key: "aerobic",  pct: aerobic ? 1 : 0 },
+              ...(movement !== null ? [{ key: "movement", pct: movement / 2 }] : []),
             ].sort((a, b) => a.pct - b.pct);
 
             const weakest = areas[0];
@@ -957,6 +1010,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 observation: "You didn't hit your aerobic target this week.",
                 insight: "Sustained aerobic effort builds your cardiovascular engine — the foundation everything else sits on.",
                 focus: "Aim for one 90-minute session at a pace where you can hold a conversation but not comfortably.",
+              },
+              movement: {
+                icon: "🚶",
+                observation: `Your daily movement outside workouts was low this week (${latest.dailyMovement || "not logged"}).`,
+                insight: "Total movement volume matters as much as structured workouts. Sitting all day offsets a lot of the gains from training.",
+                focus: "Add one 20-minute walk per day this week. It compounds — 10k steps daily is a different capacity profile than 2k.",
               },
             };
 
@@ -1222,9 +1281,16 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 </div>
               )}
               {checks.map((c, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", background: CARD, borderRadius: "8px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
-                  <span style={{ color: "#666" }}>Week {c.week} — {c.date}</span>
-                  <span style={{ fontWeight: "bold", color: G }}>{c.score}/100</span>
+                <div key={i} style={{ background: CARD, borderRadius: "8px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "#666" }}>Week {c.week} — {c.date}</span>
+                    <span style={{ fontWeight: "bold", color: G }}>{c.score}/100</span>
+                  </div>
+                  {c.disruption && c.disruption !== "None" && (
+                    <div style={{ fontSize: "0.72rem", color: c.disruption === "Major disruption" ? "#c07030" : "#b09020", marginTop: "0.25rem" }}>
+                      {c.disruption === "Major disruption" ? "🌊" : "〰️"} {c.disruption}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1289,8 +1355,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             { label: "1. Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, Peloton all count" },
             { label: "2. ~90 min moderate effort?", field: "aerobic90", options: ["Yes","Close","No"], hint: "Breathing elevated but sustainable" },
             { label: "3. Challenging strength session?", field: "strengthRPE", options: ["Yes","No"], hint: "RPE 7+ · 2–3 reps left in tank" },
-            { label: "7. Intentional regulation 3x?", field: "regulation", options: ["Yes","1-2x","No"], hint: "Breathwork, quiet walk, journaling, low-stim time" },
-            { label: "8. Protein floor most meals?", field: "proteinFloor", options: ["Yes","Most days","Some days","Rarely"], hint: "20–40g per meal, 2–3 meals/day" },
+            { label: "4. Daily movement outside workouts?", field: "dailyMovement", options: ["High","Moderate","Low"], hint: "Walks, active job, steps — not counting workouts" },
+            { label: "5. Intentional regulation 3x?", field: "regulation", options: ["Yes","1-2x","No"], hint: "Breathwork, quiet walk, journaling, low-stim time" },
+            { label: "6. Protein floor most meals?", field: "proteinFloor", options: ["Yes","Most days","Some days","Rarely"], hint: "20–40g per meal, 2–3 meals/day" },
           ].map(q => (
             <div key={q.field} style={{ marginBottom: "1.5rem" }}>
               <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>{q.label}</div>
@@ -1307,16 +1374,29 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           ))}
 
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>4. Sleep Quality</div>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>7. Sleep Quality</div>
             <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor","Inconsistent","Adequate","Good","Excellent"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>5. Energy This Week</div>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>8. Energy This Week</div>
             <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Drained","Low","Stable","Strong","High & Steady"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>6. Physical Recovery</div>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>9. Physical Recovery</div>
             <ScaleGroup field="physicalRecovery" value={check.physicalRecovery} setCheck={setCheck} labels={["Beat Up","Tight","Normal","Recovered","Fresh"]} />
+          </div>
+
+          <div style={{ marginBottom: "1.5rem" }}>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>10. Any significant disruption this week?</div>
+            <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Illness, travel, sick kids, work chaos — won't affect your score, just helps interpret it</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+              {["None","Some disruption","Major disruption"].map(opt => (
+                <button key={opt} onClick={() => setCheck(c => ({...c, disruption: opt}))}
+                  style={{ padding: "0.5rem 1rem", border: `2px solid ${check.disruption === opt ? G : "#ddd"}`, borderRadius: "8px", background: check.disruption === opt ? G : "#fff", color: check.disruption === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check.disruption === opt ? "bold" : "normal" }}>
+                  {opt}
+                </button>
+              ))}
+            </div>
           </div>
 
           {saved && (
@@ -1375,7 +1455,9 @@ function CoachDashboard({ members, loadMembers, onBack }) {
       "member_id","name","email","age","sex","weight_lbs","enrolled_date",
       "vo2_pre","vo2_score","grip_pre_lbs","grip_score",
       "week","date","is_baseline","habit_score",
-      "workouts","aerobic_90min","strength_rpe","sleep_quality","energy_level","physical_recovery","regulation","protein_floor",
+      "workouts","aerobic_90min","strength_rpe","daily_movement",
+      "sleep_quality","energy_level","physical_recovery",
+      "regulation","protein_floor","disruption",
       "capacity_index","tier"
     ];
 
@@ -1383,13 +1465,10 @@ function CoachDashboard({ members, loadMembers, onBack }) {
     for (const m of members) {
       const checks = m.weeklyChecks || [];
       if (checks.length === 0) {
-        // Member row with no check-ins
-        const ci = calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, 0);
-        const tier = getCapacityTier(ci);
         rows.push([
           m.id, m.name, m.email, m.age, m.sex, m.weight,
           m.enrolledDate, m.vo2_pre, m.vo2Score_pre, m.grip_pre, m.gripScore_pre,
-          "","","","","","","","","","","","",""
+          "","","","","","","","","","","","","","","",""
         ]);
       } else {
         const habitAvg = Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length);
@@ -1400,9 +1479,9 @@ function CoachDashboard({ members, loadMembers, onBack }) {
             m.id, m.name, m.email, m.age, m.sex, m.weight,
             m.enrolledDate, m.vo2_pre, m.vo2Score_pre, m.grip_pre, m.gripScore_pre,
             c.week ?? 0, c.date, c.isBaseline ? "YES" : "NO", c.score,
-            c.workouts, c.aerobic90, c.strengthRPE,
+            c.workouts, c.aerobic90, c.strengthRPE, c.dailyMovement ?? "",
             c.sleepQuality, c.energyLevel, c.physicalRecovery,
-            c.regulation, c.proteinFloor,
+            c.regulation, c.proteinFloor, c.disruption ?? "",
             ci, tier.tier
           ]);
         }
@@ -1512,23 +1591,29 @@ function CoachDashboard({ members, loadMembers, onBack }) {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
                   <thead>
                     <tr style={{ background: DARK, color: "#fff" }}>
-                      {["Week","Date","Score","Workouts","90min","Strength","Sleep","Energy","Recovery"].map(h => (
-                        <th key={h} style={{ padding: "0.5rem 0.7rem", textAlign: "left", fontWeight: "normal" }}>{h}</th>
+                      {["Week","Date","Score","Workouts","90min","Strength","Movement","Sleep","Energy","Recovery","Regulation","Protein","Disruption"].map(h => (
+                        <th key={h} style={{ padding: "0.5rem 0.7rem", textAlign: "left", fontWeight: "normal", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {checks.map((c, i) => (
                       <tr key={i} style={{ background: i % 2 ? CARD : "#fff" }}>
-                        <td style={{ padding: "0.5rem 0.7rem", fontWeight: "bold", color: G }}>{c.week}</td>
+                        <td style={{ padding: "0.5rem 0.7rem", fontWeight: "bold", color: G }}>{c.isBaseline ? "Base" : c.week}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.date}</td>
                         <td style={{ padding: "0.5rem 0.7rem", fontWeight: "bold" }}>{c.score}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.workouts}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.aerobic90}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.strengthRPE}</td>
+                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.dailyMovement ?? "—"}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.sleepQuality}/5</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.energyLevel}/5</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.physicalRecovery}/5</td>
+                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.regulation ?? "—"}</td>
+                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.proteinFloor ?? "—"}</td>
+                        <td style={{ padding: "0.5rem 0.7rem", color: c.disruption === "Major disruption" ? "#c07030" : c.disruption === "Some disruption" ? "#b09020" : "#aaa" }}>
+                          {c.disruption === "Major disruption" ? "🌊 Major" : c.disruption === "Some disruption" ? "〰️ Some" : "—"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
