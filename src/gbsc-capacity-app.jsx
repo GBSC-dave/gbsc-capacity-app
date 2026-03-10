@@ -1233,6 +1233,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
             + Log This Week's Check-In
           </button>
+          {checks.length > 0 && (
+            <button onClick={() => setView("checkFeedback")}
+              style={{ width: "100%", background: "none", border: `2px solid ${G}`, color: G, borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.7rem" }}>
+              📊 View My Last Results
+            </button>
+          )}
           <button onClick={startEdit}
             style={{ width: "100%", background: "none", border: "2px solid #ddd", color: "#666", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.7rem" }}>
             ✏️ Edit My Profile
