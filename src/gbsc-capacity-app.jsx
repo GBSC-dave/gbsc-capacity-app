@@ -11,7 +11,8 @@ const LOGO_HORIZ = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX
 // ─── GBSC Brand Colors ───────────────────────────────────────────────────────
 const G = "#5DC842";
 const DARK = "#2D2D2D";
-const CARD = "#F7F9F5";
+const CARD = "#fff";
+const PAGE_BG = "#f9f7f4";
 
 // ─── Capacity Index Calculators ───────────────────────────────────────────────
 function getVO2Score(vo2, age, sex) {
@@ -110,23 +111,33 @@ export default function GBSCApp() {
   const [currentMember, setCurrentMember] = useState(null);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
+  const [splashFading, setSplashFading] = useState(false);
 
   useEffect(() => { init(); }, []);
 
   async function init() {
-    // Check if this device already has a registered member (stored in localStorage)
+    const MIN_SPLASH_MS = 2200; // minimum time logo is visible
+    const startTime = Date.now();
+
+    let nextView = "register";
     try {
       const memberId = localStorage.getItem("gbsc-this-member");
       if (memberId) {
         const { data, error } = await supabase.from("members").select("data").eq("id", memberId).single();
         if (!error && data) {
           setCurrentMember(data.data);
-          setView("member");
-          return;
+          nextView = "member";
         }
       }
     } catch {}
-    setView("register");
+
+    // Wait for minimum splash time, then fade out over 600ms before switching view
+    const elapsed = Date.now() - startTime;
+    const remaining = Math.max(0, MIN_SPLASH_MS - elapsed);
+    await new Promise(r => setTimeout(r, remaining));
+    setSplashFading(true);
+    await new Promise(r => setTimeout(r, 600));
+    setView(nextView);
   }
 
   async function loadMembers() {
@@ -154,9 +165,30 @@ export default function GBSCApp() {
   // ── LOADING ───────────────────────────────────────────────────────────────
   if (view === "loading") {
     return (
-      <div style={{ minHeight: "100vh", background: DARK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2rem" }}>
-        <img src={LOGO_HORIZ} alt="GBSC" style={{ width: "min(280px, 70vw)" }} />
-        <div style={{ width: "48px", height: "48px", border: `4px solid rgba(255,255,255,0.15)`, borderTop: `4px solid ${G}`, borderRadius: "50%", animation: "spin 0.9s linear infinite" }} />
+      <div style={{
+        minHeight: "100vh", background: DARK,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2.5rem",
+        opacity: splashFading ? 0 : 1,
+        transition: splashFading ? "opacity 0.6s ease" : "none",
+      }}>
+        <img
+          src={LOGO_HORIZ} alt="GBSC"
+          style={{
+            width: "min(300px, 72vw)",
+            opacity: splashFading ? 0 : 1,
+            transform: splashFading ? "scale(0.97)" : "scale(1)",
+            transition: "opacity 0.6s ease, transform 0.6s ease",
+          }}
+        />
+        <div style={{
+          width: "44px", height: "44px",
+          border: `3px solid rgba(255,255,255,0.12)`,
+          borderTop: `3px solid ${G}`,
+          borderRadius: "50%",
+          animation: "spin 1.1s linear infinite",
+          opacity: splashFading ? 0 : 0.85,
+          transition: "opacity 0.3s ease",
+        }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -165,7 +197,7 @@ export default function GBSCApp() {
   // ── COACH PIN ─────────────────────────────────────────────────────────────
   if (view === "coachPin") {
     return (
-      <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "'Georgia', serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "'Georgia', serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <img src={LOGO_HORIZ} alt="GBSC" style={{ width: "min(280px, 80vw)", marginBottom: "2rem" }} />
         <div style={{ background: DARK, borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "320px" }}>
           <div style={{ color: "#fff", fontWeight: "bold", fontSize: "1.1rem", marginBottom: "1.2rem", textAlign: "center" }}>🔒 Coach Access</div>
@@ -271,6 +303,7 @@ function ScaleGroup({ value, onChange, field, setCheck, labels }) {
     if (onChange) onChange(String(n));
     else if (field && setCheck) setCheck(c => ({...c, [field]: String(n)}));
   };
+  const selectedLabel = resolvedValue && labels ? labels[parseInt(resolvedValue) - 1] : null;
   return (
     <div>
       <div style={{ display: "flex", gap: "0.4rem", marginBottom: "0.3rem" }}>
@@ -281,7 +314,11 @@ function ScaleGroup({ value, onChange, field, setCheck, labels }) {
           </button>
         ))}
       </div>
-      {labels && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "#999" }}><span>{labels[0]}</span><span>{labels[4]}</span></div>}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.7rem", marginTop: "0.2rem" }}>
+        {labels && <span style={{ color: "#bbb" }}>{labels[0]}</span>}
+        {selectedLabel && <span style={{ color: G, fontWeight: "bold", fontSize: "0.78rem" }}>✓ {selectedLabel}</span>}
+        {labels && <span style={{ color: "#bbb" }}>{labels[4]}</span>}
+      </div>
     </div>
   );
 }
@@ -290,7 +327,6 @@ function ScaleGroup({ value, onChange, field, setCheck, labels }) {
 function MemberPortal({ view, setView, members, currentMember, setCurrentMember, saveMember, onRegistered, onCoachAccess }) {
   const [form, setForm] = useState({ name: "", email: "", age: "", sex: "male", weight: "", grip: "", vo2: "" });
   const [check, setCheck] = useState({ workouts: "", aerobic90: "", strengthRPE: "", dailyMovement: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", regulation: "", proteinFloor: "", disruption: "" });
-  const [saved, setSaved] = useState(false);
   const [lastCheckScore, setLastCheckScore] = useState(null);
   const [displayedScore, setDisplayedScore] = useState(0);
   const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
@@ -314,6 +350,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   }, [lastCheckScore]);
 
   const [editForm, setEditForm] = useState(null);
+  const [tierExpanded, setTierExpanded] = useState(false);
+  const [tierPulseSeen, setTierPulseSeen] = useState(() => {
+    try { return localStorage.getItem("gbsc_tierPulseSeen") === "1"; } catch { return false; }
+  });
 
   function startEdit() {
     setEditForm({
@@ -442,7 +482,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "onboard") {
     // Step 1: Profile info
     if (onboardStep === 1) return (
-      <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
@@ -470,7 +510,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     // Step 2: Baseline check-in
     return (
-      <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
@@ -642,7 +682,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
 
     return (
-      <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
         <style>{`
           @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
           @keyframes gbscShimmer {
@@ -650,6 +690,17 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             50% { opacity: 0.65; }
           }
           .gbsc-tier-shimmer { animation: gbscShimmer 2.8s ease-in-out infinite; }
+          @keyframes gbscPulseRing {
+            0% { box-shadow: 0 0 0 0px rgba(74,158,56,0.55); }
+            70% { box-shadow: 0 0 0 10px rgba(74,158,56,0); }
+            100% { box-shadow: 0 0 0 0px rgba(74,158,56,0); }
+          }
+          .gbsc-tier-pulse { animation: gbscPulseRing 1.5s ease-out 3; }
+          @keyframes gbscTierSlide {
+            from { opacity:0; transform:translateY(-6px); }
+            to { opacity:1; transform:translateY(0); }
+          }
+          .gbsc-tier-ladder { animation: gbscTierSlide 0.25s ease forwards; }
         `}</style>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
@@ -812,17 +863,35 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {/* Tier card */}
           {tier && (
             <div style={{ background: CARD, borderRadius: "16px", padding: "1.5rem", marginBottom: "1.5rem", ...fadeUp(450) }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-                <div style={{ fontSize: "2.8rem", lineHeight: 1 }}>{tier.emoji}</div>
-                <div>
-                  <div style={{ fontSize: "0.75rem", color: "#888", letterSpacing: "0.07em" }}>CAPACITY IDENTITY</div>
-                  <div className="gbsc-tier-shimmer" style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color }}>{tier.tier}</div>
-                  <div style={{ fontSize: "0.8rem", color: "#666" }}>Capacity Index: <strong style={{ color: DARK }}>{ci}</strong></div>
+              {/* Tappable header row */}
+              <button
+                className={!tierPulseSeen ? "gbsc-tier-pulse" : ""}
+                onClick={() => {
+                  const next = !tierExpanded;
+                  setTierExpanded(next);
+                  if (!tierPulseSeen) {
+                    setTierPulseSeen(true);
+                    try { localStorage.setItem("gbsc_tierPulseSeen", "1"); } catch {}
+                  }
+                }}
+                style={{ width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", borderRadius: "10px", textAlign: "left" }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <div style={{ fontSize: "2.8rem", lineHeight: 1 }}>{tier.emoji}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "0.75rem", color: "#888", letterSpacing: "0.07em" }}>CAPACITY IDENTITY</div>
+                    <div className="gbsc-tier-shimmer" style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color }}>{tier.tier}</div>
+                    <div style={{ fontSize: "0.8rem", color: "#666" }}>Capacity Index: <strong style={{ color: DARK }}>{ci}</strong></div>
+                  </div>
+                  <div style={{ fontSize: "1.1rem", color: "#aaa", transition: "transform 0.25s", transform: tierExpanded ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}>▾</div>
                 </div>
-              </div>
+                {!tierExpanded && (
+                  <div style={{ fontSize: "0.72rem", color: "#aaa", textAlign: "center", marginTop: "0.5rem", letterSpacing: "0.03em" }}>Tap to see all levels</div>
+                )}
+              </button>
 
               {/* Tier progress bar */}
-              <div style={{ marginBottom: "0.5rem" }}>
+              <div style={{ marginTop: "1rem", marginBottom: "0.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#999", marginBottom: "0.35rem" }}>
                   <span>{currentTierData.name}</span>
                   {currentTierData.next && <span>{currentTierData.next}</span>}
@@ -833,7 +902,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               </div>
 
               {currentTierData.next ? (
-                <div style={{ background: "#fff", borderRadius: "10px", padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
+                <div style={{ background: CARD, borderRadius: "10px", padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
                   <div style={{ fontSize: "1.4rem" }}>🎯</div>
                   <div>
                     <div style={{ fontSize: "0.75rem", color: "#888" }}>Points to next tier</div>
@@ -841,9 +910,44 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   </div>
                 </div>
               ) : (
-                <div style={{ background: "#fff", borderRadius: "10px", padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
+                <div style={{ background: CARD, borderRadius: "10px", padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
                   <div style={{ fontSize: "1.4rem" }}>👑</div>
                   <div style={{ fontWeight: "bold", color: "#1a7a00" }}>You've reached the top tier. Maintain the standard.</div>
+                </div>
+              )}
+
+              {/* Expanded tier ladder */}
+              {tierExpanded && (
+                <div className="gbsc-tier-ladder" style={{ marginTop: "1rem", borderTop: "1px solid #e8e8e8", paddingTop: "1rem" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#888", letterSpacing: "0.07em", marginBottom: "0.6rem", fontWeight: "bold" }}>ALL CAPACITY LEVELS</div>
+                  {tierOrder.map((t, i) => {
+                    const isCurrent = t.name === tier.tier;
+                    const ptsNeeded = isCurrent ? pointsToNext : (t.name === "Elite Capacity" ? 0 : null);
+                    return (
+                      <div key={t.name} style={{
+                        display: "flex", alignItems: "center", gap: "0.7rem",
+                        padding: "0.55rem 0.7rem", borderRadius: "8px", marginBottom: "0.3rem",
+                        background: isCurrent ? `${t.color}18` : "transparent",
+                        border: isCurrent ? `1.5px solid ${t.color}55` : "1.5px solid transparent",
+                      }}>
+                        <div style={{ fontSize: "1.3rem", flexShrink: 0 }}>{t.emoji}</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: isCurrent ? "bold" : "normal", color: isCurrent ? t.color : "#555", fontSize: "0.88rem" }}>
+                            {t.name} {isCurrent && <span style={{ fontSize: "0.72rem", background: t.color, color: "#fff", borderRadius: "4px", padding: "1px 5px", marginLeft: "4px", verticalAlign: "middle" }}>YOU</span>}
+                          </div>
+                          <div style={{ fontSize: "0.72rem", color: "#999" }}>CI {t.min}–{t.max}</div>
+                        </div>
+                        {isCurrent && currentTierData.next && (
+                          <div style={{ fontSize: "0.72rem", color: G, fontWeight: "bold", textAlign: "right", flexShrink: 0 }}>
+                            {pointsToNext} pt{pointsToNext !== 1 ? "s" : ""}<br/>to next
+                          </div>
+                        )}
+                        {isCurrent && !currentTierData.next && (
+                          <div style={{ fontSize: "0.72rem", color: "#1a7a00", fontWeight: "bold", flexShrink: 0 }}>MAX</div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1132,7 +1236,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             if (!tip) return null;
 
             return (
-              <div style={{ background: "#fff", border: `2px solid ${G}`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(900) }}>
+              <div style={{ background: CARD, border: `2px solid ${G}`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(900) }}>
                 <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "0.9rem" }}>
                   🎙 CAPACITY COACHING TIP
                 </div>
@@ -1245,7 +1349,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const ci = habitAvg !== null ? calcCapacityIndex(currentMember.vo2Score_pre, currentMember.gripScore_pre, habitAvg) : null;
     const tier = ci !== null ? getCapacityTier(ci) : null;
     return (
-      <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ background: DARK, borderRadius: "16px", padding: "1.5rem", color: "#fff", marginBottom: "1.5rem", textAlign: "center" }}>
@@ -1433,7 +1537,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   if (view === "editProfile" && editForm) {
     return (
-      <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setView("profile")} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>← Back to Profile</button>
@@ -1460,7 +1564,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "checkin" && currentMember) {
     const weekNum = (currentMember.weeklyChecks?.filter(c => !c.isBaseline).length || 0) + 1;
     return (
-      <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
@@ -1531,14 +1635,45 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           </div>
 
-          {saved && (
-            <div style={{ background: "#e8f7e4", border: `1px solid ${G}`, borderRadius: "8px", padding: "0.8rem", textAlign: "center", color: DARK, marginBottom: "1rem" }}>
-              ✅ Check-in saved! Great work this week.
-            </div>
-          )}
+          {/* Pre-submit answer summary */}
+          {(() => {
+            const scaleLabels = {
+              sleepQuality:     ["Poor","Inconsistent","Adequate","Good","Excellent"],
+              energyLevel:      ["Drained","Low","Stable","Strong","High & Steady"],
+              physicalRecovery: ["Beat Up","Tight","Normal","Recovered","Fresh"],
+            };
+            const summary = [
+              { label: "Workouts",   val: check.workouts   || "—" },
+              { label: "Aerobic",    val: check.aerobic90  || "—" },
+              { label: "Strength",   val: check.strengthRPE || "—" },
+              { label: "Movement",   val: check.dailyMovement || "—" },
+              { label: "Regulation", val: check.regulation  || "—" },
+              { label: "Protein",    val: check.proteinFloor || "—" },
+              { label: "Sleep",      val: check.sleepQuality ? scaleLabels.sleepQuality[parseInt(check.sleepQuality)-1] : "—" },
+              { label: "Energy",     val: check.energyLevel  ? scaleLabels.energyLevel[parseInt(check.energyLevel)-1]   : "—" },
+              { label: "Recovery",   val: check.physicalRecovery ? scaleLabels.physicalRecovery[parseInt(check.physicalRecovery)-1] : "—" },
+              { label: "Disruption", val: check.disruption || "—" },
+            ];
+            const allAnswered = summary.every(s => s.val !== "—");
+            return (
+              <div style={{ background: allAnswered ? "#f0f7ec" : "#fafafa", border: `1.5px solid ${allAnswered ? G : "#ddd"}`, borderRadius: "12px", padding: "1rem 1.1rem", marginBottom: "1rem" }}>
+                <div style={{ fontSize: "0.75rem", fontWeight: "bold", color: allAnswered ? G : "#888", letterSpacing: "0.06em", marginBottom: "0.6rem" }}>
+                  {allAnswered ? "✓ READY TO SUBMIT — YOUR ANSWERS:" : "📋 YOUR ANSWERS SO FAR:"}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.3rem 1rem" }}>
+                  {summary.map(({ label, val }) => (
+                    <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", borderBottom: "1px solid #e8e8e8", paddingBottom: "0.2rem" }}>
+                      <span style={{ color: "#888" }}>{label}</span>
+                      <span style={{ fontWeight: "bold", color: val === "—" ? "#ccc" : DARK }}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
           <button onClick={handleSubmitCheck}
             style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
-            Submit Check-In
+            Submit Check-In →
           </button>
           <button onClick={() => setView("profile")} style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>← Back to Profile</button>
         </div>
@@ -1684,7 +1819,7 @@ function CoachDashboard({ members, loadMembers, onBack }) {
     const ci = habitAvg !== null ? calcCapacityIndex(selected.vo2Score_pre, selected.gripScore_pre, habitAvg) : null;
     const tier = ci !== null ? getCapacityTier(ci) : null;
     return (
-      <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
         {hdr}
         <div style={{ maxWidth: "600px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: G, cursor: "pointer", marginBottom: "1rem", fontWeight: "bold" }}>← All Members</button>
@@ -1767,7 +1902,7 @@ function CoachDashboard({ members, loadMembers, onBack }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", fontFamily: "Georgia, serif" }}>
+    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
       {hdr}
       <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
         {/* Gym summary */}
