@@ -209,9 +209,9 @@ export default function GBSCApp() {
 
   async function loadMembers() {
     try {
-      const { data, error } = await supabase.from("members").select("data");
+      const { data, error } = await supabase.from("members").select("id, data");
       if (!error && data) {
-        setMembers(data.map(row => row.data));
+        setMembers(data.filter(row => row.id !== "__pods__").map(row => row.data));
       }
     } catch {}
   }
@@ -996,31 +996,71 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const linkedArticle = articleId ? LIBRARY_ARTICLES.find(a => a.id === articleId) : null;
 
             return (
-              <div style={{ background: CARD, border: `1.5px solid #e0e0e0`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(480) }}>
-                {/* Score movement line — only week 2+ */}
+              <div style={{ background: CARD, border: `1.5px solid #e0e0e0`, borderRadius: "16px", overflow: "hidden", marginBottom: "1.5rem", ...fadeUp(480) }}>
+                {/* Score movement banner — only week 2+ */}
                 {scoreDiff !== null && (
                   <div style={{
-                    fontSize: "0.82rem", fontWeight: "bold", color: scoreDiff > 0 ? G : scoreDiff < 0 ? "#e07030" : "#888",
-                    marginBottom: "0.8rem", paddingBottom: "0.8rem", borderBottom: "1px solid #f0f0f0"
+                    background: scoreDiff > 0 ? "#f0f9eb" : scoreDiff < 0 ? "#fff4ee" : "#f5f5f5",
+                    borderBottom: `1px solid ${scoreDiff > 0 ? "#c8eab8" : scoreDiff < 0 ? "#fad8c0" : "#e8e8e8"}`,
+                    padding: "0.55rem 1.4rem",
+                    fontSize: "0.8rem", fontWeight: "bold",
+                    color: scoreDiff > 0 ? "#3a8a20" : scoreDiff < 0 ? "#c05820" : "#666",
+                    display: "flex", alignItems: "center", gap: "0.4rem",
                   }}>
-                    {scoreDiff > 0 ? `↑ Up ${scoreDiff} point${scoreDiff !== 1 ? "s" : ""} from last week` :
-                     scoreDiff < 0 ? `↓ Down ${Math.abs(scoreDiff)} point${Math.abs(scoreDiff) !== 1 ? "s" : ""} from last week` :
-                     "→ Score held steady from last week"}
+                    <span style={{ fontSize: "1rem" }}>{scoreDiff > 0 ? "📈" : scoreDiff < 0 ? "📉" : "➡️"}</span>
+                    {scoreDiff > 0 ? `Up ${scoreDiff} point${scoreDiff !== 1 ? "s" : ""} from last week` :
+                     scoreDiff < 0 ? `Down ${Math.abs(scoreDiff)} point${Math.abs(scoreDiff) !== 1 ? "s" : ""} from last week` :
+                     "Score held steady from last week"}
                   </div>
                 )}
-                {/* Focus this week */}
-                <div style={{ display: "flex", gap: "0.7rem", alignItems: "flex-start" }}>
-                  <div style={{ fontSize: "1.6rem", lineHeight: 1, flexShrink: 0 }}>{tip.icon}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "0.7rem", color: "#888", fontWeight: "bold", letterSpacing: "0.07em", marginBottom: "0.2rem" }}>FOCUS THIS WEEK · {tip.label.toUpperCase()}</div>
-                    <div style={{ fontSize: "0.88rem", color: DARK, lineHeight: 1.6 }}>{tip.focus}</div>
-                    {linkedArticle && (
-                      <button onClick={() => { setLibraryArticleId(linkedArticle.id); setView("library"); }}
-                        style={{ background: "none", border: "none", color: G, cursor: "pointer", fontSize: "0.8rem", fontWeight: "bold", padding: "0.4rem 0 0 0", display: "block" }}>
-                        Read more: {linkedArticle.title} →
-                      </button>
-                    )}
+                {/* Focus body */}
+                <div style={{ padding: "1.2rem 1.4rem" }}>
+                  {/* Label pills */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.85rem" }}>
+                    <div style={{
+                      background: `${G}18`, border: `1px solid ${G}40`,
+                      borderRadius: "8px", padding: "0.25rem 0.6rem",
+                      fontSize: "0.68rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em",
+                      display: "flex", alignItems: "center", gap: "0.3rem",
+                    }}>
+                      🎯 FOCUS THIS WEEK
+                    </div>
+                    <div style={{
+                      background: "#f0f0f0", borderRadius: "8px", padding: "0.25rem 0.6rem",
+                      fontSize: "0.68rem", fontWeight: "bold", color: "#555", letterSpacing: "0.06em",
+                    }}>
+                      {tip.label.toUpperCase()}
+                    </div>
                   </div>
+                  {/* Icon + tip */}
+                  <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+                    <div style={{
+                      width: "42px", height: "42px", flexShrink: 0,
+                      background: `${G}15`, borderRadius: "12px",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "1.4rem",
+                    }}>{tip.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "0.9rem", color: DARK, lineHeight: 1.65 }}>{tip.focus}</div>
+                    </div>
+                  </div>
+                  {/* Read More CTA */}
+                  {linkedArticle && (
+                    <button onClick={() => { setLibraryArticleId(linkedArticle.id); setView("library"); }}
+                      style={{
+                        marginTop: "1rem", width: "100%",
+                        background: `${G}12`, border: `1.5px solid ${G}`,
+                        borderRadius: "10px", padding: "0.65rem 1rem",
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        cursor: "pointer", gap: "0.5rem",
+                      }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <span style={{ fontSize: "1rem" }}>📖</span>
+                        <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#2a7a14" }}>Read: {linkedArticle.title}</span>
+                      </div>
+                      <span style={{ fontSize: "1rem", color: G }}>→</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -2411,7 +2451,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
 
               {/* Member list */}
               <div style={{ maxHeight: "380px", overflowY: "auto" }}>
-                {members.filter(m => m.id !== "__pods__").map(m => {
+                {members.filter(m => m.id !== "__pods__" && m.name).map(m => {
                   const inPod = podDraft.memberIds.includes(m.id);
                   const elsewhere = assignedElsewhere(m.id);
                   const atMax = podDraft.memberIds.length >= 5 && !inPod;
