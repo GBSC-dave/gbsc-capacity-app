@@ -425,6 +425,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [editForm, setEditForm] = useState(null);
   const [tierExpanded, setTierExpanded] = useState(false);
   const [libraryArticleId, setLibraryArticleId] = useState(null); // opens library to specific article
+  const [driversOpen, setDriversOpen] = useState(false);   // profile page drivers accordion
+  const [badgesOpen, setBadgesOpen] = useState(false);     // profile page badges accordion
 
   function startEdit() {
     setEditForm({
@@ -1228,7 +1230,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {(() => {
             const latest = [...checks].reverse()[0];
             if (!latest) return null;
-            const [open, setOpen] = useState(false);
             const workoutMap  = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
             const aerobicMap  = { "No": 0, "Close": 1, "Yes": 2 };
             const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
@@ -1247,12 +1248,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             ];
             return (
               <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
-                <button onClick={() => setOpen(o => !o)}
+                <button onClick={() => setDriversOpen(o => !o)}
                   style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                   <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>📊 CAPACITY DRIVERS</span>
-                  <span style={{ color: "#aaa", fontSize: "0.85rem", transition: "transform 0.2s", display: "inline-block", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+                  <span style={{ color: "#aaa", fontSize: "0.85rem", transition: "transform 0.2s", display: "inline-block", transform: driversOpen ? "rotate(180deg)" : "none" }}>▾</span>
                 </button>
-                {open && (
+                {driversOpen && (
                   <div style={{ padding: "0 1.3rem 1.2rem" }}>
                     {rows.map(row => {
                       const pct = Math.round((row.value / row.max) * 100);
@@ -1279,7 +1280,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {/* ── Identity Badges (collapsed) ──────────────────────────────── */}
           {(() => {
             if (checks.length < 1) return null;
-            const [open, setOpen] = useState(false);
             const workoutMap = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
             const aerobicMap = { "No": 0, "Close": 1, "Yes": 2 };
             const proteinMap = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
@@ -1310,12 +1310,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             if (earned.length === 0) return null;
             return (
               <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
-                <button onClick={() => setOpen(o => !o)}
+                <button onClick={() => setBadgesOpen(o => !o)}
                   style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                   <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>🏅 CAPACITY BADGES · {earned.length} earned</span>
-                  <span style={{ color: "#aaa", fontSize: "0.85rem", transition: "transform 0.2s", display: "inline-block", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+                  <span style={{ color: "#aaa", fontSize: "0.85rem", transition: "transform 0.2s", display: "inline-block", transform: badgesOpen ? "rotate(180deg)" : "none" }}>▾</span>
                 </button>
-                {open && (
+                {badgesOpen && (
                   <div style={{ padding: "0 1.3rem 1.2rem" }}>
                     {earned.map((badge, i) => (
                       <div key={i} style={{ display: "flex", gap: "0.8rem", alignItems: "flex-start", marginBottom: i < earned.length - 1 ? "0.8rem" : 0, paddingBottom: i < earned.length - 1 ? "0.8rem" : 0, borderBottom: i < earned.length - 1 ? "1px solid #f0f0f0" : "none" }}>
