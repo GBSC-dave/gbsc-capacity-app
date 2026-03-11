@@ -238,15 +238,20 @@ export default function GBSCApp() {
         opacity: splashFading ? 0 : 1,
         transition: splashFading ? "opacity 0.6s ease" : "none",
       }}>
-        <img
-          src={LOGO_HORIZ} alt="GBSC"
-          style={{
-            width: "min(300px, 72vw)",
-            opacity: splashFading ? 0 : 1,
-            transform: splashFading ? "scale(0.97)" : "scale(1)",
-            transition: "opacity 0.6s ease, transform 0.6s ease",
-          }}
-        />
+        <div style={{
+          background: "#fff",
+          borderRadius: "24px",
+          padding: "2rem 2.8rem",
+          boxShadow: "0 8px 40px rgba(0,0,0,0.45), 0 2px 12px rgba(0,0,0,0.3)",
+          opacity: splashFading ? 0 : 1,
+          transform: splashFading ? "scale(0.97)" : "scale(1)",
+          transition: "opacity 0.6s ease, transform 0.6s ease",
+        }}>
+          <img
+            src={LOGO_HORIZ} alt="GBSC"
+            style={{ width: "min(280px, 65vw)", display: "block" }}
+          />
+        </div>
         <div style={{
           width: "44px", height: "44px",
           border: `3px solid rgba(255,255,255,0.12)`,
@@ -683,6 +688,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const tier = ci !== null ? getCapacityTier(ci) : null;
     const weekNum = checks.filter(c => !c.isBaseline).length;
 
+    // Seed count-up when arriving from profile ("View Last Results") rather than via submit
+    const latestScore = checks.length ? checks[checks.length - 1].score : null;
+    if (lastCheckScore === null && latestScore !== null && displayedScore === 0) {
+      setLastCheckScore(latestScore);
+    }
+
     // Points to next tier
     const tierOrder = [
       { name: "Foundation Capacity", min: 0,  max: 39,  emoji: "🔧", next: "Emerging Capacity",  color: "#b0c090" },
@@ -845,7 +856,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color }}>{tier.tier}</div>
                     <div style={{ fontSize: "0.8rem", color: "#666" }}>Capacity Index: <strong style={{ color: DARK }}>{ci}</strong></div>
                   </div>
-                  <div style={{ fontSize: "1.1rem", color: "#aaa", transition: "transform 0.25s", transform: tierExpanded ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}>▾</div>
+                  <div style={{ fontSize: "1.4rem", color: "#666", transition: "transform 0.25s", transform: tierExpanded ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}>▾</div>
                 </div>
 
               </button>
@@ -1251,7 +1262,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 <button onClick={() => setDriversOpen(o => !o)}
                   style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                   <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>📊 CAPACITY DRIVERS</span>
-                  <span style={{ color: "#aaa", fontSize: "0.85rem", transition: "transform 0.2s", display: "inline-block", transform: driversOpen ? "rotate(180deg)" : "none" }}>▾</span>
+                  <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: driversOpen ? "rotate(180deg)" : "none" }}>▾</span>
                 </button>
                 {driversOpen && (
                   <div style={{ padding: "0 1.3rem 1.2rem" }}>
@@ -1313,7 +1324,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 <button onClick={() => setBadgesOpen(o => !o)}
                   style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                   <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>🏅 CAPACITY BADGES · {earned.length} earned</span>
-                  <span style={{ color: "#aaa", fontSize: "0.85rem", transition: "transform 0.2s", display: "inline-block", transform: badgesOpen ? "rotate(180deg)" : "none" }}>▾</span>
+                  <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: badgesOpen ? "rotate(180deg)" : "none" }}>▾</span>
                 </button>
                 {badgesOpen && (
                   <div style={{ padding: "0 1.3rem 1.2rem" }}>
