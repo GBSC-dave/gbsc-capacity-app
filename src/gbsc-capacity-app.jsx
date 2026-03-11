@@ -179,8 +179,9 @@ export default function GBSCApp() {
           if (lastCheck) {
             // Check if the last check-in was within the past 7 days
             const lastDate = new Date(lastCheck.date + "T00:00:00");
-            const daysSince = (Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
-            if (daysSince < 7) {
+            const todayDate = new Date(new Date().toISOString().split("T")[0] + "T00:00:00");
+            const daysSince = (todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+            if (daysSince < 6) {
               // Already checked in this week — go to feedback/profile, NOT checkin form
               setMemberView("checkFeedback");
             } else if (nonBaseline.length >= 8) {
@@ -525,9 +526,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const lastCheck = existingWeeks.length > 0 ? existingWeeks[existingWeeks.length - 1] : null;
     if (lastCheck && lastCheck.date) {
       const lastDate = new Date(lastCheck.date + "T00:00:00");
-      const daysSince = (Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSince < 7) {
-        const daysLeft = Math.ceil(7 - daysSince);
+      const todayDate = new Date(new Date().toISOString().split("T")[0] + "T00:00:00");
+      const daysSince = (todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSince < 6) {
+        const daysLeft = Math.ceil(6 - daysSince);
         alert(`You already submitted Week ${lastCheck.week}. Your next check-in opens in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}.`);
         setView("checkFeedback");
         return;
@@ -1460,9 +1462,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const existingWeeksGate = (currentMember.weeklyChecks || []).filter(c => !c.isBaseline);
     const lastCheckGate = existingWeeksGate.length > 0 ? existingWeeksGate[existingWeeksGate.length - 1] : null;
     if (lastCheckGate && lastCheckGate.date) {
-      const daysSinceGate = (Date.now() - new Date(lastCheckGate.date + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24);
-      if (daysSinceGate < 7) {
-        const daysLeftGate = Math.ceil(7 - daysSinceGate);
+      const daysSinceGate = (new Date(new Date().toISOString().split("T")[0] + "T00:00:00").getTime() - new Date(lastCheckGate.date + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceGate < 6) {
+        const daysLeftGate = Math.ceil(6 - daysSinceGate);
         return (
           <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
             {hdr}
@@ -1873,8 +1875,8 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
     if (!nonBase.length) return false;
     const last = nonBase[nonBase.length - 1];
     if (!last.date) return false;
-    const daysSince = (Date.now() - new Date(last.date + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24);
-    return daysSince < 7;
+    const daysSince = (new Date(new Date().toISOString().split("T")[0] + "T00:00:00").getTime() - new Date(last.date + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24);
+    return daysSince < 6;
   };
   const checkedCount = allPodMembers.filter(checkedInThisWeek).length;
   const totalCount = allPodMembers.length;
