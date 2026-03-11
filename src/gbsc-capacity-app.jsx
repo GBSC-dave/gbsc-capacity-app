@@ -424,9 +424,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   const [editForm, setEditForm] = useState(null);
   const [tierExpanded, setTierExpanded] = useState(false);
-  const [tierPulseSeen, setTierPulseSeen] = useState(() => {
-    try { return localStorage.getItem("gbsc_tierPulseSeen") === "1"; } catch { return false; }
-  });
+  const [libraryArticleId, setLibraryArticleId] = useState(null); // opens library to specific article
 
   function startEdit() {
     setEditForm({
@@ -552,9 +550,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   }
 
   const hdr = (
-    <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+    <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
       <img src={LOGO_ICON} alt="GBSC" style={{ height: "36px", borderRadius: "4px" }} />
       <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.05em", flex: 1 }}>Member Portal</div>
+      <button onClick={() => setView("library")}
+        style={{ background: "none", border: `1px solid ${G}55`, color: G, borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold" }}>
+        Library
+      </button>
       <button onClick={onCoachAccess} style={{ background: "none", border: "1px solid #555", color: "#aaa", borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.75rem", cursor: "pointer" }}>Coach</button>
     </div>
   );
@@ -765,17 +767,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
         <style>{`
           @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
-          @keyframes gbscShimmer {
-            0%,100% { opacity: 1; }
-            50% { opacity: 0.65; }
-          }
-          .gbsc-tier-shimmer { animation: gbscShimmer 2.8s ease-in-out infinite; }
-          @keyframes gbscPulseRing {
-            0% { box-shadow: 0 0 0 0px rgba(74,158,56,0.55); }
-            70% { box-shadow: 0 0 0 10px rgba(74,158,56,0); }
-            100% { box-shadow: 0 0 0 0px rgba(74,158,56,0); }
-          }
-          .gbsc-tier-pulse { animation: gbscPulseRing 1.5s ease-out 3; }
           @keyframes gbscTierSlide {
             from { opacity:0; transform:translateY(-6px); }
             to { opacity:1; transform:translateY(0); }
@@ -795,11 +786,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <div style={{ background: "#e0e0e0", borderRadius: "999px", height: "8px", overflow: "hidden" }}>
                 <div style={{ background: `linear-gradient(90deg, ${G}, #1a7a00)`, width: `${(weekNum / 8) * 100}%`, height: "100%", borderRadius: "999px", transition: "width 0.6s ease" }} />
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.3rem" }}>
-                {[1,2,3,4,5,6,7,8].map(w => (
-                  <div key={w} style={{ width: "10px", height: "10px", borderRadius: "50%", background: w <= weekNum ? G : "#ddd", transition: "background 0.3s" }} />
-                ))}
-              </div>
+
             </div>
           )}
 
@@ -841,133 +828,24 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           </div>
 
-          {/* ── Habit Scorecard ─────────────────────────────────────────── */}
-          {(() => {
-            const latest = checks[checks.length - 1];
-            if (!latest) return null;
-
-            const workoutMap  = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
-            const aerobicMap  = { "No": 0, "Close": 1, "Yes": 2 };
-            const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
-            const regMap      = { "No": 0, "1-2x": 1, "Yes": 2 };
-            const movementMap = { "Low": 0, "Moderate": 1, "High": 2 };
-
-            const rows = [
-              {
-                label: "Training",
-                value: workoutMap[latest.workouts] ?? 0,
-                max: 4,
-                display: latest.workouts ?? "—",
-                suffix: "workouts",
-              },
-              {
-                label: "Aerobic",
-                value: aerobicMap[latest.aerobic90] ?? 0,
-                max: 2,
-                display: latest.aerobic90 ?? "—",
-                suffix: "90 min effort",
-              },
-              {
-                label: "Strength",
-                value: latest.strengthRPE === "Yes" ? 1 : 0,
-                max: 1,
-                display: latest.strengthRPE ?? "—",
-                suffix: "RPE 7+",
-              },
-              {
-                label: "Movement",
-                value: movementMap[latest.dailyMovement] ?? 0,
-                max: 2,
-                display: latest.dailyMovement ?? "—",
-                suffix: "daily activity",
-              },
-              {
-                label: "Sleep",
-                value: parseInt(latest.sleepQuality) || 0,
-                max: 5,
-                display: latest.sleepQuality ?? "—",
-                suffix: "/ 5",
-              },
-              {
-                label: "Energy",
-                value: parseInt(latest.energyLevel) || 0,
-                max: 5,
-                display: latest.energyLevel ?? "—",
-                suffix: "/ 5",
-              },
-              {
-                label: "Recovery",
-                value: parseInt(latest.physicalRecovery) || 0,
-                max: 5,
-                display: latest.physicalRecovery ?? "—",
-                suffix: "/ 5",
-              },
-              {
-                label: "Protein",
-                value: proteinMap[latest.proteinFloor] ?? 0,
-                max: 3,
-                display: latest.proteinFloor ?? "—",
-                suffix: "",
-              },
-              {
-                label: "Regulation",
-                value: regMap[latest.regulation] ?? 0,
-                max: 2,
-                display: latest.regulation ?? "—",
-                suffix: "",
-              },
-            ];
-
-            return (
-              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(320) }}>
-                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "1rem" }}>📊 CAPACITY DRIVERS</div>
-                {rows.map(row => {
-                  const pct = Math.round((row.value / row.max) * 100);
-                  const barColor = pct >= 80 ? G : pct >= 50 ? "#8ab85a" : pct >= 25 ? "#e0a030" : "#e05030";
-                  return (
-                    <div key={row.label} style={{ marginBottom: "0.75rem" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.25rem" }}>
-                        <span style={{ fontSize: "0.82rem", fontWeight: "bold", color: DARK, width: "90px" }}>{row.label}</span>
-                        <span style={{ fontSize: "0.78rem", color: "#888" }}>{row.display}{row.suffix ? ` ${row.suffix}` : ""}</span>
-                      </div>
-                      <div style={{ background: "#e0e0e0", borderRadius: "999px", height: "8px", overflow: "hidden" }}>
-                        <div style={{ background: barColor, width: `${pct}%`, height: "100%", borderRadius: "999px", transition: "width 0.5s ease" }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-
           {/* Tier card */}
           {tier && (
             <div style={{ background: CARD, borderRadius: "16px", padding: "1.5rem", marginBottom: "1.5rem", ...fadeUp(450) }}>
               {/* Tappable header row */}
               <button
-                className={!tierPulseSeen ? "gbsc-tier-pulse" : ""}
-                onClick={() => {
-                  const next = !tierExpanded;
-                  setTierExpanded(next);
-                  if (!tierPulseSeen) {
-                    setTierPulseSeen(true);
-                    try { localStorage.setItem("gbsc_tierPulseSeen", "1"); } catch {}
-                  }
-                }}
+                onClick={() => setTierExpanded(e => !e)}
                 style={{ width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", borderRadius: "10px", textAlign: "left" }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                   <div style={{ fontSize: "2.8rem", lineHeight: 1 }}>{tier.emoji}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: "0.75rem", color: "#888", letterSpacing: "0.07em" }}>CAPACITY IDENTITY</div>
-                    <div className="gbsc-tier-shimmer" style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color }}>{tier.tier}</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color }}>{tier.tier}</div>
                     <div style={{ fontSize: "0.8rem", color: "#666" }}>Capacity Index: <strong style={{ color: DARK }}>{ci}</strong></div>
                   </div>
                   <div style={{ fontSize: "1.1rem", color: "#aaa", transition: "transform 0.25s", transform: tierExpanded ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}>▾</div>
                 </div>
-                {!tierExpanded && (
-                  <div style={{ fontSize: "0.72rem", color: "#aaa", textAlign: "center", marginTop: "0.5rem", letterSpacing: "0.03em" }}>Tap to see all levels</div>
-                )}
+
               </button>
 
               {/* Tier progress bar */}
@@ -1033,11 +911,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
-          {/* Encouragement message */}
-          <div style={{ background: `linear-gradient(135deg, #f0f7ec, #e6f0df)`, border: `1.5px solid ${G}`, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "1.5rem", textAlign: "center", ...fadeUp(570) }}>
-            <div style={{ fontSize: "1rem", color: DARK, fontStyle: "italic", lineHeight: 1.5 }}>{encouragement}</div>
-          </div>
-
           {/* ── Disruption Context Banner ────────────────────────────────── */}
           {(() => {
             const latest = checks.filter(c => !c.isBaseline).slice(-1)[0];
@@ -1060,176 +933,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
-          {/* ── Capacity Insight Engine ──────────────────────────────────── */}
+          {/* ── Insight + Coaching (merged) ──────────────────────────────── */}
           {(() => {
             const nonBaseline = checks.filter(c => !c.isBaseline);
-            if (nonBaseline.length < 2) return null; // Need at least 2 weeks to compare
-            const thisWeek = nonBaseline[nonBaseline.length - 1];
-            const lastWeek = nonBaseline[nonBaseline.length - 2];
-            const scoreDiff = thisWeek.score - lastWeek.score;
-
-            // Score each driver
-            const drivers = [];
-
-            // Sleep
-            const sleepDiff = (parseInt(thisWeek.sleepQuality) || 0) - (parseInt(lastWeek.sleepQuality) || 0);
-            if (sleepDiff >= 1) drivers.push({ icon: "✔", label: "Sleep improvement", positive: true, weight: sleepDiff * 2 });
-            else if (sleepDiff <= -1) drivers.push({ icon: "⚠", label: "Reduced sleep quality", positive: false, weight: Math.abs(sleepDiff) * 2 });
-
-            // Energy
-            const energyDiff = (parseInt(thisWeek.energyLevel) || 0) - (parseInt(lastWeek.energyLevel) || 0);
-            if (energyDiff >= 1) drivers.push({ icon: "✔", label: "Higher energy levels", positive: true, weight: energyDiff * 1.5 });
-            else if (energyDiff <= -1) drivers.push({ icon: "⚠", label: "Lower energy this week", positive: false, weight: Math.abs(energyDiff) * 1.5 });
-
-            // Recovery
-            const recoveryDiff = (parseInt(thisWeek.physicalRecovery) || 0) - (parseInt(lastWeek.physicalRecovery) || 0);
-            if (recoveryDiff >= 1) drivers.push({ icon: "✔", label: "Better physical recovery", positive: true, weight: recoveryDiff * 1.5 });
-            else if (recoveryDiff <= -1) drivers.push({ icon: "⚠", label: "Reduced recovery", positive: false, weight: Math.abs(recoveryDiff) * 1.5 });
-
-            // Strength session
-            const hadStrength = thisWeek.strengthRPE === "Yes";
-            const hadStrengthLast = lastWeek.strengthRPE === "Yes";
-            if (hadStrength && !hadStrengthLast) drivers.push({ icon: "✔", label: "Added a strength session", positive: true, weight: 2 });
-            else if (!hadStrength && hadStrengthLast) drivers.push({ icon: "⚠", label: "Missed strength session", positive: false, weight: 2 });
-
-            // Aerobic
-            const aerobicMap = { "Yes": 2, "Close": 1, "No": 0 };
-            const aerobicDiff = (aerobicMap[thisWeek.aerobic90] || 0) - (aerobicMap[lastWeek.aerobic90] || 0);
-            if (aerobicDiff > 0) drivers.push({ icon: "✔", label: "More aerobic effort", positive: true, weight: aerobicDiff * 1.5 });
-            else if (aerobicDiff < 0) drivers.push({ icon: "⚠", label: "Less aerobic effort", positive: false, weight: Math.abs(aerobicDiff) * 1.5 });
-
-            // Workouts
-            const workoutMap = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
-            const workoutDiff = (workoutMap[thisWeek.workouts] || 0) - (workoutMap[lastWeek.workouts] || 0);
-            if (workoutDiff >= 1) drivers.push({ icon: "✔", label: "More workouts this week", positive: true, weight: workoutDiff });
-            else if (workoutDiff <= -1) drivers.push({ icon: "⚠", label: "Fewer workouts", positive: false, weight: Math.abs(workoutDiff) });
-
-            // Protein
-            const proteinMap = { "Yes": 3, "Most days": 2, "Some days": 1, "Rarely": 0 };
-            const proteinDiff = (proteinMap[thisWeek.proteinFloor] || 0) - (proteinMap[lastWeek.proteinFloor] || 0);
-            if (proteinDiff >= 1) drivers.push({ icon: "✔", label: "Improved protein intake", positive: true, weight: proteinDiff });
-            else if (proteinDiff <= -1) drivers.push({ icon: "⚠", label: "Lower protein consistency", positive: false, weight: Math.abs(proteinDiff) });
-
-            // Regulation
-            const regMap = { "Yes": 2, "1-2x": 1, "No": 0 };
-            const regDiff = (regMap[thisWeek.regulation] || 0) - (regMap[lastWeek.regulation] || 0);
-            if (regDiff >= 1) drivers.push({ icon: "✔", label: "More stress regulation", positive: true, weight: regDiff });
-            else if (regDiff <= -1) drivers.push({ icon: "⚠", label: "Less stress regulation", positive: false, weight: Math.abs(regDiff) });
-
-            // Filter to match the direction of score change, sort by weight, take top 3
-            const relevantDrivers = drivers
-              .filter(d => scoreDiff >= 0 ? d.positive : !d.positive)
-              .sort((a, b) => b.weight - a.weight)
-              .slice(0, 3);
-
-            // If no relevant drivers found, show all top drivers regardless
-            const topDrivers = relevantDrivers.length > 0 ? relevantDrivers : drivers.sort((a, b) => b.weight - a.weight).slice(0, 2);
-
-            if (topDrivers.length === 0) return null;
-
-            const isUp = scoreDiff > 0;
-            const isFlat = scoreDiff === 0;
-            const bgColor = isUp ? "linear-gradient(135deg, #f0f7ec, #e6f0df)" : isFlat ? "#f7f7f7" : "linear-gradient(135deg, #fff7f0, #ffeedd)";
-            const borderColor = isUp ? G : isFlat ? "#ddd" : "#e8a060";
-
-            return (
-              <div style={{ background: bgColor, border: `1.5px solid ${borderColor}`, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(680) }}>
-                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "0.6rem" }}>🔍 CAPACITY INSIGHT</div>
-                <div style={{ fontSize: "1rem", fontWeight: "bold", color: DARK, marginBottom: "0.8rem" }}>
-                  {isFlat
-                    ? "Your score held steady this week."
-                    : `Your capacity ${isUp ? "increased" : "dropped"} by ${isUp ? "+" : ""}${scoreDiff} point${Math.abs(scoreDiff) !== 1 ? "s" : ""} this week.`}
-                </div>
-                <div style={{ fontSize: "0.8rem", color: "#666", marginBottom: "0.5rem" }}>
-                  {topDrivers.length === 1 ? "Primary driver:" : "Biggest drivers:"}
-                </div>
-                {topDrivers.map((d, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.4rem" }}>
-                    <span style={{ color: d.positive ? G : "#e07030", fontWeight: "bold", fontSize: "1rem" }}>{d.icon}</span>
-                    <span style={{ fontSize: "0.9rem", color: DARK }}>{d.label}</span>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
-          {/* ── Capacity Identity Badges ─────────────────────────────────── */}
-          {(() => {
-            const nonBaseline = checks.filter(c => !c.isBaseline);
-            if (nonBaseline.length < 1) return null;
-
-            const workoutMap = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
-            const aerobicMap = { "No": 0, "Close": 1, "Yes": 2 };
-            const proteinMap = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
-            const last3 = nonBaseline.slice(-3);
-            const last2 = nonBaseline.slice(-2);
             const latest = nonBaseline[nonBaseline.length - 1];
-
-            const earned = [];
-
-            // 🏋 Consistent Trainer — 3+ workouts for 3 weeks in a row
-            if (last3.length === 3 && last3.every(c => (workoutMap[c.workouts] || 0) >= 3))
-              earned.push({ emoji: "🏋", title: "Consistent Trainer", desc: "3+ workouts every week for 3 weeks straight." });
-
-            // ⚡ Recovery Builder — sleep improved 2 weeks in a row
-            if (last3.length === 3 && (parseInt(last3[2].sleepQuality)||0) > (parseInt(last3[1].sleepQuality)||0) && (parseInt(last3[1].sleepQuality)||0) > (parseInt(last3[0].sleepQuality)||0))
-              earned.push({ emoji: "⚡", title: "Recovery Builder", desc: "Sleep score improved 2 weeks running." });
-
-            // 🔥 Momentum — capacity score up 3 weeks in a row
-            if (last3.length === 3 && last3[2].score > last3[1].score && last3[1].score > last3[0].score)
-              earned.push({ emoji: "🔥", title: "Momentum", desc: "Capacity score increased 3 weeks in a row." });
-
-            // 💪 Strength Streak — strength session every week for 3 weeks
-            if (last3.length === 3 && last3.every(c => c.strengthRPE === "Yes"))
-              earned.push({ emoji: "💪", title: "Strength Streak", desc: "Logged a challenging strength session 3 weeks in a row." });
-
-            // 🫁 Aerobic Engine — hit aerobic target 3 weeks running
-            if (last3.length === 3 && last3.every(c => c.aerobic90 === "Yes"))
-              earned.push({ emoji: "🫁", title: "Aerobic Engine", desc: "Hit your aerobic target 3 weeks straight." });
-
-            // 🥩 Protein Pro — top protein score 2 weeks in a row
-            if (last2.length === 2 && last2.every(c => proteinMap[c.proteinFloor] >= 2))
-              earned.push({ emoji: "🥩", title: "Protein Pro", desc: "Hit your protein floor most days, 2 weeks running." });
-
-            // 🧘 Regulated — regulation practice 2 weeks in a row
-            if (last2.length === 2 && last2.every(c => c.regulation === "Yes"))
-              earned.push({ emoji: "🧘", title: "Regulated", desc: "Intentional stress regulation 3x per week, 2 weeks straight." });
-
-            // 🌱 First Step — completed first real check-in
-            if (nonBaseline.length === 1)
-              earned.push({ emoji: "🌱", title: "First Step", desc: "Completed your first weekly check-in. The journey starts here." });
-
-            // ⬆️ Bounce Back — score improved after a drop
-            if (last3.length === 3 && last3[1].score < last3[0].score && last3[2].score > last3[1].score)
-              earned.push({ emoji: "↗️", title: "Bounce Back", desc: "Score dropped last week and you came back stronger." });
-
-            // 🏆 High Performer — score 80+ this week
-            if (latest.score >= 80)
-              earned.push({ emoji: "🏆", title: "High Performer", desc: `Habit score of ${latest.score} — you're operating at an elite level.` });
-
-            if (earned.length === 0) return null;
-
-            return (
-              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(790) }}>
-                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "1rem" }}>🏅 CAPACITY IDENTITY BADGES</div>
-                {earned.map((badge, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.9rem", marginBottom: i < earned.length - 1 ? "0.9rem" : 0, paddingBottom: i < earned.length - 1 ? "0.9rem" : 0, borderBottom: i < earned.length - 1 ? "1px solid #e8e8e8" : "none" }}>
-                    <div style={{ fontSize: "1.8rem", lineHeight: 1, flexShrink: 0 }}>{badge.emoji}</div>
-                    <div>
-                      <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem" }}>{badge.title}</div>
-                      <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.15rem", lineHeight: 1.4 }}>{badge.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-
-          {/* ── Capacity Coaching Tip ────────────────────────────────────── */}
-          {(() => {
-            const latest = checks[checks.length - 1];
             if (!latest) return null;
 
+            // ── Identify weakest driver for coaching ──
             const sleep    = parseInt(latest.sleepQuality) || 0;
             const energy   = parseInt(latest.energyLevel) || 0;
             const recovery = parseInt(latest.physicalRecovery) || 0;
@@ -1239,8 +949,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const strength = latest.strengthRPE === "Yes";
             const aerobic  = latest.aerobic90 === "Yes";
             const movement = { "Low": 0, "Moderate": 1, "High": 2 }[latest.dailyMovement] ?? null;
-
-            // Score each area as a % of max, find the weakest
             const areas = [
               { key: "sleep",    pct: sleep / 5 },
               { key: "energy",   pct: energy / 5 },
@@ -1252,81 +960,54 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               { key: "aerobic",  pct: aerobic ? 1 : 0 },
               ...(movement !== null ? [{ key: "movement", pct: movement / 2 }] : []),
             ].sort((a, b) => a.pct - b.pct);
-
             const weakest = areas[0];
 
             const tips = {
-              sleep: {
-                icon: "😴",
-                observation: `Your sleep score was low this week (${sleep}/5).`,
-                insight: "Improving sleep by just 1 point typically raises your Capacity Index more than adding another workout.",
-                focus: "Try locking in a consistent bedtime this week — even 30 minutes earlier makes a difference.",
-              },
-              energy: {
-                icon: "⚡",
-                observation: `Your energy was low this week (${energy}/5).`,
-                insight: "Low energy is usually a signal of under-recovery, not under-training. More work won't fix it.",
-                focus: "Prioritize sleep, reduce late-night screens, and keep meals consistent this week.",
-              },
-              recovery: {
-                icon: "🔄",
-                observation: `Your physical recovery score was low this week (${recovery}/5).`,
-                insight: "Poor recovery means your body isn't absorbing the training you're doing. Volume isn't the answer right now.",
-                focus: "Focus on sleep quality, hydration, and at least one active recovery session this week.",
-              },
-              protein: {
-                icon: "🥩",
-                observation: `Your protein consistency was below target this week (${latest.proteinFloor}).`,
-                insight: "Protein is the raw material for recovery. Without it, training adaptation stalls regardless of effort.",
-                focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast.",
-              },
-              reg: {
-                icon: "🧘",
-                observation: `Your stress regulation practice was low this week (${latest.regulation}).`,
-                insight: "Chronic stress without regulation suppresses recovery hormones — it's a hidden drag on capacity.",
-                focus: "Schedule one 10-minute regulation practice daily: breathwork, a quiet walk, or journaling.",
-              },
-              workouts: {
-                icon: "🏋️",
-                observation: `You logged ${latest.workouts} workout${latest.workouts === "1" ? "" : "s"} this week.`,
-                insight: "Training frequency is the foundation. Even one additional session per week compounds significantly over 8 weeks.",
-                focus: "Can you find one more 30-minute window this week? It doesn't have to be intense.",
-              },
-              strength: {
-                icon: "💪",
-                observation: "You didn't log a challenging strength session this week.",
-                insight: "Strength training at RPE 7+ is one of the highest-leverage inputs for long-term capacity.",
-                focus: "Schedule one dedicated strength session this week — even 30 minutes of compound movements counts.",
-              },
-              aerobic: {
-                icon: "🫁",
-                observation: "You didn't hit your aerobic target this week.",
-                insight: "Sustained aerobic effort builds your cardiovascular engine — the foundation everything else sits on.",
-                focus: "Aim for one 90-minute session at a pace where you can hold a conversation but not comfortably.",
-              },
-              movement: {
-                icon: "🚶",
-                observation: `Your daily movement outside workouts was low this week (${latest.dailyMovement || "not logged"}).`,
-                insight: "Total movement volume matters as much as structured workouts. Sitting all day offsets a lot of the gains from training.",
-                focus: "Add one 20-minute walk per day this week. It compounds — 10k steps daily is a different capacity profile than 2k.",
-              },
+              sleep:    { icon: "😴", label: "Sleep", focus: "Try locking in a consistent bedtime — even 30 minutes earlier makes a meaningful difference this week." },
+              energy:   { icon: "⚡", label: "Energy", focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
+              recovery: { icon: "🔄", label: "Recovery", focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
+              protein:  { icon: "🥩", label: "Nutrition", focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
+              reg:      { icon: "🧘", label: "Regulation", focus: "Schedule one 10-minute regulation practice daily — breathwork, a quiet walk, or time away from screens." },
+              workouts: { icon: "🏋️", label: "Training", focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
+              strength: { icon: "💪", label: "Strength", focus: "Schedule one dedicated strength session this week. Even 30 minutes of compound movements counts." },
+              aerobic:  { icon: "🫁", label: "Aerobic", focus: "Aim for one sustained aerobic effort — 90 minutes at a pace where you can talk but not comfortably." },
+              movement: { icon: "🚶", label: "Daily Movement", focus: "Add one 20-minute walk per day. Total movement volume matters as much as structured workouts." },
             };
-
             const tip = tips[weakest.key];
             if (!tip) return null;
 
+            // ── Week-over-week change (if available) ──
+            const prev = nonBaseline.length >= 2 ? nonBaseline[nonBaseline.length - 2] : null;
+            const scoreDiff = prev ? latest.score - prev.score : null;
+            const articleId = DRIVER_ARTICLE_MAP[weakest.key];
+            const linkedArticle = articleId ? LIBRARY_ARTICLES.find(a => a.id === articleId) : null;
+
             return (
-              <div style={{ background: CARD, border: `2px solid ${G}`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(900) }}>
-                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "0.9rem" }}>
-                  🎙 CAPACITY COACHING TIP
-                </div>
-                <div style={{ display: "flex", gap: "0.7rem", alignItems: "flex-start", marginBottom: "0.8rem" }}>
-                  <div style={{ fontSize: "1.8rem", lineHeight: 1, flexShrink: 0 }}>{tip.icon}</div>
-                  <div style={{ fontSize: "0.9rem", color: DARK, fontWeight: "bold", lineHeight: 1.4 }}>{tip.observation}</div>
-                </div>
-                <div style={{ fontSize: "0.85rem", color: "#555", lineHeight: 1.6, marginBottom: "0.8rem" }}>{tip.insight}</div>
-                <div style={{ background: CARD, borderRadius: "10px", padding: "0.7rem 1rem", fontSize: "0.82rem", color: DARK, lineHeight: 1.5 }}>
-                  <strong>Focus this week:</strong> {tip.focus}
+              <div style={{ background: CARD, border: `1.5px solid #e0e0e0`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(480) }}>
+                {/* Score movement line — only week 2+ */}
+                {scoreDiff !== null && (
+                  <div style={{
+                    fontSize: "0.82rem", fontWeight: "bold", color: scoreDiff > 0 ? G : scoreDiff < 0 ? "#e07030" : "#888",
+                    marginBottom: "0.8rem", paddingBottom: "0.8rem", borderBottom: "1px solid #f0f0f0"
+                  }}>
+                    {scoreDiff > 0 ? `↑ Up ${scoreDiff} point${scoreDiff !== 1 ? "s" : ""} from last week` :
+                     scoreDiff < 0 ? `↓ Down ${Math.abs(scoreDiff)} point${Math.abs(scoreDiff) !== 1 ? "s" : ""} from last week` :
+                     "→ Score held steady from last week"}
+                  </div>
+                )}
+                {/* Focus this week */}
+                <div style={{ display: "flex", gap: "0.7rem", alignItems: "flex-start" }}>
+                  <div style={{ fontSize: "1.6rem", lineHeight: 1, flexShrink: 0 }}>{tip.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "0.7rem", color: "#888", fontWeight: "bold", letterSpacing: "0.07em", marginBottom: "0.2rem" }}>FOCUS THIS WEEK · {tip.label.toUpperCase()}</div>
+                    <div style={{ fontSize: "0.88rem", color: DARK, lineHeight: 1.6 }}>{tip.focus}</div>
+                    {linkedArticle && (
+                      <button onClick={() => { setLibraryArticleId(linkedArticle.id); setView("library"); }}
+                        style={{ background: "none", border: "none", color: G, cursor: "pointer", fontSize: "0.8rem", fontWeight: "bold", padding: "0.4rem 0 0 0", display: "block" }}>
+                        Read more: {linkedArticle.title} →
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -1371,44 +1052,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 ))}
               </div>
 
-              {/* Gym weekly average trend */}
-              {community.weeklyAvgs && community.weeklyAvgs.length >= 2 && (() => {
-                const pts = community.weeklyAvgs;
-                const minV = Math.max(0, Math.min(...pts.map(p => p.avg)) - 8);
-                const maxV = Math.min(100, Math.max(...pts.map(p => p.avg)) + 8);
-                const range = maxV - minV || 1;
-                const W = 400, H = 90, PAD = 24;
-                const plotW = W - PAD * 2, plotH = H - PAD;
-                const x = i => PAD + (i / (pts.length - 1)) * plotW;
-                const y = v => PAD / 2 + (1 - (v - minV) / range) * plotH;
-                const line = pts.map((p,i) => `${i===0?"M":"L"} ${x(i)} ${y(p.avg)}`).join(" ");
-                const area = `${line} L ${x(pts.length-1)} ${H} L ${x(0)} ${H} Z`;
-                const totalChange = pts[pts.length-1].avg - pts[0].avg;
-                return (
-                  <div style={{ background: DARK, borderRadius: "14px", padding: "1rem 1.2rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.6rem" }}>
-                      <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: "#fff", letterSpacing: "0.05em" }}>GBSC CAPACITY AVERAGE</div>
-                      <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: totalChange >= 0 ? G : "#e07030" }}>
-                        {totalChange >= 0 ? "+" : ""}{totalChange} pts
-                      </div>
-                    </div>
-                    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", display: "block" }}>
-                      {[0.25,0.5,0.75].map(t => (
-                        <line key={t} x1={PAD} y1={PAD/2+t*plotH} x2={W-PAD} y2={PAD/2+t*plotH} stroke="#ffffff18" strokeWidth="1" />
-                      ))}
-                      <path d={area} fill={G} fillOpacity="0.15" />
-                      <path d={line} fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      {pts.map((p, i) => (
-                        <g key={i}>
-                          <circle cx={x(i)} cy={y(p.avg)} r="4" fill={G} />
-                          <text x={x(i)} y={H-2} textAnchor="middle" fontSize="9" fill="#888">W{p.week}</text>
-                          <text x={x(i)} y={y(p.avg)-8} textAnchor="middle" fontSize="9" fill="#fff" fontWeight="bold">{p.avg}</text>
-                        </g>
-                      ))}
-                    </svg>
-                  </div>
-                );
-              })()}
             </div>
           )}
 
@@ -1581,6 +1224,115 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               ))}
             </div>
           )}
+          {/* ── Capacity Drivers (collapsed) ─────────────────────────────── */}
+          {(() => {
+            const latest = [...checks].reverse()[0];
+            if (!latest) return null;
+            const [open, setOpen] = useState(false);
+            const workoutMap  = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
+            const aerobicMap  = { "No": 0, "Close": 1, "Yes": 2 };
+            const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
+            const regMap      = { "No": 0, "1-2x": 1, "Yes": 2 };
+            const movementMap = { "Low": 0, "Moderate": 1, "High": 2 };
+            const rows = [
+              { label: "Training",   value: workoutMap[latest.workouts] ?? 0,          max: 4, display: `${latest.workouts} workouts` },
+              { label: "Aerobic",    value: aerobicMap[latest.aerobic90] ?? 0,          max: 2, display: latest.aerobic90 },
+              { label: "Strength",   value: latest.strengthRPE === "Yes" ? 1 : 0,      max: 1, display: latest.strengthRPE },
+              { label: "Movement",   value: movementMap[latest.dailyMovement] ?? 0,    max: 2, display: latest.dailyMovement },
+              { label: "Sleep",      value: parseInt(latest.sleepQuality) || 0,         max: 5, display: `${latest.sleepQuality}/5` },
+              { label: "Energy",     value: parseInt(latest.energyLevel) || 0,          max: 5, display: `${latest.energyLevel}/5` },
+              { label: "Recovery",   value: parseInt(latest.physicalRecovery) || 0,     max: 5, display: `${latest.physicalRecovery}/5` },
+              { label: "Protein",    value: proteinMap[latest.proteinFloor] ?? 0,       max: 3, display: latest.proteinFloor },
+              { label: "Regulation", value: regMap[latest.regulation] ?? 0,             max: 2, display: latest.regulation },
+            ];
+            return (
+              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+                <button onClick={() => setOpen(o => !o)}
+                  style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>📊 CAPACITY DRIVERS</span>
+                  <span style={{ color: "#aaa", fontSize: "0.85rem", transition: "transform 0.2s", display: "inline-block", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+                </button>
+                {open && (
+                  <div style={{ padding: "0 1.3rem 1.2rem" }}>
+                    {rows.map(row => {
+                      const pct = Math.round((row.value / row.max) * 100);
+                      const barColor = pct >= 80 ? G : pct >= 50 ? "#8ab85a" : pct >= 25 ? "#e0a030" : "#e05030";
+                      return (
+                        <div key={row.label} style={{ marginBottom: "0.7rem" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.2rem" }}>
+                            <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: DARK }}>{row.label}</span>
+                            <span style={{ fontSize: "0.75rem", color: "#888" }}>{row.display}</span>
+                          </div>
+                          <div style={{ background: "#e8e8e8", borderRadius: "999px", height: "7px" }}>
+                            <div style={{ background: barColor, width: `${pct}%`, height: "100%", borderRadius: "999px" }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: "0.5rem" }}>Based on your most recent check-in</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Identity Badges (collapsed) ──────────────────────────────── */}
+          {(() => {
+            if (checks.length < 1) return null;
+            const [open, setOpen] = useState(false);
+            const workoutMap = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
+            const aerobicMap = { "No": 0, "Close": 1, "Yes": 2 };
+            const proteinMap = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
+            const last3 = checks.slice(-3);
+            const last2 = checks.slice(-2);
+            const latest = checks[checks.length - 1];
+            const earned = [];
+            if (last3.length === 3 && last3.every(c => (workoutMap[c.workouts] || 0) >= 3))
+              earned.push({ emoji: "🏋", title: "Consistent Trainer", desc: "3+ workouts every week for 3 weeks." });
+            if (last3.length === 3 && (parseInt(last3[2].sleepQuality)||0) > (parseInt(last3[1].sleepQuality)||0) && (parseInt(last3[1].sleepQuality)||0) > (parseInt(last3[0].sleepQuality)||0))
+              earned.push({ emoji: "⚡", title: "Recovery Builder", desc: "Sleep score improved 2 weeks running." });
+            if (last3.length === 3 && last3[2].score > last3[1].score && last3[1].score > last3[0].score)
+              earned.push({ emoji: "🔥", title: "Momentum", desc: "Score increased 3 weeks in a row." });
+            if (last3.length === 3 && last3.every(c => c.strengthRPE === "Yes"))
+              earned.push({ emoji: "💪", title: "Strength Streak", desc: "Challenging strength session 3 weeks running." });
+            if (last3.length === 3 && last3.every(c => c.aerobic90 === "Yes"))
+              earned.push({ emoji: "🫁", title: "Aerobic Engine", desc: "Hit aerobic target 3 weeks straight." });
+            if (last2.length === 2 && last2.every(c => proteinMap[c.proteinFloor] >= 2))
+              earned.push({ emoji: "🥩", title: "Protein Pro", desc: "Hit protein floor most days, 2 weeks running." });
+            if (last2.length === 2 && last2.every(c => c.regulation === "Yes"))
+              earned.push({ emoji: "🧘", title: "Regulated", desc: "Intentional regulation 3x/week, 2 weeks straight." });
+            if (checks.length === 1)
+              earned.push({ emoji: "🌱", title: "First Step", desc: "Completed your first weekly check-in." });
+            if (last3.length === 3 && last3[1].score < last3[0].score && last3[2].score > last3[1].score)
+              earned.push({ emoji: "↗️", title: "Bounce Back", desc: "Score dropped then came back stronger." });
+            if (latest.score >= 80)
+              earned.push({ emoji: "🏆", title: "High Performer", desc: `Habit score of ${latest.score} this week.` });
+            if (earned.length === 0) return null;
+            return (
+              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+                <button onClick={() => setOpen(o => !o)}
+                  style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>🏅 CAPACITY BADGES · {earned.length} earned</span>
+                  <span style={{ color: "#aaa", fontSize: "0.85rem", transition: "transform 0.2s", display: "inline-block", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+                </button>
+                {open && (
+                  <div style={{ padding: "0 1.3rem 1.2rem" }}>
+                    {earned.map((badge, i) => (
+                      <div key={i} style={{ display: "flex", gap: "0.8rem", alignItems: "flex-start", marginBottom: i < earned.length - 1 ? "0.8rem" : 0, paddingBottom: i < earned.length - 1 ? "0.8rem" : 0, borderBottom: i < earned.length - 1 ? "1px solid #f0f0f0" : "none" }}>
+                        <div style={{ fontSize: "1.5rem", lineHeight: 1, flexShrink: 0 }}>{badge.emoji}</div>
+                        <div>
+                          <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>{badge.title}</div>
+                          <div style={{ fontSize: "0.76rem", color: "#777", marginTop: "0.1rem" }}>{badge.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Action buttons ───────────────────────────────────────────── */}
           {(() => {
             const today = new Date().toISOString().split("T")[0];
             const lastCheck = checks[checks.length - 1];
@@ -1804,8 +1556,244 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     );
   }
 
+  // ── LIBRARY ──────────────────────────────────────────────────────────────
+  if (view === "library") {
+    return <RecoveryLibrary
+      onBack={() => { setLibraryArticleId(null); setView("checkFeedback"); }}
+      initialArticleId={libraryArticleId}
+    />;
+  }
+
   return null;
 }
+
+
+// ─── RECOVERY LIBRARY DATA ────────────────────────────────────────────────────
+const LIBRARY_ARTICLES = [
+  {
+    id: "weekly-minimums",
+    title: "GBSC Capacity Season: Weekly Guide",
+    category: "Training Consistency",
+    teaser: "Capacity is built through consistent effort — not perfect weeks. Here's how to approach each week.",
+    weeklyFocusWeek: 0,
+    weeklyFocusMsg: "This week is about understanding what capacity means and how small weekly habits drive your score.",
+    driverKeys: ["workouts", "strength", "aerobic"],
+    sections: [
+      { heading: "What Is Capacity?", body: "Capacity is how much useful work your body can do — and recover from — week after week. Your Capacity Index gives you a snapshot of where you stand today. The weekly habits below are how you improve that score over time." },
+      { heading: "The Minimum — Keep Momentum", body: "When life gets busy, this level keeps your training rhythm intact. Hit 2 workouts, 1 aerobic session, 1 strength exposure, and 1 recovery practice. Hitting the minimum consistently prevents long gaps and keeps momentum alive." },
+      { heading: "The Target — Build Capacity", body: "This is where most members see clear improvements in energy, resilience, and fitness. Aim for 4–5 workouts, 3–4 aerobic exposures, 2 strength exposures, and 2 recovery practices. Your body begins to adapt and build real capacity at this level." },
+      { heading: "The Builder — Raise Your Ceiling", body: "For members who want to push further: 5–6 workouts, 5+ aerobic exposures, 2–3 strength exposures. This level is for those with the recovery capacity to absorb more work." },
+      { heading: "The Bottom Line", body: "You don't need perfect weeks. You need to stack good weeks together. Choose the level that fits your life each week — and keep showing up." },
+    ]
+  },
+  {
+    id: "4-signs-recovery",
+    title: "4 Signs Your Recovery Is On Track",
+    category: "Training Consistency",
+    teaser: "Your body sends clear signals about how well it's recovering. You don't need data to read them.",
+    weeklyFocusWeek: 0,
+    weeklyFocusMsg: "Before the season starts, learn to read your body's recovery signals — they'll guide smarter decisions every week.",
+    driverKeys: ["recovery", "sleep", "energy"],
+    sections: [
+      { heading: "Signal 1: Energy", body: "Ask yourself: do I feel reasonably energized during the day? Positive signs are stable energy levels, feeling capable during workouts, and not feeling constantly exhausted. If energy has been very low for several days, your body may need more recovery or a temporary reduction in training intensity." },
+      { heading: "Signal 2: Sleep", body: "Healthy recovery often includes falling asleep without difficulty, sleeping through the night, and waking feeling reasonably refreshed. Several nights of poor sleep can reduce your body's ability to recover from training and manage physical stress." },
+      { heading: "Signal 3: Soreness", body: "Some soreness is normal — it's often a sign your body is adapting. Healthy soreness should be manageable, improving over time, and not limiting normal movement. If soreness continues to worsen or lingers for many days, lighter training may be helpful." },
+      { heading: "Signal 4: Stress and Mental Readiness", body: "Recovery is not only physical. Life stress also uses the same recovery resources your body needs to adapt to training. If you feel mentally drained or overwhelmed, your body may benefit from a lighter day even if other signals look good." },
+      { heading: "The Simple Check", body: "If two or more signals are off — low energy, poor sleep, persistent soreness, or high mental load — consider scaling back the session. Protecting recovery protects long-term progress." },
+    ]
+  },
+  {
+    id: "sleep",
+    title: "Sleep as a Recovery Tool",
+    category: "Sleep",
+    teaser: "Sleep is one of the most powerful recovery tools available. Small improvements can significantly change how your body responds to training.",
+    weeklyFocusWeek: 1,
+    weeklyFocusMsg: "Sleep is where your body actually builds the capacity you're working for in the gym. Even 30 extra minutes matters.",
+    driverKeys: ["sleep", "recovery", "energy"],
+    sections: [
+      { heading: "Why Sleep Matters More Than You Think", body: "During sleep, your body performs most of the repair work that allows you to train again the next day. When sleep improves, most people notice better energy during workouts, improved strength and endurance, faster recovery between sessions, and improved mood and focus." },
+      { heading: "Sleep Duration", body: "Most adults perform and recover best with 7–9 hours per night. If you currently sleep less than this, focus on gradual improvement. A helpful starting goal: add 15–30 minutes per night. Over time, small improvements can significantly improve recovery." },
+      { heading: "Sleep Environment", body: "Small adjustments often produce immediate improvements. Keep the room cool (60–67°F works well for most people). Reduce light exposure — blackout curtains help. Limit noise disruptions. Reserve the bed for sleep and recovery. Your environment should signal one thing to your body: this is where recovery happens." },
+      { heading: "Wind-Down Routine", body: "A consistent pre-sleep routine helps the nervous system shift from stimulation to rest. Avoid bright screens for 30–60 minutes before bed. Keep the same sleep schedule on weekdays and weekends. A brief breathing or relaxation practice can accelerate the transition into sleep." },
+      { heading: "The Bottom Line", body: "More training only works if your body can recover from it. Sleep is where that recovery largely occurs. Prioritizing sleep is one of the highest-leverage changes you can make during Capacity Season." },
+    ]
+  },
+  {
+    id: "nutrition-recovery",
+    title: "Nutrition as a Recovery Tool",
+    category: "Nutrition",
+    teaser: "Training stress only turns into progress when your body has the fuel it needs to recover.",
+    weeklyFocusWeek: 2,
+    weeklyFocusMsg: "What you eat between sessions determines how much of your training effort actually turns into progress.",
+    driverKeys: ["protein", "energy", "recovery"],
+    sections: [
+      { heading: "Protein First", body: "Training places stress on muscle tissue. Protein provides the building blocks to repair and strengthen it. A helpful target for most adults: 20–40g of protein per meal. Good sources include eggs, Greek yogurt, chicken, fish, cottage cheese, and protein shakes when time is short." },
+      { heading: "Fuel Training Days", body: "Carbohydrates provide the primary fuel for moderate and high intensity work. If workouts feel harder than expected, under-fueling may be part of the reason. Before training: fruit, oatmeal, toast, or yogurt. After training: pair protein and carbohydrates — chicken and rice, eggs and toast, a smoothie with protein and fruit." },
+      { heading: "Hydration", body: "Even mild dehydration can reduce performance and slow recovery. Start the day with water and drink consistently throughout. A helpful target: half your bodyweight in pounds in ounces of water per day. Increase on training days." },
+      { heading: "Whole Foods", body: "Foods closer to their natural form generally provide more nutrients that support recovery. Build most meals around lean proteins, fruits and vegetables, whole grains, nuts and healthy fats. These foods also tend to provide more fiber, which supports digestion, energy stability, and recovery." },
+      { heading: "The Bottom Line", body: "You don't need a complicated nutrition plan. Consistent habits — protein at each meal, consistent hydration, whole foods most of the time — are enough to significantly support recovery and performance during Capacity Season." },
+    ]
+  },
+  {
+    id: "nervous-system",
+    title: "Intentional Nervous System Regulation",
+    category: "Stress Management",
+    teaser: "Short regulation practices help your body shift from stress mode into recovery mode — improving how you absorb training.",
+    weeklyFocusWeek: 3,
+    weeklyFocusMsg: "Your nervous system doesn't distinguish between training stress and life stress. Intentional regulation is a recovery skill.",
+    driverKeys: ["reg", "sleep", "recovery"],
+    sections: [
+      { heading: "Why Regulation Matters", body: "Training places physical demand on the body. But recovery is also influenced by your nervous system. When stress accumulates — from work, family, sleep, or mental load — your body can remain in a high-alert state. This leads to slower recovery, lower energy, poor sleep, and workouts that feel harder than they should." },
+      { heading: "Breathing Techniques", body: "The fastest way to calm the nervous system. Slow, controlled breathing signals the body that it is safe to relax. Simple practice: inhale through the nose for 4 seconds, exhale slowly through the mouth for 6 seconds, for 1–3 minutes. Longer exhales stimulate the vagus nerve, which promotes relaxation and recovery. Best times: immediately after a workout, before bed, after a stressful day." },
+      { heading: "Down-Regulation Practices", body: "Many people move through the entire day in a high-stimulation state. Down-regulation practices help the body shift into recovery mode. Helpful options: quiet walking outside, light mobility or stretching, slow breathing exercises, sitting quietly without screens for 5–10 minutes." },
+      { heading: "Cold Exposure", body: "Brief cold exposure — cold showers or cold water immersion — can stimulate nervous system recovery and improve mood through dopamine release. Start with 30–60 seconds of cold water at the end of a shower. Consistency matters more than intensity." },
+      { heading: "The Bottom Line", body: "These strategies are simple — but practiced consistently, they can significantly improve how you recover, feel, and perform. Schedule at least one intentional regulation practice per day, even if it's just two minutes of slow breathing after a workout." },
+    ]
+  },
+  {
+    id: "life-stress",
+    title: "Life Stress and Training Capacity",
+    category: "Stress Management",
+    teaser: "Training stress and life stress draw from the same recovery resources. Understanding this helps you train intelligently during real life.",
+    weeklyFocusWeek: 4,
+    weeklyFocusMsg: "A demanding week at work affects your training the same way a hard training week does. Adjusting is smart, not weak.",
+    driverKeys: ["reg", "energy", "recovery"],
+    sections: [
+      { heading: "Your Body Doesn't Separate Stressors", body: "Training places stress on the body so it can adapt and become stronger. But life stress also requires recovery. Demanding work schedules, family responsibilities, travel, illness, disrupted sleep, and emotional stress — all of these temporarily reduce your available recovery capacity." },
+      { heading: "Signs Life Stress Is Affecting Training", body: "During demanding weeks you may notice: workouts feel harder than usual, motivation feels lower, sleep quality declines, soreness lasts longer, resting heart rate trends higher. These are normal signals that your body is using recovery resources to manage life stress. Recognizing them early allows you to adjust before fatigue accumulates." },
+      { heading: "Adjusting Training During Stressful Weeks", body: "When life becomes more demanding, the goal is maintaining momentum — not perfection. Full session if you can. Reduced session if you need to shorten or lighten. Movement session if that's all you have. Even shorter sessions help maintain routine, circulation, and momentum." },
+      { heading: "What Not to Do", body: "Don't try to push through heavy training when life stress is very high. Don't skip training entirely — movement helps regulate stress. Don't judge yourself for needing a lighter week. Adjusting is an intelligent response to real conditions." },
+      { heading: "The Bottom Line", body: "Training intelligently during stressful periods is a skill. Members who learn to adjust — rather than push through or stop entirely — build more durable capacity over time." },
+    ]
+  },
+  {
+    id: "moving-well",
+    title: "Keeping Your Body Moving Well",
+    category: "Movement and Soreness",
+    teaser: "Managing small aches early prevents them from becoming big interruptions to training.",
+    weeklyFocusWeek: 5,
+    weeklyFocusMsg: "Soreness is part of the adaptation process. Learning to manage it — rather than stop because of it — is how you stay consistent.",
+    driverKeys: ["recovery", "movement", "workouts"],
+    sections: [
+      { heading: "Normal Training Soreness", body: "After training, it is common to experience muscle soreness, mild stiffness, temporary fatigue, and tight areas. Normal soreness typically improves after warming up, decreases within 24–72 hours, does not limit normal movement patterns, and feels better once the body starts moving. These sensations are part of the adaptation process." },
+      { heading: "Movement Helps Recovery", body: "Completely stopping activity is rarely the best response to normal soreness. Light movement often improves recovery by increasing circulation, reducing stiffness, maintaining joint mobility, and helping tissues recover more efficiently. Motion is often lotion — the body typically feels better once it begins moving." },
+      { heading: "The 10-Minute Rule", body: "If something feels stiff or sore before training, warm up and move for 10 minutes. After 10 minutes, ask yourself: does the area feel looser or improved? Does movement feel more normal? If yes, it is usually safe to continue. If the area feels worse or sharper, that is a signal to rest or seek guidance." },
+      { heading: "When to Seek Help", body: "Some discomfort warrants attention: sharp or sudden pain, pain that worsens with movement, pain that doesn't improve after 72 hours, or discomfort that changes how you move. These are signals worth addressing with a coach or professional rather than training through." },
+      { heading: "The Bottom Line", body: "The goal is not to eliminate all discomfort. The goal is to manage small issues early so they never become big interruptions. Staying consistent through minor soreness — with intelligent adjustments — is how you build real durability." },
+    ]
+  },
+  {
+    id: "nutrition-body-comp",
+    title: "Nutrition for Capacity and Body Composition",
+    category: "Nutrition",
+    teaser: "Consistent nutrition supports recovery, energy, and long-term body composition — without complicated plans.",
+    weeklyFocusWeek: 6,
+    weeklyFocusMsg: "As training capacity increases and consistency improves, many people notice body composition changes naturally. Nutrition supports both.",
+    driverKeys: ["protein", "energy"],
+    sections: [
+      { heading: "Eat Enough to Train Well", body: "Under-fueling training often leads to reduced energy, slower recovery, and stalled progress. Your body adapts to the work it performs — fueling that work helps drive those adaptations. If energy during training is low, consider eating before training, increasing carbohydrates on training days, and ensuring protein intake is adequate." },
+      { heading: "Protein for Lean Muscle", body: "A practical guideline: 0.7–1.0g of protein per pound of bodyweight per day. For a 170lb person, that's 120–170g per day. Spread protein across multiple meals rather than concentrating it in one sitting." },
+      { heading: "Whole Foods Regulate Appetite Naturally", body: "Highly processed foods are easy to overeat. Meals built around whole foods tend to naturally regulate hunger. Focus most meals around protein, vegetables, fruits, whole grains, and healthy fats. These foods are also naturally higher in fiber, which helps improve satiety and supports healthy digestion." },
+      { heading: "Fiber Supports Body Composition", body: "Fiber slows digestion and helps people feel fuller for longer periods. A helpful target for most adults: 25–35g of fiber per day. High fiber foods include vegetables, fruits, beans and legumes, oats, whole grains, nuts, and seeds. Increase fiber gradually and drink enough water." },
+      { heading: "The Bottom Line", body: "During Capacity Season, the primary focus is building your body's ability to produce and recover from work. As that improves and consistency builds, many people notice body composition changes naturally. Nutrition is what makes that possible." },
+    ]
+  },
+  {
+    id: "progress-in-chaos",
+    title: "Progress in Chaos",
+    category: "Training Consistency",
+    teaser: "Progress is not built during perfect weeks. It's built by maintaining forward motion when life becomes chaotic.",
+    weeklyFocusWeek: 7,
+    weeklyFocusMsg: "When life becomes chaotic, reduce workload but maintain the habit of training. Consistency builds capacity.",
+    driverKeys: ["workouts", "movement"],
+    sections: [
+      { heading: "The Durability Mindset", body: "Most people unknowingly follow a frustrating cycle: train hard when life is calm, stop when life gets busy, try to make up missed workouts later. Durable progress follows a different pattern: normal weeks, train fully. Busy weeks, train lightly. Stressful weeks, stay connected. Even a small amount of training preserves momentum." },
+      { heading: "The Chaos Rule", body: "When life becomes overwhelming, do something smaller instead of nothing. A short session still provides powerful benefits: maintains the habit of movement, keeps your routine intact, preserves momentum, and makes returning to normal training much easier. Skipping completely breaks the chain. Small actions keep it alive." },
+      { heading: "The Chaos Ladder", body: "Level 1 — Full session if time and energy allow. Level 2 — Short session (10–20 minutes): one strength movement, a quick interval workout, or a brisk walk. Level 3 — Minimum effort: 10 minutes of movement, a walk, some mobility work. Adjust the workload, not the habit." },
+      { heading: "The 48-Hour Rule", body: "Never go more than 48 hours without moving your body. Movement can include a workout, a walk, mobility work, or light conditioning. This rule keeps small disruptions from becoming long breaks." },
+      { heading: "The Bottom Line", body: "Anyone can train when life is calm. Durable people train when life is messy too — just at a different level. This is how capacity compounds over time." },
+    ]
+  },
+  {
+    id: "durability-rule",
+    title: "The Durability Rule",
+    category: "Training Consistency",
+    teaser: "How to stay consistent when life gets messy — and why adjusting is smarter than stopping.",
+    weeklyFocusWeek: 7,
+    weeklyFocusMsg: "The Durability Rule is simple: durable people don't skip training when life gets messy. They adjust the effort and keep moving.",
+    driverKeys: ["workouts", "movement"],
+    sections: [
+      { heading: "The Core Idea", body: "At some point during Capacity Season, life will get busy. Work deadlines pile up. Kids' schedules fill up. Sleep gets disrupted. Unexpected things happen. This is normal. The goal during these weeks isn't perfection. The goal is staying consistent." },
+      { heading: "The Durability Levels", body: "Level 1 — Train normally. Level 2 — Scale the session: reduce weight, reps, or intensity. Level 3 — Short session: 15–20 minutes of movement. Level 4 — Bad day protocol: just 10 minutes of movement — a walk, bike, row, mobility, or simple strength circuit. The only goal: protect the habit." },
+      { heading: "The 48-Hour Rule", body: "Never go more than 48 hours without moving your body. Movement can include a workout, a walk, mobility work, or light conditioning. This keeps small disruptions from becoming long breaks in consistency." },
+      { heading: "Don't Chase Missed Workouts", body: "If you miss training during a busy week, do not try to cram extra workouts into the next week to catch up. That usually creates more fatigue, reduces recovery, and makes progress harder. Your body only adapts to training if it can recover from the effort. Train the week you are in. Don't chase the week you missed." },
+      { heading: "The Bottom Line", body: "Consistent effort builds capacity. Not occasional perfect effort. Return to your normal rhythm as quickly as possible after a disruption — that is the entire game." },
+    ]
+  },
+  {
+    id: "lifestyle-habits",
+    title: "Lifestyle Habits That Support Recovery",
+    category: "Lifestyle Habits",
+    teaser: "Small daily behaviors outside the gym strongly influence recovery and capacity — often more than an extra workout would.",
+    weeklyFocusWeek: 8,
+    weeklyFocusMsg: "You're in the final stretch. The habits you build outside the gym are what make everything inside the gym count.",
+    driverKeys: ["movement", "recovery", "sleep"],
+    sections: [
+      { heading: "Movement Outside the Gym", body: "Training sessions are only a small part of your day. Long periods of sitting can slow circulation and make recovery more difficult. Helpful targets: 6,000–10,000 steps per day, short walks after meals, light stretching or mobility during the day. You do not need extra workouts — just avoid being completely sedentary. Even 10–15 minutes of walking can noticeably improve recovery." },
+      { heading: "Nutrition Consistency", body: "Your body adapts to training when it receives consistent fuel and nutrients. The goal is not dietary perfection — it's repeatable habits. Protein at each meal (20–40g), whole foods most of the time, consistent meal timing, and adequate fiber intake (25–35g per day)." },
+      { heading: "Stress Management", body: "Chronic stress without regular down-regulation suppresses recovery. Helpful daily practices: breathing exercises, short outdoor walks, reducing screen time before bed, and creating brief periods of quiet. These don't need to be long — 5–10 minutes of intentional down-regulation makes a meaningful difference." },
+      { heading: "Social Connection", body: "Meaningful social connection improves recovery by supporting nervous system balance, emotional resilience, and long-term consistency. The community you train with at GBSC is not just a bonus — it is part of your recovery environment." },
+      { heading: "The Bottom Line", body: "Recovery doesn't require perfection. Small, repeatable behaviors practiced daily are enough to significantly improve how your body absorbs training and performs over time." },
+    ]
+  },
+  {
+    id: "wearables",
+    title: "How to Use Your Wearable Effectively",
+    category: "Wearables",
+    teaser: "Wearables are tools for identifying patterns — not for judging daily performance. Here's how to use yours well.",
+    weeklyFocusWeek: 9,
+    weeklyFocusMsg: "Wearables are most useful when they help you see recovery trends over time — not when they dictate how you feel each day.",
+    driverKeys: ["sleep", "recovery", "energy"],
+    sections: [
+      { heading: "The Most Important Rule", body: "Wearables are tools for identifying patterns — not judging daily performance. At GBSC, consistent effort drives progress. Wearables simply help you understand how your body is responding to that effort, so you can support recovery and continue building capacity." },
+      { heading: "Sleep Trends", body: "Sleep is the most powerful recovery tool your body has. Your wearable can show you whether your sleep habits are supporting training. Instead of focusing on a single night, look at: average sleep duration across the week, consistency of sleep schedule, and how you feel during workouts. Helpful targets for most adults: 7–9 hours per night, similar sleep and wake times each day." },
+      { heading: "Resting Heart Rate", body: "Resting heart rate (RHR) is a useful indicator of cumulative fatigue and recovery. A gradually rising RHR over several days may suggest your body needs additional recovery. A single elevated RHR reading is not meaningful — look for multi-day trends." },
+      { heading: "Heart Rate Variability (HRV)", body: "HRV reflects how well your nervous system is recovering. Higher HRV generally indicates better recovery readiness. Lower HRV across multiple days may signal accumulated stress or inadequate recovery. Use it as a trend indicator, not a daily prescription." },
+      { heading: "The Bottom Line", body: "Use your wearable to identify patterns and inform decisions — not to override how you feel. The most important data points are sleep trends, resting heart rate, and HRV over multiple days. Single-day readings are rarely meaningful." },
+    ]
+  },
+  {
+    id: "social-connection",
+    title: "Social Connection as a Recovery Tool",
+    category: "Community",
+    teaser: "Meaningful social connection improves physical and mental recovery — and your pod is part of your recovery system.",
+    weeklyFocusWeek: 9,
+    weeklyFocusMsg: "Capacity is built through consistent habits and supportive environments. Community and long-term awareness sustain progress.",
+    driverKeys: ["reg", "energy", "recovery"],
+    sections: [
+      { heading: "Why Connection Improves Recovery", body: "Humans are biologically wired to recover better in supportive social environments. Positive relationships influence hormones, nervous system balance, emotional resilience, and long-term consistency with healthy behaviors. At GBSC, the community you train with is not just a bonus — it is part of the recovery system." },
+      { heading: "Connection Stimulates Oxytocin", body: "Positive social interactions trigger the release of oxytocin, sometimes called the bonding hormone. Oxytocin supports recovery by helping the body shift toward a calmer, more balanced nervous system state. Benefits include promoting relaxation, improving emotional stability, and helping counteract the effects of stress hormones." },
+      { heading: "Social Interaction Helps Lower Cortisol", body: "Cortisol is a normal stress hormone. But when chronically elevated, it suppresses recovery, disrupts sleep, and reduces training adaptation. Positive social interactions help lower cortisol levels — which supports recovery. Small moments in the gym matter: encouraging someone during a workout, laughing with training partners, supportive conversation." },
+      { heading: "Your Pod as a Recovery Tool", body: "The pod structure in this program is designed to create a small, consistent support group. Knowing others are tracking their progress alongside you creates accountability without competition. When your pod checks in together, that social reinforcement is a legitimate part of your recovery environment." },
+      { heading: "The Bottom Line", body: "Recovery is not only physical. The people you train with, the conversations you have, and the community you belong to all influence how well your body recovers and how consistently you show up. That is why GBSC is not just a gym." },
+    ]
+  },
+];
+
+const LIBRARY_CATEGORIES = ["Training Consistency", "Sleep", "Nutrition", "Stress Management", "Movement and Soreness", "Lifestyle Habits", "Wearables", "Community"];
+
+// Map driver keys to article ids for personalized suggestions
+const DRIVER_ARTICLE_MAP = {
+  sleep:    "sleep",
+  energy:   "sleep",
+  recovery: "lifestyle-habits",
+  protein:  "nutrition-recovery",
+  reg:      "nervous-system",
+  workouts: "weekly-minimums",
+  strength: "weekly-minimums",
+  aerobic:  "weekly-minimums",
+  movement: "moving-well",
+};
 
 // ─── POD CARD (member-facing) ─────────────────────────────────────────────────
 function PodCard({ myPod, members, currentMember, pods, setPods }) {
@@ -1813,7 +1801,6 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
-  const podMembers = (members || []).filter(m => myPod.memberIds.includes(m.id) && m.id !== currentMember.id);
 
   async function handleRename() {
     const trimmed = nameInput.trim();
@@ -1827,114 +1814,253 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
   }
 
   if (!myPod) return null;
+
+  // Figure out who checked in this week (within last 7 days)
+  const allPodMembers = (members || []).filter(m => myPod.memberIds.includes(m.id));
+  const checkedInThisWeek = (m) => {
+    const nonBase = (m.weeklyChecks || []).filter(c => !c.isBaseline);
+    if (!nonBase.length) return false;
+    const last = nonBase[nonBase.length - 1];
+    if (!last.date) return false;
+    const daysSince = (Date.now() - new Date(last.date + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24);
+    return daysSince < 7;
+  };
+  const checkedCount = allPodMembers.filter(checkedInThisWeek).length;
+  const totalCount = allPodMembers.length;
+  const allIn = checkedCount === totalCount && totalCount > 0;
+  const isCaptain = myPod.captainId === currentMember.id;
+
   return (
-    <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", border: `1.5px solid ${G}22` }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: renaming ? "default" : "pointer" }}
-        onClick={() => !renaming && setExpanded(e => !e)}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: "1.5rem", flexShrink: 0 }}>{myPod.emoji}</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {renaming ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }} onClick={e => e.stopPropagation()}>
-                <input
-                  autoFocus
-                  value={nameInput}
-                  onChange={e => setNameInput(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setRenaming(false); }}
-                  style={{ flex: 1, padding: "0.3rem 0.6rem", border: `1.5px solid ${G}`, borderRadius: "6px", fontSize: "0.9rem", minWidth: 0 }}
-                />
-                <button onClick={handleRename} disabled={saving}
-                  style={{ background: G, color: "#fff", border: "none", borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.8rem", fontWeight: "bold", cursor: "pointer", flexShrink: 0 }}>
-                  {saving ? "…" : "✓"}
-                </button>
-                <button onClick={() => setRenaming(false)}
-                  style={{ background: "none", border: "1px solid #ddd", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.8rem", cursor: "pointer", color: "#888", flexShrink: 0 }}>
-                  ✕
-                </button>
-              </div>
-            ) : (
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", letterSpacing: "0.03em" }}>{myPod.name}</div>
-                  <button
-                    onClick={e => { e.stopPropagation(); setNameInput(myPod.name); setRenaming(true); setExpanded(true); }}
-                    style={{ background: "none", border: "none", color: "#bbb", cursor: "pointer", fontSize: "0.75rem", padding: "0", lineHeight: 1 }}
-                    title="Rename pod">
-                    ✏️
-                  </button>
-                </div>
-                <div style={{ fontSize: "0.75rem", color: "#888", marginTop: "0.1rem" }}>
-                      Your support pod · {myPod.memberIds.length} members
-                      {myPod.captainId && myPod.captainId === currentMember.id && (
-                        <span style={{ color: "#f0a500", fontWeight: "bold" }}> · ⭐ You're the captain!</span>
-                      )}
-                    </div>
-              </div>
-            )}
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
-          {!renaming && podMembers.slice(0, 3).map((m, i) => (
-            <div key={m.id} style={{
-              width: "28px", height: "28px", borderRadius: "50%",
-              background: `hsl(${(m.name.charCodeAt(0) * 37) % 360}, 55%, 55%)`,
-              color: "#fff", fontWeight: "bold", fontSize: "0.7rem",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              marginLeft: i > 0 ? "-8px" : 0, border: "2px solid #fff", zIndex: 3 - i
-            }}>
-              {m.name.charAt(0).toUpperCase()}
+    <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", border: allIn ? `1.5px solid ${G}` : `1.5px solid ${G}22` }}>
+
+      {/* ── Header row: emoji + name + rename ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "0.9rem" }}>
+        <span style={{ fontSize: "1.5rem", flexShrink: 0 }}>{myPod.emoji}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {renaming ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input autoFocus value={nameInput}
+                onChange={e => setNameInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setRenaming(false); }}
+                style={{ flex: 1, padding: "0.3rem 0.6rem", border: `1.5px solid ${G}`, borderRadius: "6px", fontSize: "0.9rem", minWidth: 0 }} />
+              <button onClick={handleRename} disabled={saving}
+                style={{ background: G, color: "#fff", border: "none", borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.8rem", fontWeight: "bold", cursor: "pointer" }}>
+                {saving ? "…" : "✓"}
+              </button>
+              <button onClick={() => setRenaming(false)}
+                style={{ background: "none", border: "1px solid #ddd", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.8rem", cursor: "pointer", color: "#888" }}>
+                ✕
+              </button>
             </div>
-          ))}
-          {!renaming && <span style={{ fontSize: "0.8rem", color: G, fontWeight: "bold", marginLeft: "0.3rem" }}>
-            {expanded ? "▴" : "▾"}
-          </span>}
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem" }}>{myPod.name}</div>
+              <button onClick={e => { e.stopPropagation(); setNameInput(myPod.name); setRenaming(true); }}
+                style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: "0.75rem", padding: 0, lineHeight: 1 }}
+                title="Rename pod">✏️</button>
+            </div>
+          )}
+          <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>
+            Your support pod
+            {isCaptain && <span style={{ color: "#f0a500", fontWeight: "bold" }}> · ⭐ You're the captain</span>}
+          </div>
         </div>
       </div>
-      {expanded && (
-        <div style={{ marginTop: "1rem", borderTop: "1px solid #e8e8e8", paddingTop: "1rem" }}>
-          <div style={{ fontSize: "0.75rem", color: "#888", fontWeight: "bold", letterSpacing: "0.06em", marginBottom: "0.7rem" }}>
-            POD MEMBERS
+
+      {/* ── Weekly progress block — always visible ── */}
+      <div style={{ background: allIn ? `${G}0f` : "#f7f7f7", borderRadius: "12px", padding: "0.9rem 1rem" }}>
+        {/* Header line */}
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+          <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em" }}>
+            POD PROGRESS THIS WEEK
           </div>
-          {myPod.memberIds.map(mid => {
-            const m = members.find(x => x.id === mid);
-            if (!m) return null;
-            const isMe = m.id === currentMember.id;
-            const checks = (m.weeklyChecks || []).filter(c => !c.isBaseline);
-            const weekNum = checks.length;
-            return (
-              <div key={mid} style={{
-                display: "flex", alignItems: "center", gap: "0.8rem",
-                padding: "0.6rem 0.8rem", borderRadius: "10px",
-                background: isMe ? `${G}12` : "transparent",
-                marginBottom: "0.3rem"
-              }}>
+          <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: allIn ? G : DARK }}>
+            {checkedCount}
+            <span style={{ color: "#bbb", fontWeight: "normal" }}> / </span>
+            {totalCount}
+            {allIn && <span style={{ color: G, marginLeft: "0.4rem" }}>COMPLETE ✓</span>}
+          </div>
+        </div>
+
+        {/* Member rows */}
+        {allPodMembers.map(m => {
+          const didCheck = checkedInThisWeek(m);
+          const isMe = m.id === currentMember.id;
+          const isCap = myPod.captainId === m.id;
+          return (
+            <div key={m.id} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "0.3rem 0", borderBottom: "1px solid #eeeeee88"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <div style={{
-                  width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
+                  width: "24px", height: "24px", borderRadius: "50%", flexShrink: 0,
                   background: `hsl(${(m.name.charCodeAt(0) * 37) % 360}, 55%, 55%)`,
-                  color: "#fff", fontWeight: "bold", fontSize: "0.85rem",
+                  color: "#fff", fontWeight: "bold", fontSize: "0.65rem",
                   display: "flex", alignItems: "center", justifyContent: "center"
                 }}>
                   {m.name.charAt(0).toUpperCase()}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: isMe ? "bold" : "normal", color: DARK, fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: isMe ? "bold" : "normal", color: DARK }}>
+                  {m.name}
+                  {isMe && <span style={{ fontSize: "0.68rem", color: "#aaa", fontWeight: "normal", marginLeft: "0.3rem" }}>you</span>}
+                  {isCap && <span style={{ fontSize: "0.68rem", color: "#f0a500", marginLeft: "0.3rem" }}>⭐</span>}
+                </span>
+              </div>
+              <span style={{ fontSize: "1rem" }}>{didCheck ? "✓" : "⏳"}</span>
+            </div>
+          );
+        })}
+
+        {/* All-in celebration banner */}
+        {allIn && (
+          <div style={{ marginTop: "0.7rem", textAlign: "center", fontSize: "0.8rem", color: G, fontWeight: "bold" }}>
+            Pod locked in — everyone showed up this week!
+          </div>
+        )}
+      </div>
+
+      {/* ── Expand toggle for extra detail ── */}
+      <button onClick={() => setExpanded(e => !e)}
+        style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: "0.75rem", marginTop: "0.6rem", padding: 0, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+        {expanded ? "▴ less" : "▾ program progress"}
+      </button>
+
+      {/* ── Expanded: overall program week count ── */}
+      {expanded && (
+        <div style={{ marginTop: "0.8rem", borderTop: "1px solid #e8e8e8", paddingTop: "0.8rem" }}>
+          <div style={{ fontSize: "0.7rem", color: "#888", fontWeight: "bold", letterSpacing: "0.07em", marginBottom: "0.5rem" }}>WEEKS COMPLETED</div>
+          {allPodMembers.map(m => {
+            const checks = (m.weeklyChecks || []).filter(c => !c.isBaseline);
+            const isMe = m.id === currentMember.id;
+            const isCap = myPod.captainId === m.id;
+            const pct = Math.round((checks.length / 8) * 100);
+            return (
+              <div key={m.id} style={{ marginBottom: "0.55rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: "0.2rem" }}>
+                  <span style={{ fontWeight: isMe ? "bold" : "normal", color: DARK }}>
                     {m.name}
-                    {isMe && <span style={{ fontSize: "0.7rem", color: G, fontWeight: "normal" }}>← you</span>}
-                    {myPod.captainId === m.id && <span style={{ fontSize: "0.7rem", color: "#f0a500", fontWeight: "bold" }}>⭐ Captain</span>}
-                  </div>
-                  <div style={{ fontSize: "0.72rem", color: "#888" }}>Week {weekNum}/8</div>
+                    {isMe && <span style={{ color: "#aaa", fontWeight: "normal", marginLeft: "0.3rem" }}>you</span>}
+                    {isCap && <span style={{ color: "#f0a500", marginLeft: "0.3rem" }}>⭐</span>}
+                  </span>
+                  <span style={{ color: "#888" }}>Week {checks.length}/8</span>
                 </div>
-                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {weekNum > 0
-                    ? <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: G }}>{weekNum}</span>
-                    : <span style={{ fontSize: "0.65rem", color: "#bbb" }}>—</span>
-                  }
+                <div style={{ background: "#e8e8e8", borderRadius: "999px", height: "5px" }}>
+                  <div style={{ background: G, width: `${pct}%`, height: "100%", borderRadius: "999px", transition: "width 0.4s ease" }} />
                 </div>
               </div>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+
+// ─── RECOVERY LIBRARY COMPONENT ───────────────────────────────────────────────
+function RecoveryLibrary({ onBack, initialArticleId }) {
+  const [selectedArticle, setSelectedArticle] = useState(
+    initialArticleId ? LIBRARY_ARTICLES.find(a => a.id === initialArticleId) || null : null
+  );
+  const [activeCategory, setActiveCategory] = useState("All");
+
+  if (selectedArticle) {
+    return <ArticleReader article={selectedArticle} onBack={() => setSelectedArticle(null)} />;
+  }
+
+  const filtered = activeCategory === "All"
+    ? LIBRARY_ARTICLES
+    : LIBRARY_ARTICLES.filter(a => a.category === activeCategory);
+
+  return (
+    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
+        <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.05em", flex: 1 }}>Recovery Library</div>
+        <div style={{ fontSize: "0.8rem", color: "#888" }}>{LIBRARY_ARTICLES.length} articles</div>
+      </div>
+
+      {/* Category filter */}
+      <div style={{ background: DARK, borderTop: "1px solid #3a3a3a", padding: "0.5rem 1rem", display: "flex", gap: "0.5rem", overflowX: "auto" }}>
+        {["All", ...LIBRARY_CATEGORIES].map(cat => (
+          <button key={cat} onClick={() => setActiveCategory(cat)}
+            style={{
+              background: "none", border: "none",
+              color: activeCategory === cat ? G : "#888",
+              borderBottom: activeCategory === cat ? `2px solid ${G}` : "2px solid transparent",
+              padding: "0.3rem 0.6rem", cursor: "pointer", fontSize: "0.78rem",
+              fontWeight: activeCategory === cat ? "bold" : "normal",
+              whiteSpace: "nowrap", flexShrink: 0
+            }}>
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ maxWidth: "520px", margin: "0 auto", padding: "1.2rem 1.5rem" }}>
+        {filtered.map(article => (
+          <div key={article.id}
+            onClick={() => setSelectedArticle(article)}
+            style={{ background: CARD, borderRadius: "14px", padding: "1.1rem 1.3rem", marginBottom: "0.8rem", cursor: "pointer", border: "1.5px solid transparent", transition: "border 0.15s" }}
+            onMouseEnter={e => e.currentTarget.style.border = `1.5px solid ${G}`}
+            onMouseLeave={e => e.currentTarget.style.border = "1.5px solid transparent"}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "0.65rem", color: G, fontWeight: "bold", letterSpacing: "0.07em", marginBottom: "0.2rem", textTransform: "uppercase" }}>
+                  {article.category}
+                </div>
+                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginBottom: "0.35rem", lineHeight: 1.3 }}>
+                  {article.title}
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "#666", lineHeight: 1.5 }}>
+                  {article.teaser}
+                </div>
+              </div>
+              <span style={{ color: G, fontSize: "1rem", flexShrink: 0, marginTop: "0.2rem" }}>→</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ArticleReader({ article, onBack }) {
+  return (
+    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: "0.65rem", color: G, fontWeight: "bold", letterSpacing: "0.07em", textTransform: "uppercase" }}>{article.category}</div>
+          <div style={{ color: "#fff", fontWeight: "bold", fontSize: "0.95rem", lineHeight: 1.2 }}>{article.title}</div>
+        </div>
+      </div>
+      <div style={{ maxWidth: "520px", margin: "0 auto", padding: "1.5rem" }}>
+        {/* Teaser */}
+        <div style={{ background: `${G}15`, border: `1px solid ${G}44`, borderRadius: "12px", padding: "1rem 1.2rem", marginBottom: "1.5rem" }}>
+          <div style={{ fontSize: "0.92rem", color: DARK, fontStyle: "italic", lineHeight: 1.6 }}>{article.teaser}</div>
+        </div>
+        {/* Sections */}
+        {article.sections.map((section, i) => (
+          <div key={i} style={{ marginBottom: "1.4rem" }}>
+            <div style={{ fontWeight: "bold", color: DARK, fontSize: "1rem", marginBottom: "0.4rem", lineHeight: 1.3 }}>
+              {section.heading}
+            </div>
+            <div style={{ fontSize: "0.88rem", color: "#444", lineHeight: 1.7 }}>
+              {section.body}
+            </div>
+          </div>
+        ))}
+        {/* Footer */}
+        <div style={{ borderTop: "1px solid #e0e0e0", paddingTop: "1.2rem", marginTop: "1rem", textAlign: "center" }}>
+          <div style={{ fontSize: "0.75rem", color: "#aaa" }}>GBSC Recovery Library · Capacity Season</div>
+          <button onClick={onBack}
+            style={{ marginTop: "0.8rem", background: "none", border: `1.5px solid ${G}`, color: G, borderRadius: "8px", padding: "0.5rem 1.4rem", fontSize: "0.85rem", fontWeight: "bold", cursor: "pointer" }}>
+            ← Back to Library
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
