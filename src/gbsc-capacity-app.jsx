@@ -78,7 +78,7 @@ const POD_NAMES = [
   { name: "The RPE Rascals", emoji: "😅" },
   { name: "Functional Misfits", emoji: "🔧" },
 ];
-
+ 
 const G = "#5DC842";
 const DARK = "#2D2D2D";
 const CARD = "#fff";
