@@ -85,29 +85,37 @@ const CARD = "#fff";
 const PAGE_BG = "#f9f7f4";
 
 // ─── Capacity Index Calculators ───────────────────────────────────────────────
+// VO2 Max 12-Tier System (Eric's updated table — age + sex adjusted, ml/kg/min)
+// Tiers: Critical=8, VeryLow=16, Low=24, Developing=33, Foundation=42,
+//        Emerging=51, Building=58, Strong=66, Advanced=74, Durable=82, Elite=90, Peak=99
+// Each entry: [minVO2 (inclusive), score] — listed highest first, first match wins
 function getVO2Score(vo2, age, sex) {
   const tables = {
     male: {
-      "20-29": [[58,90],[54,80],[52,70],[49,60],[46,50],[44,40],[42,30],[40,20],[0,10]],
-      "30-39": [[55,90],[50,80],[46,70],[43,60],[40,50],[38,40],[36,30],[34,20],[0,10]],
-      "40-49": [[51,90],[45,80],[41,70],[38,60],[35,50],[33,40],[31,30],[29,20],[0,10]],
-      "50-59": [[43,90],[38,80],[34,70],[32,60],[29,50],[27,40],[26,30],[24,20],[0,10]],
-      "60-69": [[37,90],[32,80],[29,70],[26,60],[24,50],[23,40],[21,30],[20,20],[0,10]],
+      "20-29": [[64,99],[60,90],[57,82],[54,74],[51,66],[48,58],[45,51],[41,42],[37,33],[33,24],[28,16],[0,8]],
+      "30-39": [[62,99],[58,90],[55,82],[52,74],[49,66],[46,58],[43,51],[39,42],[35,33],[31,24],[26,16],[0,8]],
+      "40-49": [[59,99],[55,90],[52,82],[49,74],[46,66],[43,58],[40,51],[36,42],[32,33],[28,24],[24,16],[0,8]],
+      "50-59": [[56,99],[52,90],[49,82],[46,74],[43,66],[40,58],[37,51],[34,42],[30,33],[26,24],[22,16],[0,8]],
+      "60-69": [[51,99],[47,90],[44,82],[41,74],[38,66],[35,58],[32,51],[29,42],[26,33],[23,24],[20,16],[0,8]],
+      "70-79": [[48,99],[45,90],[42,82],[39,74],[36,66],[33,58],[30,51],[27,42],[24,33],[21,24],[18,16],[0,8]],
+      "80-89": [[46,99],[43,90],[40,82],[37,74],[34,66],[31,58],[28,51],[25,42],[22,33],[19,24],[16,16],[0,8]],
     },
     female: {
-      "20-29": [[49,90],[45,80],[42,70],[39,60],[37,50],[35,40],[33,30],[31,20],[0,10]],
-      "30-39": [[42,90],[37,80],[34,70],[31,60],[29,50],[27,40],[25,30],[24,20],[0,10]],
-      "40-49": [[38,90],[33,80],[30,70],[28,60],[26,50],[24,40],[23,30],[22,20],[0,10]],
-      "50-59": [[32,90],[28,80],[26,70],[24,60],[23,50],[22,40],[21,30],[20,20],[0,10]],
-      "60-69": [[27,90],[24,80],[22,70],[21,60],[20,50],[18,40],[17,30],[16,20],[0,10]],
+      "20-29": [[55,99],[51,90],[48,82],[45,74],[42,66],[39,58],[36,51],[32,42],[28,33],[24,24],[20,16],[0,8]],
+      "30-39": [[51,99],[48,90],[45,82],[42,74],[39,66],[36,58],[33,51],[30,42],[26,33],[22,24],[18,16],[0,8]],
+      "40-49": [[49,99],[46,90],[43,82],[40,74],[37,66],[34,58],[31,51],[28,42],[24,33],[20,24],[17,16],[0,8]],
+      "50-59": [[46,99],[43,90],[40,82],[37,74],[34,66],[31,58],[28,51],[25,42],[22,33],[19,24],[15,16],[0,8]],
+      "60-69": [[44,99],[41,90],[38,82],[35,74],[32,66],[29,58],[26,51],[23,42],[20,33],[17,24],[14,16],[0,8]],
+      "70-79": [[43,99],[40,90],[37,82],[34,74],[31,66],[28,58],[25,51],[22,42],[19,33],[16,24],[13,16],[0,8]],
+      "80-89": [[42,99],[39,90],[36,82],[33,74],[30,66],[27,58],[24,51],[21,42],[18,33],[15,24],[12,16],[0,8]],
     }
   };
-  const ageKey = age < 30 ? "20-29" : age < 40 ? "30-39" : age < 50 ? "40-49" : age < 60 ? "50-59" : "60-69";
+  const ageKey = age < 30 ? "20-29" : age < 40 ? "30-39" : age < 50 ? "40-49" : age < 60 ? "50-59" : age < 70 ? "60-69" : age < 80 ? "70-79" : "80-89";
   const chart = tables[sex]?.[ageKey] || tables.male["40-49"];
-  for (const [threshold, percentile] of chart) {
-    if (vo2 >= threshold) return percentile;
+  for (const [threshold, score] of chart) {
+    if (vo2 >= threshold) return score;
   }
-  return 10;
+  return 8;
 }
 
 function getGripScore(grip, bw, age, sex) {
@@ -2326,7 +2334,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         </button>
       </div>
       <div style={{ display: "flex", borderTop: "1px solid #3a3a3a", padding: "0 1.5rem" }}>
-        {[["members", "👥 Members"], ["insights", "📊 Insights"], ["pods", "🫛 Pods"]].map(([tab, label]) => (
+        {[["members", "👥 Members"], ["insights", "📊 Insights"], ["analytics", "📈 Analytics"], ["pods", "🫛 Pods"]].map(([tab, label]) => (
           <button key={tab} onClick={() => { setCoachTab(tab); setSelected(null); setEditingPod(null); setPodDraft(null); }}
             style={{ background: "none", border: "none", color: coachTab === tab ? G : "#aaa",
               borderBottom: coachTab === tab ? `2.5px solid ${G}` : "2.5px solid transparent",
@@ -2615,6 +2623,337 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                   </div>
                 );
               })
+            )}
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // ── ANALYTICS TAB ────────────────────────────────────────────────────────
+  if (coachTab === "analytics") {
+
+    // ── 1. Top 5 Most Improved (largest CI gain from first to latest check-in)
+    const mostImproved = members
+      .map(m => {
+        const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+        if (checks.length < 2) return null;
+        const firstHabit = checks[0].score;
+        const latestHabit = Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length);
+        const firstCI  = calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, firstHabit);
+        const latestCI = calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, latestHabit);
+        if (firstCI === null || latestCI === null) return null;
+        const gain = latestCI - firstCI;
+        return { m, firstCI, latestCI, gain, weekCount: checks.length };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.gain - a.gain)
+      .slice(0, 5);
+
+    // ── 2. Capacity tier distribution
+    const tierOrder = [
+      { name: "Peak Capacity",       emoji: "🏆", color: "#1a7a00" },
+      { name: "Durable Capacity",    emoji: "💪", color: G },
+      { name: "Building Capacity",   emoji: "📈", color: "#4a9e38" },
+      { name: "Emerging Capacity",   emoji: "🌱", color: "#8ab85a" },
+      { name: "Foundation Capacity", emoji: "🔧", color: "#b0c090" },
+    ];
+    const tierCounts = tierOrder.map(t => ({ ...t, count: 0, members: [] }));
+    members.forEach(m => {
+      const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+      if (!checks.length) return;
+      const habitAvg = Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length);
+      const ci = calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, habitAvg);
+      if (ci === null) return;
+      const tier = getCapacityTier(ci);
+      const slot = tierCounts.find(t => t.name === tier.tier);
+      if (slot) { slot.count++; slot.members.push(m.name); }
+    });
+    const totalWithCI = tierCounts.reduce((s, t) => s + t.count, 0);
+
+    // ── 3. Community CI trend — avg CI per week across all members
+    const weekNums = new Set();
+    members.forEach(m => (m.weeklyChecks || []).forEach(c => { if (c && !c.isBaseline) weekNums.add(c.week); }));
+    const communityTrend = Array.from(weekNums).sort((a, b) => a - b).map(wk => {
+      const cis = [];
+      members.forEach(m => {
+        const checksUpTo = (m.weeklyChecks || []).filter(c => c && !c.isBaseline && c.week <= wk);
+        if (!checksUpTo.length) return;
+        const habit = Math.round(checksUpTo.reduce((s,c) => s+c.score, 0) / checksUpTo.length);
+        const ci = calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, habit);
+        if (ci !== null) cis.push(ci);
+      });
+      return { week: wk, avg: cis.length ? Math.round(cis.reduce((a,b) => a+b, 0) / cis.length) : null, count: cis.length };
+    }).filter(w => w.avg !== null);
+
+    // ── 4. Captains list (members who are captainId in any pod)
+    const captains = pods
+      .filter(p => p.captainId)
+      .map(p => {
+        const m = members.find(mem => mem.id === p.captainId);
+        if (!m) return null;
+        return { member: m, pod: p };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.member.name.localeCompare(b.member.name));
+
+    function downloadCaptainsCSV() {
+      const headers = ["Name", "Email", "Pod", "Age", "Sex"];
+      const rows = captains.map(({ member: m, pod: p }) => [
+        m.name, m.email || "", p.name, m.age || "", m.sex || ""
+      ]);
+      const escape = v => { const s = String(v ?? ""); return s.includes(",") || s.includes('"') ? `"${s.replace(/"/g,'""')}"` : s; };
+      const csv = [headers, ...rows].map(r => r.map(escape).join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `gbsc-captains-${localDateStr()}.csv`; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // SVG trend chart helpers
+    const trendPoints = communityTrend;
+    const chartW = 560, chartH = 120, padL = 36, padR = 16, padT = 12, padB = 28;
+    const plotW = chartW - padL - padR;
+    const plotH = chartH - padT - padB;
+    const allAvgs = trendPoints.map(p => p.avg);
+    const minY = allAvgs.length ? Math.max(0, Math.min(...allAvgs) - 8) : 0;
+    const maxY = allAvgs.length ? Math.min(100, Math.max(...allAvgs) + 8) : 100;
+    const rangeY = maxY - minY || 1;
+    const cx = i => padL + (trendPoints.length > 1 ? (i / (trendPoints.length - 1)) * plotW : plotW / 2);
+    const cy = v => padT + (1 - (v - minY) / rangeY) * plotH;
+    const linePath = trendPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${cx(i).toFixed(1)} ${cy(p.avg).toFixed(1)}`).join(" ");
+    const areaPath = trendPoints.length > 1
+      ? `${linePath} L ${cx(trendPoints.length-1).toFixed(1)} ${(padT+plotH).toFixed(1)} L ${cx(0).toFixed(1)} ${(padT+plotH).toFixed(1)} Z`
+      : "";
+
+    return (
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+        {hdr}
+        <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
+
+          {/* ── 1. Most Improved ─────────────────────────────────────────────── */}
+          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.9rem" }}>
+              <span style={{ fontSize: "1.2rem" }}>🚀</span>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Top 5 Most Improved</div>
+              <div style={{ fontSize: "0.72rem", color: "#888" }}>CI gain over program</div>
+            </div>
+            {mostImproved.length === 0 ? (
+              <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>
+                Need at least 2 check-ins per member to calculate improvement
+              </div>
+            ) : (
+              mostImproved.map(({ m, firstCI, latestCI, gain, weekCount }, idx) => {
+                const tier = getCapacityTier(latestCI);
+                return (
+                  <div key={m.id} onClick={() => setSelected(m)}
+                    style={{ display: "flex", alignItems: "center", gap: "0.9rem", padding: "0.7rem 0.9rem",
+                      borderRadius: "10px", marginBottom: "0.4rem", cursor: "pointer",
+                      background: idx === 0 ? "#fffbf0" : "#fafafa",
+                      border: idx === 0 ? "1px solid #f5d060" : "1px solid #eee",
+                      transition: "background 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = idx === 0 ? "#fff5d6" : "#f0f0f0"}
+                    onMouseLeave={e => e.currentTarget.style.background = idx === 0 ? "#fffbf0" : "#fafafa"}>
+                    {/* Rank badge */}
+                    <div style={{ width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0,
+                      background: idx === 0 ? "#f0a500" : idx === 1 ? "#aaa" : idx === 2 ? "#b87333" : "#e0e0e0",
+                      color: "#fff", fontWeight: "bold", fontSize: "0.78rem",
+                      display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {idx + 1}
+                    </div>
+                    {/* Avatar */}
+                    <div style={{ width: "34px", height: "34px", borderRadius: "50%", flexShrink: 0,
+                      background: `hsl(${((m.name || "").charCodeAt(0) * 37) % 360}, 55%, 55%)`,
+                      color: "#fff", fontWeight: "bold", fontSize: "0.82rem",
+                      display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {(m.name || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.9rem" }}>{m.name}</div>
+                      <div style={{ fontSize: "0.72rem", color: tier.color, fontWeight: "bold" }}>{tier.emoji} {tier.tier}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", justifyContent: "flex-end" }}>
+                        <span style={{ fontSize: "0.82rem", color: "#aaa" }}>{firstCI}</span>
+                        <span style={{ color: G, fontSize: "0.82rem" }}>→</span>
+                        <span style={{ fontWeight: "bold", fontSize: "1rem", color: DARK }}>{latestCI}</span>
+                      </div>
+                      <div style={{ fontSize: "0.72rem", color: G, fontWeight: "bold" }}>▲ +{gain} pts</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* ── 2. Tier Distribution ─────────────────────────────────────────── */}
+          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.9rem" }}>
+              <span style={{ fontSize: "1.2rem" }}>🏅</span>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Capacity Tier Distribution</div>
+              <div style={{ fontSize: "0.72rem", color: "#888" }}>{totalWithCI} member{totalWithCI !== 1 ? "s" : ""} ranked</div>
+            </div>
+            {totalWithCI === 0 ? (
+              <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>
+                No members with check-ins yet
+              </div>
+            ) : (
+              tierCounts.map(({ name, emoji, color, count, members: mNames }) => {
+                const pct = Math.round((count / totalWithCI) * 100);
+                return (
+                  <div key={name} style={{ marginBottom: "0.75rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.25rem" }}>
+                      <span style={{ fontSize: "0.85rem", fontWeight: "bold", color }}>
+                        {emoji} {name}
+                      </span>
+                      <span style={{ fontSize: "0.82rem", color: count > 0 ? DARK : "#ccc", fontWeight: "bold" }}>
+                        {count} {count > 0 ? `(${pct}%)` : ""}
+                      </span>
+                    </div>
+                    <div style={{ background: "#eee", borderRadius: "999px", height: "10px", overflow: "hidden" }}>
+                      <div style={{ background: color, width: `${pct}%`, height: "100%", borderRadius: "999px", transition: "width 0.5s ease", minWidth: count > 0 ? "4px" : "0" }} />
+                    </div>
+                    {count > 0 && (
+                      <div style={{ fontSize: "0.68rem", color: "#aaa", marginTop: "0.2rem" }}>
+                        {mNames.slice(0, 6).join(", ")}{mNames.length > 6 ? ` +${mNames.length - 6} more` : ""}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* ── 3. Community CI Trend ────────────────────────────────────────── */}
+          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.9rem" }}>
+              <span style={{ fontSize: "1.2rem" }}>📊</span>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>GBSC Community Capacity Index</div>
+              <div style={{ fontSize: "0.72rem", color: "#888" }}>Avg CI by week</div>
+            </div>
+            {communityTrend.length < 2 ? (
+              <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>
+                Trend will appear once members have 2+ weeks of check-ins
+              </div>
+            ) : (
+              <>
+                {/* Current avg callout */}
+                <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
+                  <div style={{ background: `${G}12`, border: `1px solid ${G}44`, borderRadius: "10px", padding: "0.7rem 1rem", textAlign: "center" }}>
+                    <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: G }}>{communityTrend[communityTrend.length - 1].avg}</div>
+                    <div style={{ fontSize: "0.7rem", color: "#888" }}>Current Avg CI</div>
+                  </div>
+                  {communityTrend.length >= 2 && (() => {
+                    const delta = communityTrend[communityTrend.length-1].avg - communityTrend[0].avg;
+                    return (
+                      <div style={{ background: delta >= 0 ? `${G}12` : "#fff4ee", border: `1px solid ${delta >= 0 ? G+"44" : "#fad0b8"}`, borderRadius: "10px", padding: "0.7rem 1rem", textAlign: "center" }}>
+                        <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: delta >= 0 ? G : "#e07030" }}>
+                          {delta >= 0 ? "+" : ""}{delta}
+                        </div>
+                        <div style={{ fontSize: "0.7rem", color: "#888" }}>Since Week 1</div>
+                      </div>
+                    );
+                  })()}
+                  <div style={{ background: "#f7f7f7", border: "1px solid #eee", borderRadius: "10px", padding: "0.7rem 1rem", textAlign: "center" }}>
+                    <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: DARK }}>{communityTrend[communityTrend.length-1].count}</div>
+                    <div style={{ fontSize: "0.7rem", color: "#888" }}>Members tracked</div>
+                  </div>
+                </div>
+                {/* SVG Chart */}
+                <div style={{ overflowX: "auto" }}>
+                  <svg viewBox={`0 0 ${chartW} ${chartH}`} style={{ width: "100%", maxWidth: chartW, display: "block" }}>
+                    {/* Grid lines */}
+                    {[0, 0.25, 0.5, 0.75, 1].map(f => {
+                      const yv = minY + f * rangeY;
+                      const yp = cy(yv);
+                      return (
+                        <g key={f}>
+                          <line x1={padL} y1={yp} x2={chartW - padR} y2={yp} stroke="#e8e8e8" strokeWidth="1" />
+                          <text x={padL - 4} y={yp + 4} fontSize="9" fill="#aaa" textAnchor="end">{Math.round(yv)}</text>
+                        </g>
+                      );
+                    })}
+                    {/* Area fill */}
+                    {areaPath && <path d={areaPath} fill={`${G}18`} />}
+                    {/* Line */}
+                    {linePath && <path d={linePath} fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />}
+                    {/* Data points + labels */}
+                    {trendPoints.map((p, i) => (
+                      <g key={i}>
+                        <circle cx={cx(i)} cy={cy(p.avg)} r="4" fill={G} stroke="#fff" strokeWidth="1.5" />
+                        <text x={cx(i)} y={padT + plotH + 16} fontSize="9" fill="#888" textAnchor="middle">W{p.week}</text>
+                        <text x={cx(i)} y={cy(p.avg) - 8} fontSize="9" fill={DARK} textAnchor="middle" fontWeight="bold">{p.avg}</text>
+                      </g>
+                    ))}
+                  </svg>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* ── 4. Pod Captains ──────────────────────────────────────────────── */}
+          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.9rem" }}>
+              <span style={{ fontSize: "1.2rem" }}>⭐</span>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Pod Captains</div>
+              <button onClick={downloadCaptainsCSV}
+                disabled={captains.length === 0}
+                style={{ background: captains.length > 0 ? G : "#ccc", color: "#fff", border: "none",
+                  borderRadius: "8px", padding: "0.3rem 0.85rem", fontSize: "0.75rem",
+                  fontWeight: "bold", cursor: captains.length > 0 ? "pointer" : "not-allowed" }}>
+                ↓ Export CSV
+              </button>
+            </div>
+            {captains.length === 0 ? (
+              <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>
+                No captains assigned yet — set them in the Pods tab
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                  <thead>
+                    <tr style={{ background: "#f5f5f5" }}>
+                      {["Name", "Email", "Pod", "Week"].map(h => (
+                        <th key={h} style={{ padding: "0.5rem 0.75rem", textAlign: "left", fontWeight: "bold",
+                          color: "#666", fontSize: "0.75rem", letterSpacing: "0.04em", borderBottom: "2px solid #eee" }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {captains.map(({ member: m, pod: p }, i) => {
+                      const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+                      return (
+                        <tr key={m.id} style={{ background: i % 2 ? "#fafafa" : "#fff" }}
+                          onClick={() => setSelected(m)}
+                          onMouseEnter={e => e.currentTarget.style.background = "#f0f7ec"}
+                          onMouseLeave={e => e.currentTarget.style.background = i % 2 ? "#fafafa" : "#fff"}
+                          style={{ cursor: "pointer", background: i % 2 ? "#fafafa" : "#fff" }}>
+                          <td style={{ padding: "0.55rem 0.75rem", fontWeight: "bold", color: DARK }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <span style={{ fontSize: "0.9rem" }}>⭐</span>
+                              {m.name}
+                            </div>
+                          </td>
+                          <td style={{ padding: "0.55rem 0.75rem", color: "#555" }}>{m.email || "—"}</td>
+                          <td style={{ padding: "0.55rem 0.75rem" }}>
+                            <span style={{ background: `${G}18`, border: `1px solid ${G}44`, borderRadius: "999px",
+                              padding: "0.15rem 0.55rem", fontSize: "0.78rem", color: DARK }}>
+                              {p.emoji} {p.name}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.55rem 0.75rem", color: "#888", fontSize: "0.8rem" }}>
+                            {checks.length}/8
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
