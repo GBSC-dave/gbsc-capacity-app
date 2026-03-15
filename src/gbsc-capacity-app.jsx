@@ -78,7 +78,7 @@ const POD_NAMES = [
   { name: "The RPE Rascals", emoji: "😅" },
   { name: "Functional Misfits", emoji: "🔧" },
 ];
- 
+
 const G = "#5DC842";
 const DARK = "#2D2D2D";
 const CARD = "#fff";
@@ -88,7 +88,10 @@ const PAGE_BG = "#f9f7f4";
 // VO2 Max 12-Tier System (Eric's updated table — age + sex adjusted, ml/kg/min)
 // Tiers: Critical=8, VeryLow=16, Low=24, Developing=33, Foundation=42,
 //        Emerging=51, Building=58, Strong=66, Advanced=74, Durable=82, Elite=90, Peak=99
-// Each entry: [minVO2 (inclusive), score] — listed highest first, first match wins
+// Each entry: [minVO2 (inclusive), tierFloorScore] — listed highest first.
+// Scoring uses linear interpolation within each band so every VO2 point
+// produces a unique score. The top tier (Peak) is flat at 99.
+// The bottom tier (Critical) is flat at 8 — no interpolation below VeryLow floor.
 function getVO2Score(vo2, age, sex) {
   const tables = {
     male: {
@@ -112,8 +115,17 @@ function getVO2Score(vo2, age, sex) {
   };
   const ageKey = age < 30 ? "20-29" : age < 40 ? "30-39" : age < 50 ? "40-49" : age < 60 ? "50-59" : age < 70 ? "60-69" : age < 80 ? "70-79" : "80-89";
   const chart = tables[sex]?.[ageKey] || tables.male["40-49"];
-  for (const [threshold, score] of chart) {
-    if (vo2 >= threshold) return score;
+  for (let i = 0; i < chart.length; i++) {
+    const [bandMin, bandScore] = chart[i];
+    if (vo2 >= bandMin) {
+      if (i === 0) return bandScore;                  // Peak tier — flat 99
+      if (i === chart.length - 1) return bandScore;  // Critical tier — flat 8
+      const [nextMin, nextScore] = chart[i - 1];
+      const posInBand = vo2 - bandMin;
+      const bandWidth = nextMin - bandMin;
+      const scoreRange = nextScore - bandScore;
+      return Math.round(bandScore + (posInBand / bandWidth) * scoreRange);
+    }
   }
   return 8;
 }
@@ -145,8 +157,17 @@ function getGripScore(grip, bw, age, sex) {
 
   const ageKey = age < 35 ? "18-34" : age < 45 ? "35-44" : age < 55 ? "45-54" : age < 65 ? "55-64" : "65+";
   const chart = tables[sex]?.[ageKey] || tables.male["45-54"];
-  for (const [threshold, score] of chart) {
-    if (gbr >= threshold) return score;
+  for (let i = 0; i < chart.length; i++) {
+    const [bandMin, bandScore] = chart[i];
+    if (gbr >= bandMin) {
+      if (i === 0) return bandScore;                 // Top tier (Freak) — flat 98
+      if (i === chart.length - 1) return bandScore; // Bottom tier (Critical) — flat 8
+      const [nextMin, nextScore] = chart[i - 1];
+      const posInBand = gbr - bandMin;
+      const bandWidth = nextMin - bandMin;
+      const scoreRange = nextScore - bandScore;
+      return Math.round(bandScore + (posInBand / bandWidth) * scoreRange);
+    }
   }
   return 8;
 }
@@ -166,18 +187,21 @@ function getCapacityTier(score) {
 }
 
 // ─── Weekly Check Score Calculator ────────────────────────────────────────────
+// Scoring: Workouts/18 · Zone2/26 · Strength/12 · Movement/12 · Protein/14 · Downshift/8 · SleepOpportunity/12
+// Consistency Multiplier: if workouts < 2, total capped at 65
 function calcWeeklyScore(check) {
   let score = 0;
-  const workoutMap = { "0": 0, "1": 10, "2": 18, "3": 23, "4+": 27 };
+  const workoutMap = { "0": 0, "1": 6, "2": 11, "3": 15, "4+": 18 };
   score += workoutMap[check.workouts] || 0;
-  score += check.aerobic90 === "Yes" ? 13 : check.aerobic90 === "Close" ? 7 : 0;
-  score += check.strengthRPE === "Yes" ? 13 : 0;
-  score += ((parseInt(check.sleepQuality) || 0) / 5) * 10;
-  score += ((parseInt(check.energyLevel) || 0) / 5) * 10;
-  score += ((parseInt(check.physicalRecovery) || 0) / 5) * 10;
-  score += check.regulation === "Yes" ? 5 : check.regulation === "1-2x" ? 3 : 0;
-  score += check.proteinFloor === "Yes" ? 5 : check.proteinFloor === "Most days" ? 3 : 0;
-  score += check.dailyMovement === "High" ? 7 : check.dailyMovement === "Moderate" ? 4 : 0;
+  score += check.zone2 === "90+" ? 26 : check.zone2 === "60-90" ? 18 : check.zone2 === "30-60" ? 11 : check.zone2 === "0-30" ? 4 : 0;
+  score += check.strengthRPE === "Yes" ? 12 : 0;
+  score += check.dailyMovement === "High" ? 12 : check.dailyMovement === "Moderate" ? 7 : 0;
+  score += check.protein === "Yes (most days)" ? 14 : check.protein === "Most days" ? 10 : check.protein === "Some days" ? 5 : 0;
+  score += check.downshift === "3+ times" ? 8 : check.downshift === "1-2 times" ? 4 : 0;
+  score += check.sleepOpportunity === "5+ nights" ? 10 : check.sleepOpportunity === "3-4 nights" ? 7 : check.sleepOpportunity === "1-2 nights" ? 3 : 0;
+  // Consistency Multiplier: cap at 65 if fewer than 2 workouts
+  const workoutsNum = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[check.workouts] ?? 0;
+  if (workoutsNum < 2) score = Math.min(score, 65);
   return Math.min(Math.round(score), 100);
 }
 
@@ -444,7 +468,7 @@ function ScaleGroup({ value, onChange, field, setCheck, labels }) {
 // ─── MEMBER PORTAL ────────────────────────────────────────────────────────────
 function MemberPortal({ view, setView, members, currentMember, setCurrentMember, saveMember, pods, setPods, onRegistered, onCoachAccess }) {
   const [form, setForm] = useState({ name: "", email: "", age: "", sex: "male", weight: "", grip: "", vo2: "" });
-  const [check, setCheck] = useState({ workouts: "", aerobic90: "", strengthRPE: "", dailyMovement: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", regulation: "", proteinFloor: "", disruption: "" });
+  const [check, setCheck] = useState({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
   const [lastCheckScore, setLastCheckScore] = useState(null);
   const [displayedScore, setDisplayedScore] = useState(0);
   const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
@@ -533,7 +557,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   }
 
   async function handleRegisterWithBaseline() {
-    if (!check.workouts || !check.aerobic90 || !check.strengthRPE) {
+    if (!check.workouts || !check.strengthRPE || !check.zone2) {
       alert("Please answer at least the first 3 questions.");
       return;
     }
@@ -563,13 +587,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     await saveMember(member);
     setCurrentMember(member);
     setLastCheckScore(weekScore);
-    setCheck({ workouts: "", aerobic90: "", strengthRPE: "", dailyMovement: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", regulation: "", proteinFloor: "", disruption: "" });
+    setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     onRegistered();
     setView("checkFeedback");
   }
 
   async function handleSubmitCheck() {
-    if (!check.workouts || !check.aerobic90 || !check.strengthRPE) {
+    if (!check.workouts || !check.strengthRPE || !check.zone2) {
       alert("Please answer at least the first 3 questions.");
       return;
     }
@@ -602,7 +626,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     await saveMember(updatedMember);
     setCurrentMember(updatedMember);
     setLastCheckScore(weekScore);
-    setCheck({ workouts: "", aerobic90: "", strengthRPE: "", dailyMovement: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", regulation: "", proteinFloor: "", disruption: "" });
+    setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     setView("checkFeedback");
   }
 
@@ -653,7 +677,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
-            const fields = ["workouts","aerobic90","strengthRPE","dailyMovement","regulation","proteinFloor","sleepQuality","energyLevel","physicalRecovery","disruption"];
+            const fields = ["workouts","zone2","strengthRPE","dailyMovement","protein","downshift","sleepOpportunity","sleepQuality","energyLevel","physicalRecovery","disruption"];
             const answered = fields.filter(f => check[f] !== "" && check[f] != null).length;
             const pct = Math.round((answered / fields.length) * 100);
             return (
@@ -673,17 +697,21 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
+          <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em", marginBottom: "1rem", paddingBottom: "0.4rem", borderBottom: "2px solid #eee" }}>
+            SECTION 1 — CAPACITY BUILDERS (SCORED)
+          </div>
           {[
-            { label: "1. Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, Peloton all count" },
-            { label: "2. ~90 min moderate effort?", field: "aerobic90", options: ["Yes","Close","No"], hint: "Breathing elevated but sustainable" },
-            { label: "3. Challenging strength session?", field: "strengthRPE", options: ["Yes","No"], hint: "RPE 7+ · 2–3 reps left in tank" },
-            { label: "4. Daily movement outside workouts?", field: "dailyMovement", options: ["High","Moderate","Low"], hint: "Walks, active job, steps — not counting workouts" },
-            { label: "5. Intentional regulation 3x?", field: "regulation", options: ["Yes","1-2x","No"], hint: "Breathwork, quiet walk, journaling, low-stim time" },
-            { label: "6. Protein floor most meals?", field: "proteinFloor", options: ["Yes","Most days","Some days","Rarely"], hint: "20–40g per meal, 2–3 meals/day" },
+            { label: "1. Workouts This Week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
+            { label: "2. Challenging Strength Session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
+            { label: "3. Daily Movement Outside Workouts", field: "dailyMovement", options: ["High","Moderate","Low"], hints: ["High (8k+ steps/day or very active job)", "Moderate (5–8k/day)", "Low (<5k/day)"] },
+            { label: "4. Zone 2 Aerobic Work (Minutes This Week)", field: "zone2", options: ["0-30","30-60","60-90","90+"], hint: "Steady effort — breathing elevated but sustainable" },
+            { label: "5. Protein in 3+ Meals Per Day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal" },
+            { label: "6. Sleep Opportunity", field: "sleepOpportunity", options: ["5+ nights","3-4 nights","1-2 nights","Rarely"], hint: "How many nights did you have 7+ hours available for sleep?" },
+            { label: "7. Intentional Downshift (10+ min)", field: "downshift", options: ["3+ times","1-2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
           ].map(q => (
             <div key={q.field} style={{ marginBottom: "1.5rem" }}>
               <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>{q.label}</div>
-              {q.hint && <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{q.hint}</div>}
+              {(q.hint || q.hints) && <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{q.hint || q.hints.join(" · ")}</div>}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                 {q.options.map(opt => (
                   <button key={opt} onClick={() => setCheck(c => ({...c, [q.field]: opt}))}
@@ -695,22 +723,28 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           ))}
 
-          <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>7. Sleep Quality</div>
-            <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor","Inconsistent","Adequate","Good","Excellent"]} />
+          <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em", margin: "1.5rem 0 1rem", paddingBottom: "0.4rem", borderBottom: "2px solid #eee" }}>
+            SECTION 2 — RECOVERY CHECK (NOT SCORED)
+          </div>
+          <div style={{ fontSize: "0.8rem", color: "#999", marginBottom: "1rem", lineHeight: 1.5 }}>
+            These answers don't affect your Capacity Builders Score. They help us understand your recovery context.
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>8. Energy This Week</div>
-            <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Drained","Low","Stable","Strong","High & Steady"]} />
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>8. Sleep Quality</div>
+            <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor most nights","Restless several nights","Mixed sleep","Good most nights","Consistently deep"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>9. Physical Recovery</div>
-            <ScaleGroup field="physicalRecovery" value={check.physicalRecovery} setCheck={setCheck} labels={["Beat Up","Tight","Normal","Recovered","Fresh"]} />
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>9. Energy This Week</div>
+            <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Exhausted often","Low most days","Mixed energy","Steady most days","High and stable"]} />
+          </div>
+          <div style={{ marginBottom: "1.5rem" }}>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>10. Physical Recovery</div>
+            <ScaleGroup field="physicalRecovery" value={check.physicalRecovery} setCheck={setCheck} labels={["Sore most of week","Soreness lingered","Average recovery","Recovered well","Consistently fresh"]} />
           </div>
 
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>10. Any significant disruption this week?</div>
-            <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Illness, travel, sick kids, work chaos — this won't affect your score, just helps interpret it</div>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>11. Weekly Disruption</div>
+            <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Illness, travel, sick kids, heavy workload — won't affect your score, just helps interpret it</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
               {["None","Some disruption","Major disruption"].map(opt => (
                 <button key={opt} onClick={() => setCheck(c => ({...c, disruption: opt}))}
@@ -733,8 +767,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   if (view === "checkFeedback" && currentMember) {
     const allChecks = currentMember.weeklyChecks || [];
+    const baseline = allChecks.find(c => c && c.isBaseline);
     const checks = allChecks.filter(c => c && !c.isBaseline);
-    const habitAvg = checks.length ? Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length) : null;
+    // For baseline-only state, use the baseline habit score so CI is visible right away
+    const habitAvg = checks.length
+      ? Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length)
+      : (baseline ? baseline.score : null);
     const ci = habitAvg !== null ? calcCapacityIndex(currentMember.vo2Score_pre, currentMember.gripScore_pre, habitAvg) : null;
     const tier = ci !== null ? getCapacityTier(ci) : null;
     const weekNum = checks.length;
@@ -870,7 +908,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 Welcome to the program, {(currentMember.name || "there").split(" ")[0]}!
               </div>
               <div style={{ fontSize: "0.82rem", color: "#aaa", lineHeight: 1.5 }}>
-                Your baseline is set. Check in every week and watch your Capacity Index grow over 8 weeks.
+                Your baseline is set. This is your starting Capacity Index — check in every week and watch it grow over 8 weeks.
               </div>
             </div>
           )}
@@ -1008,11 +1046,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const energy   = parseInt(latest.energyLevel) || 0;
             const recovery = parseInt(latest.physicalRecovery) || 0;
             const workouts = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[latest.workouts] || 0;
-            const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 }[latest.proteinFloor] || 0;
-            const reg      = { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0;
+            const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 }[latest.protein] ?? (latest.proteinFloor ? { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 }[latest.proteinFloor] || 0 : 0);
+            const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift] ?? (latest.regulation ? { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0 : 0);
             const strength = latest.strengthRPE === "Yes";
-            const aerobic  = latest.aerobic90 === "Yes";
+            const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3 }[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0);
             const movement = { "Low": 0, "Moderate": 1, "High": 2 }[latest.dailyMovement] ?? null;
+            const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3 }[latest.sleepOpportunity] ?? null;
             const areas = [
               { key: "sleep",    pct: sleep / 5 },
               { key: "energy",   pct: energy / 5 },
@@ -1021,8 +1060,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               { key: "reg",      pct: reg / 2 },
               { key: "workouts", pct: workouts / 4 },
               { key: "strength", pct: strength ? 1 : 0 },
-              { key: "aerobic",  pct: aerobic ? 1 : 0 },
+              { key: "aerobic",  pct: zone2Val / 3 },
               ...(movement !== null ? [{ key: "movement", pct: movement / 2 }] : []),
+              ...(sleepOpp !== null ? [{ key: "sleepOpp", pct: sleepOpp / 3 }] : []),
             ].sort((a, b) => a.pct - b.pct);
             const weakest = areas[0];
 
@@ -1031,11 +1071,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               energy:   { icon: "⚡", label: "Energy", focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
               recovery: { icon: "🔄", label: "Recovery", focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
               protein:  { icon: "🥩", label: "Nutrition", focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
-              reg:      { icon: "🧘", label: "Regulation", focus: "Schedule one 10-minute regulation practice daily — breathwork, a quiet walk, or time away from screens." },
+              reg:      { icon: "🧘", label: "Downshift", focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
               workouts: { icon: "🏋️", label: "Training", focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
               strength: { icon: "💪", label: "Strength", focus: "Schedule one dedicated strength session this week. Even 30 minutes of compound movements counts." },
-              aerobic:  { icon: "🫁", label: "Aerobic", focus: "Aim for one sustained aerobic effort — 90 minutes at a pace where you can talk but not comfortably." },
+              aerobic:  { icon: "🫁", label: "Zone 2", focus: "Aim for at least one 30–60 min Zone 2 session this week — a pace where you can speak in short sentences but not comfortably hold a conversation." },
               movement: { icon: "🚶", label: "Daily Movement", focus: "Add one 20-minute walk per day. Total movement volume matters as much as structured workouts." },
+              sleepOpp: { icon: "🛏️", label: "Sleep Opportunity", focus: "Try to protect 7+ hours in bed at least 4 nights this week. Even one extra night of full sleep makes a measurable difference in recovery." },
             };
             const tip = tips[weakest.key];
             if (!tip) return null;
@@ -1172,7 +1213,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const allChecks = currentMember.weeklyChecks || [];
     const baseline = allChecks.find(c => c.isBaseline);
     const checks = allChecks.filter(c => c && !c.isBaseline);
-    const habitAvg = checks.length ? Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length) : null;
+    const habitAvg = checks.length
+      ? Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length)
+      : (baseline ? baseline.score : null);
     const ci = habitAvg !== null ? calcCapacityIndex(currentMember.vo2Score_pre, currentMember.gripScore_pre, habitAvg) : null;
     const tier = ci !== null ? getCapacityTier(ci) : null;
     return (
@@ -1193,7 +1236,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             {[
               { label: "VO₂ Score", val: currentMember.vo2Score_pre },
               { label: "Grip Score", val: currentMember.gripScore_pre },
-              { label: "Habit Avg", val: habitAvg ?? "—" }
+              { label: checks.length === 0 ? "Baseline Score" : "Habit Avg", val: habitAvg ?? "—" }
             ].map(({ label, val }) => (
               <div key={label} style={{ background: CARD, borderRadius: "12px", padding: "1rem", textAlign: "center" }}>
                 <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: G }}>{val}</div>
@@ -1333,20 +1376,22 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const latest = [...checks].reverse()[0];
             if (!latest) return null;
             const workoutMap  = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
-            const aerobicMap  = { "No": 0, "Close": 1, "Yes": 2 };
-            const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
-            const regMap      = { "No": 0, "1-2x": 1, "Yes": 2 };
+            const zone2Map    = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3 };
+            const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 };
+            const downshiftMap = { "None": 0, "1-2 times": 1, "3+ times": 2 };
             const movementMap = { "Low": 0, "Moderate": 1, "High": 2 };
+            const sleepOppMap = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3 };
             const rows = [
-              { label: "Training",   value: workoutMap[latest.workouts] ?? 0,          max: 4, display: `${latest.workouts} workouts` },
-              { label: "Aerobic",    value: aerobicMap[latest.aerobic90] ?? 0,          max: 2, display: latest.aerobic90 },
-              { label: "Strength",   value: latest.strengthRPE === "Yes" ? 1 : 0,      max: 1, display: latest.strengthRPE },
-              { label: "Movement",   value: movementMap[latest.dailyMovement] ?? 0,    max: 2, display: latest.dailyMovement },
-              { label: "Sleep",      value: parseInt(latest.sleepQuality) || 0,         max: 5, display: `${latest.sleepQuality}/5` },
-              { label: "Energy",     value: parseInt(latest.energyLevel) || 0,          max: 5, display: `${latest.energyLevel}/5` },
-              { label: "Recovery",   value: parseInt(latest.physicalRecovery) || 0,     max: 5, display: `${latest.physicalRecovery}/5` },
-              { label: "Protein",    value: proteinMap[latest.proteinFloor] ?? 0,       max: 3, display: latest.proteinFloor },
-              { label: "Regulation", value: regMap[latest.regulation] ?? 0,             max: 2, display: latest.regulation },
+              { label: "Training",        value: workoutMap[latest.workouts] ?? 0,                                                          max: 4, display: `${latest.workouts} workouts` },
+              { label: "Zone 2",          value: zone2Map[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0), max: 3, display: latest.zone2 || latest.aerobic90 || "—" },
+              { label: "Strength",        value: latest.strengthRPE === "Yes" ? 1 : 0,                                                     max: 1, display: latest.strengthRPE },
+              { label: "Movement",        value: movementMap[latest.dailyMovement] ?? 0,                                                   max: 2, display: latest.dailyMovement },
+              { label: "Protein",         value: proteinMap[latest.protein ?? latest.proteinFloor] ?? 0,                                   max: 3, display: latest.protein || latest.proteinFloor || "—" },
+              { label: "Sleep Opp.",      value: sleepOppMap[latest.sleepOpportunity] ?? 0,                                                max: 3, display: latest.sleepOpportunity || "—" },
+              { label: "Downshift",       value: downshiftMap[latest.downshift ?? latest.regulation] ?? 0,                                 max: 2, display: latest.downshift || latest.regulation || "—" },
+              { label: "Sleep Quality",   value: parseInt(latest.sleepQuality) || 0,                                                       max: 5, display: `${latest.sleepQuality}/5` },
+              { label: "Energy",          value: parseInt(latest.energyLevel) || 0,                                                        max: 5, display: `${latest.energyLevel}/5` },
+              { label: "Recovery",        value: parseInt(latest.physicalRecovery) || 0,                                                   max: 5, display: `${latest.physicalRecovery}/5` },
             ];
             return (
               <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
@@ -1383,8 +1428,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {(() => {
             if (checks.length < 1) return null;
             const workoutMap = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
-            const aerobicMap = { "No": 0, "Close": 1, "Yes": 2 };
-            const proteinMap = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 };
+            const zone2Map   = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3 };
+            const proteinMap = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3, "Yes": 3 };
             const last3 = checks.slice(-3);
             const last2 = checks.slice(-2);
             const latest = checks[checks.length - 1];
@@ -1397,12 +1442,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               earned.push({ emoji: "🔥", title: "Momentum", desc: "Score increased 3 weeks in a row." });
             if (last3.length === 3 && last3.every(c => c.strengthRPE === "Yes"))
               earned.push({ emoji: "💪", title: "Strength Streak", desc: "Challenging strength session 3 weeks running." });
-            if (last3.length === 3 && last3.every(c => c.aerobic90 === "Yes"))
-              earned.push({ emoji: "🫁", title: "Aerobic Engine", desc: "Hit aerobic target 3 weeks straight." });
-            if (last2.length === 2 && last2.every(c => proteinMap[c.proteinFloor] >= 2))
-              earned.push({ emoji: "🥩", title: "Protein Pro", desc: "Hit protein floor most days, 2 weeks running." });
-            if (last2.length === 2 && last2.every(c => c.regulation === "Yes"))
-              earned.push({ emoji: "🧘", title: "Regulated", desc: "Intentional regulation 3x/week, 2 weeks straight." });
+            if (last3.length === 3 && last3.every(c => (zone2Map[c.zone2] ?? 0) >= 2))
+              earned.push({ emoji: "🫁", title: "Aerobic Engine", desc: "60+ min Zone 2 work 3 weeks straight." });
+            if (last2.length === 2 && last2.every(c => (proteinMap[c.protein ?? c.proteinFloor] ?? 0) >= 2))
+              earned.push({ emoji: "🥩", title: "Protein Pro", desc: "Hit protein target most days, 2 weeks running." });
+            if (last2.length === 2 && last2.every(c => (c.downshift === "3+ times" || c.regulation === "Yes")))
+              earned.push({ emoji: "🧘", title: "Downshifter", desc: "Intentional downshift 3x/week, 2 weeks straight." });
             if (checks.length === 1)
               earned.push({ emoji: "🌱", title: "First Step", desc: "Completed your first weekly check-in." });
             if (last3.length === 3 && last3[1].score < last3[0].score && last3[2].score > last3[1].score)
@@ -1539,7 +1584,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
-            const fields = ["workouts","aerobic90","strengthRPE","dailyMovement","regulation","proteinFloor","sleepQuality","energyLevel","physicalRecovery","disruption"];
+            const fields = ["workouts","zone2","strengthRPE","dailyMovement","protein","downshift","sleepOpportunity","sleepQuality","energyLevel","physicalRecovery","disruption"];
             const answered = fields.filter(f => check[f] !== "" && check[f] != null).length;
             const pct = Math.round((answered / fields.length) * 100);
             return (
@@ -1558,17 +1603,21 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
+          <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em", marginBottom: "1rem", paddingBottom: "0.4rem", borderBottom: "2px solid #eee" }}>
+            SECTION 1 — CAPACITY BUILDERS (SCORED)
+          </div>
           {[
-            { label: "1. Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, Peloton all count" },
-            { label: "2. ~90 min moderate effort?", field: "aerobic90", options: ["Yes","Close","No"], hint: "Breathing elevated but sustainable" },
-            { label: "3. Challenging strength session?", field: "strengthRPE", options: ["Yes","No"], hint: "RPE 7+ · 2–3 reps left in tank" },
-            { label: "4. Daily movement outside workouts?", field: "dailyMovement", options: ["High","Moderate","Low"], hint: "Walks, active job, steps — not counting workouts" },
-            { label: "5. Intentional regulation 3x?", field: "regulation", options: ["Yes","1-2x","No"], hint: "Breathwork, quiet walk, journaling, low-stim time" },
-            { label: "6. Protein floor most meals?", field: "proteinFloor", options: ["Yes","Most days","Some days","Rarely"], hint: "20–40g per meal, 2–3 meals/day" },
+            { label: "1. Workouts This Week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
+            { label: "2. Challenging Strength Session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
+            { label: "3. Daily Movement Outside Workouts", field: "dailyMovement", options: ["High","Moderate","Low"], hints: ["High (8k+ steps/day or very active job)", "Moderate (5–8k/day)", "Low (<5k/day)"] },
+            { label: "4. Zone 2 Aerobic Work (Minutes This Week)", field: "zone2", options: ["0-30","30-60","60-90","90+"], hint: "Steady effort — breathing elevated but sustainable" },
+            { label: "5. Protein in 3+ Meals Per Day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal" },
+            { label: "6. Sleep Opportunity", field: "sleepOpportunity", options: ["5+ nights","3-4 nights","1-2 nights","Rarely"], hint: "How many nights did you have 7+ hours available for sleep?" },
+            { label: "7. Intentional Downshift (10+ min)", field: "downshift", options: ["3+ times","1-2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
           ].map(q => (
             <div key={q.field} style={{ marginBottom: "1.5rem" }}>
               <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>{q.label}</div>
-              {q.hint && <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{q.hint}</div>}
+              {(q.hint || q.hints) && <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{q.hint || q.hints.join(" · ")}</div>}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                 {q.options.map(opt => (
                   <button key={opt} onClick={() => setCheck(c => ({...c, [q.field]: opt}))}
@@ -1580,22 +1629,28 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           ))}
 
-          <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>7. Sleep Quality</div>
-            <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor","Inconsistent","Adequate","Good","Excellent"]} />
+          <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em", margin: "1.5rem 0 1rem", paddingBottom: "0.4rem", borderBottom: "2px solid #eee" }}>
+            SECTION 2 — RECOVERY CHECK (NOT SCORED)
+          </div>
+          <div style={{ fontSize: "0.8rem", color: "#999", marginBottom: "1rem", lineHeight: 1.5 }}>
+            These answers don't affect your Capacity Builders Score. They help us understand your recovery context.
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>8. Energy This Week</div>
-            <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Drained","Low","Stable","Strong","High & Steady"]} />
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>8. Sleep Quality</div>
+            <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor most nights","Restless several nights","Mixed sleep","Good most nights","Consistently deep"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>9. Physical Recovery</div>
-            <ScaleGroup field="physicalRecovery" value={check.physicalRecovery} setCheck={setCheck} labels={["Beat Up","Tight","Normal","Recovered","Fresh"]} />
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>9. Energy This Week</div>
+            <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Exhausted often","Low most days","Mixed energy","Steady most days","High and stable"]} />
+          </div>
+          <div style={{ marginBottom: "1.5rem" }}>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>10. Physical Recovery</div>
+            <ScaleGroup field="physicalRecovery" value={check.physicalRecovery} setCheck={setCheck} labels={["Sore most of week","Soreness lingered","Average recovery","Recovered well","Consistently fresh"]} />
           </div>
 
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>10. Any significant disruption this week?</div>
-            <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Illness, travel, sick kids, work chaos — won't affect your score, just helps interpret it</div>
+            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>11. Weekly Disruption</div>
+            <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Illness, travel, sick kids, heavy workload — won't affect your score, just helps interpret it</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
               {["None","Some disruption","Major disruption"].map(opt => (
                 <button key={opt} onClick={() => setCheck(c => ({...c, disruption: opt}))}
@@ -1609,21 +1664,22 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {/* Pre-submit answer summary */}
           {(() => {
             const scaleLabels = {
-              sleepQuality:     ["Poor","Inconsistent","Adequate","Good","Excellent"],
-              energyLevel:      ["Drained","Low","Stable","Strong","High & Steady"],
-              physicalRecovery: ["Beat Up","Tight","Normal","Recovered","Fresh"],
+              sleepQuality:     ["Poor most nights","Restless several nights","Mixed sleep","Good most nights","Consistently deep"],
+              energyLevel:      ["Exhausted often","Low most days","Mixed energy","Steady most days","High and stable"],
+              physicalRecovery: ["Sore most of week","Soreness lingered","Average recovery","Recovered well","Consistently fresh"],
             };
             const summary = [
-              { label: "Workouts",   val: check.workouts   || "—" },
-              { label: "Aerobic",    val: check.aerobic90  || "—" },
-              { label: "Strength",   val: check.strengthRPE || "—" },
-              { label: "Movement",   val: check.dailyMovement || "—" },
-              { label: "Regulation", val: check.regulation  || "—" },
-              { label: "Protein",    val: check.proteinFloor || "—" },
-              { label: "Sleep",      val: check.sleepQuality ? scaleLabels.sleepQuality[parseInt(check.sleepQuality)-1] : "—" },
-              { label: "Energy",     val: check.energyLevel  ? scaleLabels.energyLevel[parseInt(check.energyLevel)-1]   : "—" },
-              { label: "Recovery",   val: check.physicalRecovery ? scaleLabels.physicalRecovery[parseInt(check.physicalRecovery)-1] : "—" },
-              { label: "Disruption", val: check.disruption || "—" },
+              { label: "Workouts",      val: check.workouts        || "—" },
+              { label: "Strength",      val: check.strengthRPE     || "—" },
+              { label: "Movement",      val: check.dailyMovement   || "—" },
+              { label: "Zone 2",        val: check.zone2           || "—" },
+              { label: "Protein",       val: check.protein         || "—" },
+              { label: "Sleep Opp.",    val: check.sleepOpportunity || "—" },
+              { label: "Downshift",     val: check.downshift       || "—" },
+              { label: "Sleep Quality", val: check.sleepQuality ? scaleLabels.sleepQuality[parseInt(check.sleepQuality)-1] : "—" },
+              { label: "Energy",        val: check.energyLevel  ? scaleLabels.energyLevel[parseInt(check.energyLevel)-1]   : "—" },
+              { label: "Recovery",      val: check.physicalRecovery ? scaleLabels.physicalRecovery[parseInt(check.physicalRecovery)-1] : "—" },
+              { label: "Disruption",    val: check.disruption || "—" },
             ];
             const allAnswered = summary.every(s => s.val !== "—");
             return (
@@ -1859,6 +1915,25 @@ const LIBRARY_ARTICLES = [
     ]
   },
   {
+    id: "recovery-reset",
+    title: "The 24-Hour Recovery Reset",
+    category: "Lifestyle Habits",
+    teaser: "When two or more recovery signals feel off for several days in a row, a short reset can help restore balance. Here's a simple six-step protocol.",
+    weeklyFocusWeek: 5,
+    weeklyFocusMsg: "Strong capacity isn't built by avoiding stress — it's built by recovering well from it. Use this reset whenever signals start to stack up.",
+    driverKeys: ["recovery", "sleep", "energy"],
+    sections: [
+      { heading: "When to Use This Reset", body: "Every training cycle includes periods when recovery dips. Energy drops, sleep becomes disrupted, soreness lingers longer than usual, and life stress starts to accumulate. This is normal. When two or more recovery signals feel off for several days in a row, a short reset can help restore balance. Most short recovery dips improve within 24–48 hours when the fundamentals are restored. If symptoms are severe, illness is present, or recovery continues to feel off for more than 7–10 days, speak with a coach or healthcare professional rather than trying to push through it." },
+      { heading: "Step 1 — Lower the Training Load (Not the Habit)", body: "Keep movement in your routine, but temporarily reduce intensity. Good options include easy Zone 2 cardio, light strength work, a mobility session, or a relaxed 20–30 minute walk. Avoid maximal effort training, very high-volume sessions, or trying to make up missed workouts. Gentle movement supports circulation, tissue repair, and nervous system balance. The goal is to maintain rhythm while reducing strain. Lower the training load — not the habit." },
+      { heading: "Step 2 — Eat to Recover", body: "Your body needs adequate fuel to repair tissue and restore energy. Focus on protein at each meal (about 20–40g), whole foods most of the day, and carbohydrates around training or recovery meals. Helpful meals include eggs and fruit, chicken and rice, yogurt with berries, or a smoothie with protein and fruit. Many recovery dips are made worse by under-fueling, especially during stressful weeks. Low energy often reflects insufficient fuel — not a lack of motivation." },
+      { heading: "Step 3 — Hydrate Consistently", body: "Even mild dehydration can increase fatigue and slow recovery. A simple starting point is roughly half your bodyweight in pounds in ounces of water per day — for example, a 180 lb person would aim for about 90 oz daily. Adjust based on activity level, sweat rate, and climate. Consistency matters more than perfection. Small, regular hydration throughout the day is often more effective than trying to catch up later." },
+      { heading: "Step 4 — Downshift the Nervous System", body: "Recovery is not only physical — it is neurological. Stress accumulates in the nervous system throughout the day, and intentional downshifting helps the body shift back toward recovery. Take 5–10 minutes to slow things down. Options include slow breathing (inhale 4 seconds, exhale 6 seconds), a quiet walk outside, light stretching, or sitting quietly without screens. Longer exhales help activate the parasympathetic nervous system, which supports relaxation and recovery. Getting 10–20 minutes of daylight, especially earlier in the day, can also support circadian rhythm and energy regulation." },
+      { heading: "Step 5 — Protect Tonight's Sleep", body: "Sleep is the most powerful recovery tool available. Tonight aim for 7–9 hours of sleep opportunity, dim lights in the evening, limited screens 30–60 minutes before bed, and a cool, dark sleeping environment. Even one high-quality night of sleep can noticeably improve energy, soreness, and recovery signals. Protecting sleep is often the fastest way to restore recovery momentum." },
+      { heading: "Step 6 — Move Again Tomorrow", body: "Avoid long gaps in movement. As a general rule, try not to let more than 48 hours pass without some form of movement, even if it is light. Light training or easy aerobic work the next day is often better than stopping completely. Consistency helps restore rhythm and rebuild momentum." },
+      { heading: "The Bottom Line", body: "Recovery dips happen during busy weeks. People with strong capacity habits don't panic when this happens — they adjust quickly and reinforce the fundamentals. When recovery signals drop: reduce training intensity, fuel your body well, hydrate consistently, downshift stress, protect sleep, and keep moving. Lower the training load — not the habit." },
+    ]
+  },
+  {
     id: "social-connection",
     title: "Social Connection as a Recovery Tool",
     category: "Community",
@@ -1889,6 +1964,7 @@ const DRIVER_ARTICLE_MAP = {
   strength: "weekly-minimums",
   aerobic:  "weekly-minimums",
   movement: "moving-well",
+  sleepOpp: "sleep",
 };
 
 // ─── POD CARD (member-facing) ─────────────────────────────────────────────────
@@ -2241,9 +2317,8 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       "member_id","name","email","age","sex","weight_lbs","enrolled_date",
       "vo2_pre","vo2_score","grip_pre_lbs","grip_score",
       "week","date","is_baseline","habit_score",
-      "workouts","aerobic_90min","strength_rpe","daily_movement",
-      "sleep_quality","energy_level","physical_recovery",
-      "regulation","protein_floor","disruption",
+      "workouts","zone2_minutes","strength_rpe","daily_movement","protein","sleep_opportunity","downshift",
+      "sleep_quality","energy_level","physical_recovery","disruption",
       "capacity_index","tier"
     ];
 
@@ -2266,9 +2341,8 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
             m.id, m.name, m.email, m.age, m.sex, m.weight,
             m.enrolledDate, m.vo2_pre, m.vo2Score_pre, m.grip_pre, m.gripScore_pre,
             c.week ?? 0, c.date, c.isBaseline ? "YES" : "NO", c.score,
-            c.workouts, c.aerobic90, c.strengthRPE, c.dailyMovement ?? "",
-            c.sleepQuality, c.energyLevel, c.physicalRecovery,
-            c.regulation, c.proteinFloor, c.disruption ?? "",
+            c.workouts, c.zone2 ?? "", c.strengthRPE, c.dailyMovement ?? "", c.protein ?? "", c.sleepOpportunity ?? "", c.downshift ?? "",
+            c.sleepQuality, c.energyLevel, c.physicalRecovery, c.disruption ?? "",
             ci, tier.tier
           ]);
         }
@@ -2393,7 +2467,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
                   <thead>
                     <tr style={{ background: DARK, color: "#fff" }}>
-                      {["Week","Date","Score","Workouts","90min","Strength","Movement","Sleep","Energy","Recovery","Regulation","Protein","Disruption"].map(h => (
+                      {["Week","Date","Score","Workouts","Strength","Movement","Zone 2","Protein","Sleep Opp","Downshift","Sleep","Energy","Recovery","Disruption"].map(h => (
                         <th key={h} style={{ padding: "0.5rem 0.7rem", textAlign: "left", fontWeight: "normal", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
@@ -2405,14 +2479,15 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.date}</td>
                         <td style={{ padding: "0.5rem 0.7rem", fontWeight: "bold" }}>{c.score}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.workouts}</td>
-                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.aerobic90}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.strengthRPE}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.dailyMovement ?? "—"}</td>
+                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.zone2 ?? "—"}</td>
+                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.protein ?? "—"}</td>
+                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.sleepOpportunity ?? "—"}</td>
+                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.downshift ?? "—"}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.sleepQuality}/5</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.energyLevel}/5</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.physicalRecovery}/5</td>
-                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.regulation ?? "—"}</td>
-                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.proteinFloor ?? "—"}</td>
                         <td style={{ padding: "0.5rem 0.7rem", color: c.disruption === "Major disruption" ? "#c07030" : c.disruption === "Some disruption" ? "#b09020" : "#aaa" }}>
                           {c.disruption === "Major disruption" ? "🌊 Major" : c.disruption === "Some disruption" ? "〰️ Some" : "—"}
                         </td>
