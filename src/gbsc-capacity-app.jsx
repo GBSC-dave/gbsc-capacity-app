@@ -959,6 +959,45 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           </div>
 
+          {/* Role milestone card — first check-in, or when role improves */}
+          {(() => {
+            if (checks.length < 1) return null;
+            const latest = checks[checks.length - 1];
+            const prev   = checks.length >= 2 ? checks[checks.length - 2] : null;
+            const roleOrder = { "Reset": 0, "Stabilizer": 1, "Builder": 2, "Performer": 3 };
+            const currentRole = getCapacityRole(latest.score);
+            const prevRole    = prev ? getCapacityRole(prev.score) : null;
+            if (!currentRole) return null;
+            // Show on first check-in, or when role improves
+            const isFirstWeek = checks.length === 1;
+            const roleImproved = prevRole && (roleOrder[currentRole.role] ?? 0) > (roleOrder[prevRole.role] ?? 0);
+            if (!isFirstWeek && !roleImproved) return null;
+            const firstWeekMessages = {
+              "Reset":      { headline: "Your starting role: Reset", body: "Start simple. Small actions compound. Your next check-in is the first step." },
+              "Stabilizer": { headline: "Your starting role: Stabilizer", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
+              "Builder":    { headline: "Your starting role: Builder", body: "Your habits are already creating real capacity. Keep stacking weeks." },
+              "Performer":  { headline: "Your starting role: Performer", body: "You can push, recover, and sustain. That's rare. Protect it." },
+            };
+            const upgradeMessages = {
+              "Stabilizer": { headline: "You've become a Stabilizer", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
+              "Builder":    { headline: "You're now a Builder", body: "Your consistency is creating real capacity. Keep stacking weeks." },
+              "Performer":  { headline: "You've reached Performer", body: "You can push, recover, and sustain. This is rare." },
+            };
+            const msg = isFirstWeek ? firstWeekMessages[currentRole.role] : upgradeMessages[currentRole.role];
+            if (!msg) return null;
+            return (
+              <div style={{ background: `linear-gradient(135deg, ${currentRole.color}22, ${currentRole.color}10)`, border: `1.5px solid ${currentRole.color}55`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", ...fadeUp(300) }}>
+                <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{currentRole.emoji}</div>
+                <div style={{ fontWeight: "bold", color: currentRole.color, fontSize: "1.1rem", marginBottom: "0.3rem" }}>
+                  {msg.headline}
+                </div>
+                <div style={{ fontSize: "0.85rem", color: "#555", lineHeight: 1.6 }}>
+                  {msg.body}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Tier card */}
           {tier && (
             <div style={{ background: CARD, borderRadius: "16px", padding: "1.5rem", marginBottom: "1.5rem", ...fadeUp(450) }}>
@@ -1035,6 +1074,24 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                       </div>
                     );
                   })}
+                  {/* Capacity Role definitions — one tap away */}
+                  <div style={{ marginTop: "1rem", paddingTop: "0.8rem", borderTop: "1px solid #f0f0f0" }}>
+                    <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.04em", marginBottom: "0.5rem" }}>Capacity Roles</div>
+                    {[
+                      { role: "Stabilizer", desc: "Stays consistent when life gets busy.", color: "#e09020" },
+                      { role: "Builder",    desc: "Builds capacity week to week.",         color: G },
+                      { role: "Performer",  desc: "Performs at a high level without burning out.", color: "#1a7a00" },
+                    ].map(({ role, desc, color }) => {
+                      const currentR = getCapacityRole(checks[checks.length-1]?.score);
+                      const isActive = currentR?.role === role;
+                      return (
+                        <div key={role} style={{ display: "flex", gap: "0.5rem", alignItems: "baseline", marginBottom: "0.3rem" }}>
+                          <span style={{ fontSize: "0.78rem", fontWeight: isActive ? "bold" : "normal", color: isActive ? color : "#888", minWidth: "72px" }}>{role}</span>
+                          <span style={{ fontSize: "0.72rem", color: "#aaa" }}>{desc}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
