@@ -491,6 +491,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
   const [validationMsg, setValidationMsg] = useState("");
 
+  // Scroll to top on every view transition so the header is always visible
+  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [view]);
+
   useEffect(() => {
     if (lastCheckScore === null) return;
     const target = lastCheckScore;
@@ -989,15 +992,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
               {currentTierData.next ? (
                 <div style={{ background: CARD, borderRadius: "10px", padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
-                  <div style={{ fontSize: "1.4rem" }}>🎯</div>
                   <div>
-                    <div style={{ fontSize: "0.75rem", color: "#888" }}>Points to next tier</div>
+                    <div style={{ fontSize: "0.72rem", color: "#aaa" }}>Points to next tier</div>
                     <div style={{ fontWeight: "bold", color: DARK }}><span style={{ fontSize: "1.3rem", color: G }}>{pointsToNext}</span> pts to <em>{currentTierData.next}</em></div>
                   </div>
                 </div>
               ) : (
                 <div style={{ background: CARD, borderRadius: "10px", padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
-                  <div style={{ fontSize: "1.4rem" }}>👑</div>
                   <div style={{ fontWeight: "bold", color: "#1a7a00" }}>You've reached the top tier. Maintain the standard.</div>
                 </div>
               )}
@@ -1407,14 +1408,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 </div>
                 {currentTierData.next ? (
                   <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                    <div style={{ fontSize: "1.1rem" }}>🎯</div>
                     <div style={{ fontSize: "0.85rem", color: DARK }}>
                       <span style={{ fontWeight: "bold", color: G, fontSize: "1.1rem" }}>{pointsToNext}</span> point{pointsToNext !== 1 ? "s" : ""} to <strong>{currentTierData.next}</strong>
                     </div>
                   </div>
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                    <div style={{ fontSize: "1.1rem" }}>👑</div>
                     <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#1a7a00" }}>You've reached the top tier. Maintain the standard.</div>
                   </div>
                 )}
