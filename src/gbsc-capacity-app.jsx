@@ -172,6 +172,23 @@ function getGripScore(grip, bw, age, sex) {
   return 8;
 }
 
+// ─── Capacity Role (based on latest weekly habit score) ──────────────────────
+function getCapacityRole(latestScore) {
+  if (latestScore === null || latestScore === undefined) return null;
+  if (latestScore >= 85) return { role: "Performer", color: "#1a7a00", emoji: "🔥", desc: "Performs at a high level without burning out." };
+  if (latestScore >= 70) return { role: "Builder",   color: G,         emoji: "📈", desc: "Builds capacity week to week." };
+  if (latestScore >= 55) return { role: "Stabilizer",color: "#e09020", emoji: "🛡️", desc: "Stays consistent when life gets busy." };
+  return { role: "Reset",     color: "#e05030", emoji: "🔄", desc: "Reestablish the basics and bounce back." };
+}
+
+// ─── Week Status (based on latest weekly habit score) ─────────────────────────
+function getWeekStatus(latestScore) {
+  if (latestScore === null || latestScore === undefined) return null;
+  if (latestScore >= 85) return { status: "Full Capacity Week", emoji: "🔥", color: "#1a7a00", msg: "You're building momentum." };
+  if (latestScore >= 55) return { status: "Minimum Effective Week", emoji: "✅", color: G, msg: "You stayed consistent during a busy week." };
+  return { status: "Reset Week", emoji: "🔁", color: "#e05030", msg: "Start simple and re-establish your baseline." };
+}
+
 function calcCapacityIndex(vo2Score, gripScore, habitScore) {
   if (isNaN(vo2Score) || isNaN(gripScore) || isNaN(habitScore) ||
       vo2Score == null || gripScore == null || habitScore == null) return null;
@@ -431,7 +448,7 @@ function RadioGroup({ options, value, onChange }) {
     <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
       {options.map(opt => (
         <button key={opt} onClick={() => onChange(opt)}
-          style={{ padding: "0.5rem 1rem", border: `2px solid ${value === opt ? G : "#ddd"}`, borderRadius: "8px", background: value === opt ? G : "#fff", color: value === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: value === opt ? "bold" : "normal" }}>
+          style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `2px solid ${value === opt ? G : "#ddd"}`, borderRadius: "8px", background: value === opt ? G : "#fff", color: value === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: value === opt ? "bold" : "normal", display: "flex", alignItems: "center" }}>
           {opt}
         </button>
       ))}
@@ -472,6 +489,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [lastCheckScore, setLastCheckScore] = useState(null);
   const [displayedScore, setDisplayedScore] = useState(0);
   const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
+  const [validationMsg, setValidationMsg] = useState("");
 
   useEffect(() => {
     if (lastCheckScore === null) return;
@@ -493,6 +511,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   const [editForm, setEditForm] = useState(null);
   const [tierExpanded, setTierExpanded] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [libraryArticleId, setLibraryArticleId] = useState(null); // opens library to specific article
   const [driversOpen, setDriversOpen] = useState(false);   // profile page drivers accordion
   const [badgesOpen, setBadgesOpen] = useState(false);     // profile page badges accordion
@@ -512,15 +531,15 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   async function handleSaveEdit() {
     const trimmedName = (editForm.name || "").trim();
-    if (!trimmedName) { alert("Please enter your name."); return; }
+    if (!trimmedName) { setValidationMsg("Please enter your name."); return; }
     const age = parseInt(editForm.age);
     const weight = parseFloat(editForm.weight);
     const grip = parseFloat(editForm.grip);
     const vo2 = parseFloat(editForm.vo2);
-    if (!age || age < 13 || age > 110) { alert("Please enter a valid age (13–110)."); return; }
-    if (!weight || weight <= 0) { alert("Please enter a valid bodyweight greater than 0."); return; }
-    if (isNaN(grip) || grip <= 0) { alert("Please enter a valid grip strength greater than 0."); return; }
-    if (isNaN(vo2) || vo2 <= 0) { alert("Please enter a valid VO₂ estimate greater than 0."); return; }
+    if (!age || age < 13 || age > 110) { setValidationMsg("Please enter a valid age (13–110)."); return; }
+    if (!weight || weight <= 0) { setValidationMsg("Please enter a valid bodyweight greater than 0."); return; }
+    if (isNaN(grip) || grip <= 0) { setValidationMsg("Please enter a valid grip strength greater than 0."); return; }
+    if (isNaN(vo2) || vo2 <= 0) { setValidationMsg("Please enter a valid VO₂ estimate greater than 0."); return; }
     const vo2Score = getVO2Score(parseFloat(editForm.vo2), parseInt(editForm.age), editForm.sex);
     const gripScore = getGripScore(parseFloat(editForm.grip), parseFloat(editForm.weight), parseInt(editForm.age), editForm.sex);
     const updated = {
@@ -541,24 +560,24 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   async function handleRegister() {
     const trimmedName = (form.name || "").trim();
     if (!trimmedName || !form.email || !form.email.trim()) {
-      alert("Please fill in your name and email.");
+      setValidationMsg("Please fill in your name and email.");
       return;
     }
     const age = parseInt(form.age);
     const weight = parseFloat(form.weight);
     const grip = parseFloat(form.grip);
     const vo2 = parseFloat(form.vo2);
-    if (!age || age < 13 || age > 110) { alert("Please enter a valid age (13–110)."); return; }
-    if (!weight || weight <= 0) { alert("Please enter a valid bodyweight greater than 0."); return; }
-    if (isNaN(grip) || grip <= 0) { alert("Please enter a valid grip strength greater than 0."); return; }
-    if (isNaN(vo2) || vo2 <= 0) { alert("Please enter a valid VO₂ estimate greater than 0."); return; }
+    if (!age || age < 13 || age > 110) { setValidationMsg("Please enter a valid age (13–110)."); return; }
+    if (!weight || weight <= 0) { setValidationMsg("Please enter a valid bodyweight greater than 0."); return; }
+    if (isNaN(grip) || grip <= 0) { setValidationMsg("Please enter a valid grip strength greater than 0."); return; }
+    if (isNaN(vo2) || vo2 <= 0) { setValidationMsg("Please enter a valid VO₂ estimate greater than 0."); return; }
     // Advance to baseline check-in step
     setOnboardStep(2);
   }
 
   async function handleRegisterWithBaseline() {
     if (!check.workouts || !check.strengthRPE || !check.zone2) {
-      alert("Please answer at least the first 3 questions.");
+      setValidationMsg("Please answer at least the first 3 questions before continuing.");
       return;
     }
     const vo2Score = getVO2Score(parseFloat(form.vo2), parseInt(form.age), form.sex);
@@ -594,7 +613,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   async function handleSubmitCheck() {
     if (!check.workouts || !check.strengthRPE || !check.zone2) {
-      alert("Please answer at least the first 3 questions.");
+      setValidationMsg("Please answer at least the first 3 questions before submitting.");
       return;
     }
     const existingWeeks = (currentMember.weeklyChecks || []).filter(c => c && !c.isBaseline);
@@ -633,7 +652,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const hdr = (
     <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
       <img src={LOGO_ICON} alt="GBSC" style={{ height: "36px", borderRadius: "4px" }} />
-      <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.05em", flex: 1 }}>Member Portal</div>
+      <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.03em", flex: 1 }}>GBSC Capacity</div>
       <button onClick={() => setView("library")}
         style={{ background: "none", border: `1px solid ${G}55`, color: G, borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold" }}>
         Library
@@ -653,7 +672,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK }}>Welcome to Capacity Season</div>
             <div style={{ color: "#666", fontSize: "0.9rem", marginTop: "0.3rem" }}>Let's get your baseline measurements set up.</div>
           </div>
-          <div style={{ fontWeight: "bold", marginBottom: "1rem", color: DARK }}>📋 Your Profile</div>
+          <div style={{ fontWeight: "bold", marginBottom: "1rem", color: DARK }}>Your Profile</div>
           <F label="Full Name"><input type="text" placeholder="Jane Smith" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <F label="Email"><input type="email" placeholder="jane@email.com" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <F label="Age"><input type="number" placeholder="42" value={form.age} onChange={e => setForm(f => ({...f, age: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
@@ -663,7 +682,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <F label="Bodyweight (lbs)"><input type="number" placeholder="160" value={form.weight} onChange={e => setForm(f => ({...f, weight: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <F label="Grip Strength (lbs)  — from dynamometer"><input type="number" placeholder="95" value={form.grip} onChange={e => setForm(f => ({...f, grip: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <F label="VO₂ Estimate — from Polar test"><input type="number" placeholder="36" value={form.vo2} onChange={e => setForm(f => ({...f, vo2: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
-          <button onClick={handleRegister}
+          {validationMsg && (
+            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "8px", border: "1px solid #fad0c8" }}>
+              {validationMsg}
+            </div>
+          )}
+          <button onClick={() => { setValidationMsg(""); handleRegister(); }}
             style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.5rem" }}>
             Next: Baseline Check-In →
           </button>
@@ -697,9 +721,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
-          <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em", marginBottom: "1rem", paddingBottom: "0.4rem", borderBottom: "2px solid #eee" }}>
-            SECTION 1 — CAPACITY BUILDERS (SCORED)
-          </div>
+          <div style={{ borderBottom: "1px solid #e8e8e8", marginBottom: "1.2rem" }} />
           {[
             { label: "1. Workouts This Week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
             { label: "2. Challenging Strength Session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
@@ -715,7 +737,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                 {q.options.map(opt => (
                   <button key={opt} onClick={() => setCheck(c => ({...c, [q.field]: opt}))}
-                    style={{ padding: "0.5rem 1rem", border: `2px solid ${check[q.field] === opt ? G : "#ddd"}`, borderRadius: "8px", background: check[q.field] === opt ? G : "#fff", color: check[q.field] === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check[q.field] === opt ? "bold" : "normal" }}>
+                    style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `2px solid ${check[q.field] === opt ? G : "#ddd"}`, borderRadius: "8px", background: check[q.field] === opt ? G : "#fff", color: check[q.field] === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check[q.field] === opt ? "bold" : "normal", display: "flex", alignItems: "center" }}>
                     {opt}
                   </button>
                 ))}
@@ -723,11 +745,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           ))}
 
-          <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em", margin: "1.5rem 0 1rem", paddingBottom: "0.4rem", borderBottom: "2px solid #eee" }}>
-            SECTION 2 — RECOVERY CHECK (NOT SCORED)
-          </div>
-          <div style={{ fontSize: "0.8rem", color: "#999", marginBottom: "1rem", lineHeight: 1.5 }}>
-            These answers don't affect your Capacity Builders Score. They help us understand your recovery context.
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "1.8rem 0 1rem" }}>
+            <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
+            <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Recovery check · not scored</div>
+            <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
             <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>8. Sleep Quality</div>
@@ -748,14 +769,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
               {["None","Some disruption","Major disruption"].map(opt => (
                 <button key={opt} onClick={() => setCheck(c => ({...c, disruption: opt}))}
-                  style={{ padding: "0.5rem 1rem", border: `2px solid ${check.disruption === opt ? G : "#ddd"}`, borderRadius: "8px", background: check.disruption === opt ? G : "#fff", color: check.disruption === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check.disruption === opt ? "bold" : "normal" }}>
+                  style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `2px solid ${check.disruption === opt ? G : "#ddd"}`, borderRadius: "8px", background: check.disruption === opt ? G : "#fff", color: check.disruption === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check.disruption === opt ? "bold" : "normal", display: "flex", alignItems: "center" }}>
                   {opt}
                 </button>
               ))}
             </div>
           </div>
 
-          <button onClick={handleRegisterWithBaseline}
+          {validationMsg && (
+            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "8px", border: "1px solid #fad0c8" }}>
+              {validationMsg}
+            </div>
+          )}
+          <button onClick={() => { setValidationMsg(""); handleRegisterWithBaseline(); }}
             style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
             Complete Setup & See My Score →
           </button>
@@ -915,18 +941,18 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* Week badge */}
           <div style={{ textAlign: "center", marginBottom: "1.5rem", ...fadeUp(50) }}>
-            <div style={{ display: "inline-block", background: DARK, color: "#fff", borderRadius: "999px", padding: "0.35rem 1.1rem", fontSize: "0.8rem", fontWeight: "bold", letterSpacing: "0.07em" }}>
-              {weekNum === 0 ? "📍 BASELINE CHECK-IN COMPLETE ✓" : `WEEK ${weekNum} CHECK-IN COMPLETE ✓`}
+            <div style={{ display: "inline-block", color: "#aaa", fontSize: "0.78rem", letterSpacing: "0.03em" }}>
+              {weekNum === 0 ? "Baseline complete ✓" : `Week ${weekNum} of 8 complete ✓`}
             </div>
           </div>
 
           {/* Main score card */}
           <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #2a4a1a 100%)`, borderRadius: "20px", padding: "2rem 1.5rem", color: "#fff", textAlign: "center", marginBottom: "1.5rem", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", ...fadeUp(150) }}>
-            <div style={{ fontSize: "0.85rem", color: "#aaa", marginBottom: "0.5rem", letterSpacing: "0.08em" }}>THIS WEEK'S HABIT SCORE</div>
+            <div style={{ fontSize: "0.78rem", color: "#aaa", marginBottom: "0.5rem", letterSpacing: "0.04em" }}>Habit score</div>
             <div style={{ fontSize: "5rem", fontWeight: "bold", color: G, lineHeight: 1, fontVariantNumeric: "tabular-nums", minWidth: "3ch", display: "inline-block" }}>{displayedScore}</div>
             <div style={{ fontSize: "0.85rem", color: "#888", marginTop: "0.3rem" }}>out of 100</div>
-            <div style={{ fontSize: "0.75rem", color: "#777", marginTop: "0.9rem", lineHeight: 1.5, borderTop: "1px solid #ffffff18", paddingTop: "0.9rem" }}>
-              Capacity Index measures how well your habits support training, recovery, and resilience. Higher scores = greater ability to train and recover.
+            <div style={{ fontSize: "0.72rem", color: "#666", marginTop: "0.9rem", borderTop: "1px solid #ffffff18", paddingTop: "0.9rem" }}>
+              Measures your weekly habits around training, recovery, and resilience.
             </div>
           </div>
 
@@ -941,7 +967,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                   <div style={{ fontSize: "2.8rem", lineHeight: 1 }}>{tier.emoji}</div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "0.75rem", color: "#888", letterSpacing: "0.07em" }}>CAPACITY IDENTITY</div>
+                    <div style={{ fontSize: "0.7rem", color: "#aaa", letterSpacing: "0.05em" }}>Capacity Identity</div>
                     <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color }}>{tier.tier}</div>
                     <div style={{ fontSize: "0.8rem", color: "#666" }}>Capacity Index: <strong style={{ color: DARK }}>{ci}</strong></div>
                   </div>
@@ -979,7 +1005,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               {/* Expanded tier ladder */}
               {tierExpanded && (
                 <div className="gbsc-tier-ladder" style={{ marginTop: "1rem", borderTop: "1px solid #e8e8e8", paddingTop: "1rem" }}>
-                  <div style={{ fontSize: "0.72rem", color: "#888", letterSpacing: "0.07em", marginBottom: "0.6rem", fontWeight: "bold" }}>ALL CAPACITY LEVELS</div>
+                  <div style={{ fontSize: "0.7rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.6rem" }}>All Capacity Levels</div>
                   {tierOrder.map((t, i) => {
                     const isCurrent = t.name === tier.tier;
                     const ptsNeeded = isCurrent ? pointsToNext : (t.name === "Peak Capacity" ? 0 : null);
@@ -1081,11 +1107,32 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const tip = tips[weakest.key];
             if (!tip) return null;
 
+            // ── Today's Focus: smart trigger map overrides weakest driver ──
+            // Check trigger combinations first; fall back to weakest-driver tip
+            const latestScore = latest.score;
+            let focusTip = { ...tip, articleIds: [DRIVER_ARTICLE_MAP[weakest.key]].filter(Boolean) };
+            const lowSleep    = sleep <= 2 || (sleepOpp !== null && sleepOpp <= 1);
+            const lowRecovery = recovery <= 2;
+            const lowWorkouts = workouts < 2;
+            const lowDownshift = reg === 0;
+            const highPerf    = latestScore >= 85;
+            if (lowSleep && lowRecovery) {
+              focusTip = { icon: "🛌", label: "Recovery Support Day", focus: "Walk, fuel well, and wind down early tonight. Your body needs a reset, not more load.", articleIds: ["recovery-reset","sleep","nervous-system"] };
+            } else if (lowWorkouts) {
+              focusTip = { icon: "🚶", label: "Stay in Motion", focus: "Short movement counts today. Any 20–30 minutes of activity keeps the habit alive.", articleIds: ["weekly-minimums","lifestyle-habits","recovery-reset"] };
+            } else if (lowDownshift && lowSleep) {
+              focusTip = { icon: "🧘", label: "Downshift Daily", focus: "10 quiet minutes today. Walk, breathe, journal, or go screen-free.", articleIds: ["nervous-system","sleep"] };
+            } else if (highPerf) {
+              focusTip = { icon: "🏋️", label: "Push + Recover", focus: "Train hard today, then protect sleep and protein. Don't outrun your recovery.", articleIds: ["weekly-minimums","sleep","nutrition-recovery"] };
+            }
+            const linkedArticle = focusTip.articleIds?.length
+              ? LIBRARY_ARTICLES.find(a => focusTip.articleIds.includes(a.id))
+              : (DRIVER_ARTICLE_MAP[weakest.key] ? LIBRARY_ARTICLES.find(a => a.id === DRIVER_ARTICLE_MAP[weakest.key]) : null);
+            const displayTip = { icon: focusTip.icon, label: focusTip.label, focus: focusTip.focus };
+
             // ── Week-over-week change (if available) ──
             const prev = nonBaseline.length >= 2 ? nonBaseline[nonBaseline.length - 2] : null;
             const scoreDiff = prev ? latest.score - prev.score : null;
-            const articleId = DRIVER_ARTICLE_MAP[weakest.key];
-            const linkedArticle = articleId ? LIBRARY_ARTICLES.find(a => a.id === articleId) : null;
 
             return (
               <div style={{ background: CARD, border: `1.5px solid #e0e0e0`, borderRadius: "16px", overflow: "hidden", marginBottom: "1.5rem", ...fadeUp(480) }}>
@@ -1115,13 +1162,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                       fontSize: "0.68rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em",
                       display: "flex", alignItems: "center", gap: "0.3rem",
                     }}>
-                      🎯 FOCUS THIS WEEK
+                      Today's Focus
                     </div>
                     <div style={{
                       background: "#f0f0f0", borderRadius: "8px", padding: "0.25rem 0.6rem",
                       fontSize: "0.68rem", fontWeight: "bold", color: "#555", letterSpacing: "0.06em",
                     }}>
-                      {tip.label.toUpperCase()}
+                      {displayTip.label.toUpperCase()}
                     </div>
                   </div>
                   {/* Icon + tip */}
@@ -1131,9 +1178,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                       background: `${G}15`, borderRadius: "12px",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       fontSize: "1.4rem",
-                    }}>{tip.icon}</div>
+                    }}>{displayTip.icon}</div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: "0.9rem", color: DARK, lineHeight: 1.65 }}>{tip.focus}</div>
+                      <div style={{ fontSize: "0.9rem", color: DARK, lineHeight: 1.65 }}>{displayTip.focus}</div>
                     </div>
                   </div>
                   {/* Read More CTA */}
@@ -1162,7 +1209,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {community && (
             <div style={{ marginBottom: "1.5rem", ...fadeUp(1010) }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.9rem" }}>
-                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>🏠 GBSC COMMUNITY SCOREBOARD</div>
+                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Community</div>
                 <div style={{ fontSize: "0.72rem", color: "#999", marginLeft: "auto" }}>{community.memberCount} member{community.memberCount !== 1 ? "s" : ""}</div>
               </div>
 
@@ -1197,6 +1244,57 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 ))}
               </div>
 
+              {/* Consistency + pod engagement row */}
+              {(() => {
+                const allM = members.length > 0 ? members : [currentMember];
+                // % stayed consistent this week (Stabilizer and above = score >= 55)
+                const withLatest = allM.filter(m => (m.weeklyChecks || []).some(c => c && !c.isBaseline));
+                const stayedConsistent = withLatest.filter(m => {
+                  const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+                  return checks.length && checks[checks.length - 1].score >= 55;
+                });
+                const pctConsistent = withLatest.length ? Math.round((stayedConsistent.length / withLatest.length) * 100) : null;
+                // All-time MEW + Builder weeks
+                let mewTotal = 0, builderTotal = 0;
+                allM.forEach(m => {
+                  (m.weeklyChecks || []).filter(c => c && !c.isBaseline).forEach(c => {
+                    if (c.score >= 55 && c.score < 85) mewTotal++;
+                    if (c.score >= 70) builderTotal++;
+                  });
+                });
+                // Pod engagement this week
+                let podCheckedIn = 0, podTotal = 0;
+                const communityPods = (typeof pods !== "undefined" ? pods : []);
+                communityPods.forEach(pod => {
+                  const podMembers = allM.filter(m => (pod.memberIds || []).includes(m.id));
+                  podTotal += podMembers.length;
+                  podMembers.forEach(m => {
+                    const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+                    if (checks.length && !isEligibleForCheckin(checks[checks.length - 1].date)) podCheckedIn++;
+                  });
+                });
+                const podPct = podTotal > 0 ? Math.round((podCheckedIn / podTotal) * 100) : null;
+                const stats = [
+                  pctConsistent !== null && { label: "Stayed Consistent", val: `${pctConsistent}%`, icon: "💪", desc: "Stabilizer or above this week" },
+                  { label: "Min Effective Weeks", val: mewTotal, icon: "✅", desc: "All-time across gym" },
+                  { label: "Builder+ Weeks", val: builderTotal, icon: "📈", desc: "Score 70+ all time" },
+                  podPct !== null && { label: "Pod Engagement", val: `${podPct}%`, icon: "🫛", desc: "Pods checked in this week" },
+                ].filter(Boolean);
+                if (!stats.length) return null;
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "0.5rem" }}>
+                    {stats.map(({ label, val, icon, desc }) => (
+                      <div key={label} style={{ background: "#f7f7f7", borderRadius: "12px", padding: "0.8rem 0.7rem", textAlign: "center" }}>
+                        <div style={{ fontSize: "1.2rem", marginBottom: "0.15rem" }}>{icon}</div>
+                        <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: G, lineHeight: 1 }}>{val}</div>
+                        <div style={{ fontSize: "0.66rem", color: "#666", marginTop: "0.25rem", lineHeight: 1.3 }}>{label}</div>
+                        <div style={{ fontSize: "0.58rem", color: "#aaa", marginTop: "0.1rem" }}>{desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
             </div>
           )}
 
@@ -1229,6 +1327,24 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <>
                 <div style={{ fontSize: "3rem", fontWeight: "bold", color: G, margin: "0.5rem 0", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{ci}</div>
                 <div style={{ color: tier.color, fontSize: "1rem", fontWeight: "bold" }}>{tier.emoji} {tier.tier}</div>
+                {(() => {
+                  const latest = checks[checks.length - 1];
+                  const role = latest ? getCapacityRole(latest.score) : null;
+                  const ws   = latest ? getWeekStatus(latest.score) : null;
+                  if (!role) return null;
+                  return (
+                    <div style={{ marginTop: "0.7rem", display: "flex", flexDirection: "column", gap: "0.35rem", alignItems: "center" }}>
+                      <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: "999px", padding: "0.22rem 0.9rem", fontSize: "0.78rem", fontWeight: "bold", color: "#fff" }}>
+                        {role.emoji} Capacity Role: {role.role}
+                      </div>
+                      {ws && (
+                        <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "999px", padding: "0.22rem 0.9rem", fontSize: "0.75rem", color: "#ccc" }}>
+                          {ws.emoji} This Week: {ws.status}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </>
             )}
           </div>
@@ -1245,6 +1361,28 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             ))}
           </div>
 
+          {/* ── Week Status card ────────────────────────────────────────── */}
+          {checks.length > 0 && (() => {
+            const latest = checks[checks.length - 1];
+            const ws = getWeekStatus(latest.score);
+            const role = getCapacityRole(latest.score);
+            if (!ws || !role) return null;
+            return (
+              <div style={{ background: CARD, borderRadius: "16px", padding: "1.1rem 1.4rem", marginBottom: "1.8rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div style={{ fontSize: "2rem", lineHeight: 1 }}>{ws.emoji}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.7rem", color: "#888", fontWeight: "bold", letterSpacing: "0.07em", marginBottom: "0.15rem" }}>THIS WEEK</div>
+                  <div style={{ fontWeight: "bold", color: ws.color, fontSize: "0.95rem" }}>{ws.status}</div>
+                  <div style={{ fontSize: "0.78rem", color: "#666", marginTop: "0.15rem" }}>{ws.msg}</div>
+                </div>
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontSize: "0.68rem", color: "#aaa", marginBottom: "0.15rem" }}>ROLE</div>
+                  <div style={{ fontWeight: "bold", color: role.color, fontSize: "0.85rem" }}>{role.role}</div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* ── Tier Progress Bar ─────────────────────────────────────────── */}
           {ci !== null && (() => {
             const tierOrder = [
@@ -1258,8 +1396,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const pointsToNext = currentTierData.next ? (currentTierData.max + 1) - ci : 0;
             const progressPct = Math.min(100, Math.round(((ci - currentTierData.min) / (currentTierData.max - currentTierData.min + 1)) * 100));
             return (
-              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
-                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em", marginBottom: "1rem" }}>🎯 TIER PROGRESS</div>
+              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.8rem" }}>
+                <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginBottom: "0.8rem" }}>Tier Progress</div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#888", marginBottom: "0.35rem" }}>
                   <span style={{ fontWeight: "bold", color: tier.color }}>{currentTierData.emoji} {currentTierData.name}</span>
                   {currentTierData.next && <span>{tierOrder.find(t => t.name === currentTierData.next)?.emoji} {currentTierData.next}</span>}
@@ -1319,7 +1457,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             return (
               <div style={{ background: DARK, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.8rem" }}>
-                  <div style={{ fontWeight: "bold", color: "#fff", fontSize: "0.85rem", letterSpacing: "0.06em" }}>📈 MY CAPACITY TREND</div>
+                  <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em" }}>Capacity Trend</div>
                   <div style={{ fontSize: "0.82rem", color: totalChange >= 0 ? G : "#e07030", fontWeight: "bold" }}>
                     {totalChange >= 0 ? "+" : ""}{totalChange} pts overall
                   </div>
@@ -1349,26 +1487,44 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {(baseline || checks.length > 0) && (
             <div style={{ marginBottom: "1.5rem" }}>
-              <div style={{ fontWeight: "bold", marginBottom: "0.8rem", color: DARK }}>Check-In History</div>
+              <button onClick={() => setHistoryOpen(o => !o)}
+                style={{ width: "100%", background: "none", border: "none", padding: "0 0 0.8rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Check-In History</span>
+                <span style={{ color: "#aaa", fontSize: "1.1rem", transition: "transform 0.2s", display: "inline-block", transform: historyOpen ? "rotate(180deg)" : "none" }}>▾</span>
+              </button>
+            {historyOpen && (<div>
               {baseline && (
                 <div style={{ display: "flex", justifyContent: "space-between", background: "#f0f7ec", border: `1px solid ${G}`, borderRadius: "8px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
-                  <span style={{ color: "#555" }}>📍 Baseline — {baseline.date}</span>
+                  <span style={{ color: "#555" }}>Baseline — {baseline.date}</span>
                   <span style={{ fontWeight: "bold", color: G }}>{baseline.score}/100</span>
                 </div>
               )}
-              {checks.map((c, i) => (
-                <div key={i} style={{ background: CARD, borderRadius: "8px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ color: "#666" }}>Week {c.week} — {c.date}</span>
-                    <span style={{ fontWeight: "bold", color: G }}>{c.score}/100</span>
-                  </div>
-                  {c.disruption && c.disruption !== "None" && (
-                    <div style={{ fontSize: "0.72rem", color: c.disruption === "Major disruption" ? "#c07030" : "#b09020", marginTop: "0.25rem" }}>
-                      {c.disruption === "Major disruption" ? "🌊" : "〰️"} {c.disruption}
+              {checks.map((c, i) => {
+                const ws = getWeekStatus(c.score);
+                return (
+                  <div key={i} style={{ background: CARD, borderRadius: "8px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
+                        <span style={{ color: "#666" }}>Week {c.week} — {c.date}</span>
+                        {ws && (
+                          <div style={{ marginTop: "0.2rem" }}>
+                            <span style={{ fontSize: "0.7rem", fontWeight: "bold", color: ws.color, background: ws.color + "15", borderRadius: "999px", padding: "0.1rem 0.55rem" }}>
+                              {ws.emoji} {ws.status}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ fontWeight: "bold", color: G, flexShrink: 0 }}>{c.score}/100</span>
                     </div>
-                  )}
-                </div>
-              ))}
+                    {c.disruption && c.disruption !== "None" && (
+                      <div style={{ fontSize: "0.72rem", color: c.disruption === "Major disruption" ? "#c07030" : "#b09020", marginTop: "0.25rem" }}>
+                        {c.disruption === "Major disruption" ? "🌊" : "〰️"} {c.disruption}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>)}
             </div>
           )}
           {/* ── Capacity Drivers (collapsed) ─────────────────────────────── */}
@@ -1394,10 +1550,31 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               { label: "Recovery",        value: parseInt(latest.physicalRecovery) || 0,                                                   max: 5, display: `${latest.physicalRecovery}/5` },
             ];
             return (
-              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1.6rem", overflow: "hidden" }}>
+                {(() => {
+                  const sortedRows = [...rows].sort((a,b) => (b.value/b.max) - (a.value/a.max));
+                  const topDriver = sortedRows[0];
+                  const bottomDriver = sortedRows[sortedRows.length - 1];
+                  const topPct = Math.round((topDriver.value / topDriver.max) * 100);
+                  const bottomPct = Math.round((bottomDriver.value / bottomDriver.max) * 100);
+                  return (
+                    <div style={{ padding: "0.7rem 1.3rem 0", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      {topPct >= 70 && (
+                        <span style={{ fontSize: "0.72rem", background: `${G}15`, color: "#2a7a14", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>
+                          ⬆ Main driver: {topDriver.label}
+                        </span>
+                      )}
+                      {bottomPct < 50 && (
+                        <span style={{ fontSize: "0.72rem", background: "#fff4ee", color: "#c05820", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>
+                          ⬇ Main limiter: {bottomDriver.label}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
                 <button onClick={() => setDriversOpen(o => !o)}
                   style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                  <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>📊 CAPACITY DRIVERS</span>
+                  <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Capacity Drivers</span>
                   <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: driversOpen ? "rotate(180deg)" : "none" }}>▾</span>
                 </button>
                 {driversOpen && (
@@ -1454,12 +1631,29 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               earned.push({ emoji: "↗️", title: "Bounce Back", desc: "Score dropped then came back stronger." });
             if (latest.score >= 80)
               earned.push({ emoji: "🏆", title: "High Performer", desc: `Habit score of ${latest.score} this week.` });
+            // New behavior-based badges
+            const successWeeks = checks.filter(c => c.score >= 55);
+            if (successWeeks.length >= 1 && checks.some(c => c.score < 55) === false && checks.length >= 3)
+              earned.push({ emoji: "🔰", title: "No Zero Weeks", desc: "Every week has been at Minimum Effective Week or better." });
+            // Stayed in Motion: had disruption but still hit MEW
+            if (checks.some(c => c.disruption && c.disruption !== "None" && c.score >= 55))
+              earned.push({ emoji: "🏃", title: "Stayed in Motion", desc: "Hit Minimum Effective Week during a disrupted week." });
+            // Stacked Weeks: 3 consecutive successful weeks (score >= 55)
+            const hasStack = checks.length >= 3 && checks.slice(-3).every(c => c.score >= 55);
+            if (hasStack)
+              earned.push({ emoji: "📚", title: "Stacked Weeks", desc: "3 successful weeks in a row." });
+            // Adapted Under Pressure: disruption week but still hit 55+
+            if (last2.length === 2 && last2[last2.length-1].disruption && last2[last2.length-1].disruption !== "None" && last2[last2.length-1].score >= 55)
+              earned.push({ emoji: "🔧", title: "Adapted Under Pressure", desc: "Stayed consistent despite disruption this week." });
+            // Consistency Leader: 5+ successful weeks, no reset weeks
+            if (checks.length >= 5 && checks.every(c => c.score >= 55))
+              earned.push({ emoji: "🥇", title: "Consistency Leader", desc: "5+ successful weeks with no reset weeks." });
             if (earned.length === 0) return null;
             return (
-              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1.6rem", overflow: "hidden" }}>
                 <button onClick={() => setBadgesOpen(o => !o)}
                   style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                  <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.85rem", letterSpacing: "0.06em" }}>🏅 CAPACITY BADGES · {earned.length} earned</span>
+                  <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Capacity Badges <span style={{ fontWeight: "normal", color: "#aaa", fontSize: "0.8rem" }}>· {earned.length} earned</span></span>
                   <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: badgesOpen ? "rotate(180deg)" : "none" }}>▾</span>
                 </button>
                 {badgesOpen && (
@@ -1475,6 +1669,39 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     ))}
                   </div>
                 )}
+              </div>
+            );
+          })()}
+
+          {/* ── Rotating success message ──────────────────────────────── */}
+          {checks.length > 0 && (() => {
+            const latest = checks[checks.length - 1];
+            const ws = getWeekStatus(latest.score);
+            const messages = {
+              "Full Capacity Week": [
+                "You stayed in the game this week.",
+                "Consistency beats perfection.",
+                "This is how long-term capacity is built.",
+                "Strong week. Keep compounding.",
+              ],
+              "Minimum Effective Week": [
+                "Busy week handled well.",
+                "You adapted instead of disappearing.",
+                "Showing up during hard weeks is the skill.",
+                "A Minimum Effective Week still counts.",
+              ],
+              "Reset Week": [
+                "Every week is a new start.",
+                "Small changes produce results.",
+                "Bounce back starts today.",
+                "One step forward is enough.",
+              ],
+            };
+            const pool = messages[ws?.status] || messages["Minimum Effective Week"];
+            const msg = pool[checks.length % pool.length];
+            return (
+              <div style={{ textAlign: "center", padding: "0.7rem 1rem", marginBottom: "1rem" }}>
+                <div style={{ fontSize: "0.82rem", color: "#888", fontStyle: "italic" }}>"{msg}"</div>
               </div>
             );
           })()}
@@ -1512,7 +1739,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {checks.length > 0 && (
             <button onClick={() => setView("checkFeedback")}
               style={{ width: "100%", background: "none", border: `2px solid ${G}`, color: G, borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.7rem" }}>
-              📊 View My Last Results
+              View My Last Results
             </button>
           )}
           <button onClick={startEdit}
@@ -1540,7 +1767,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <div style={{ background: "#fff8e6", border: "1px solid #f0c040", borderRadius: "10px", padding: "0.8rem 1rem", fontSize: "0.82rem", color: "#7a5c00", marginBottom: "1.2rem" }}>
             ⚠️ Updating VO₂ or Grip will recalculate your Capacity Index scores.
           </div>
-          <button onClick={handleSaveEdit}
+          {validationMsg && (
+            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "8px", border: "1px solid #fad0c8" }}>
+              {validationMsg}
+            </div>
+          )}
+          <button onClick={() => { setValidationMsg(""); handleSaveEdit(); }}
             style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
             Save Changes ✓
           </button>
@@ -1603,9 +1835,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
-          <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em", marginBottom: "1rem", paddingBottom: "0.4rem", borderBottom: "2px solid #eee" }}>
-            SECTION 1 — CAPACITY BUILDERS (SCORED)
-          </div>
+          <div style={{ borderBottom: "1px solid #e8e8e8", marginBottom: "1.2rem" }} />
           {[
             { label: "1. Workouts This Week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
             { label: "2. Challenging Strength Session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
@@ -1621,7 +1851,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                 {q.options.map(opt => (
                   <button key={opt} onClick={() => setCheck(c => ({...c, [q.field]: opt}))}
-                    style={{ padding: "0.5rem 1rem", border: `2px solid ${check[q.field] === opt ? G : "#ddd"}`, borderRadius: "8px", background: check[q.field] === opt ? G : "#fff", color: check[q.field] === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check[q.field] === opt ? "bold" : "normal" }}>
+                    style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `2px solid ${check[q.field] === opt ? G : "#ddd"}`, borderRadius: "8px", background: check[q.field] === opt ? G : "#fff", color: check[q.field] === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check[q.field] === opt ? "bold" : "normal", display: "flex", alignItems: "center" }}>
                     {opt}
                   </button>
                 ))}
@@ -1629,11 +1859,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           ))}
 
-          <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em", margin: "1.5rem 0 1rem", paddingBottom: "0.4rem", borderBottom: "2px solid #eee" }}>
-            SECTION 2 — RECOVERY CHECK (NOT SCORED)
-          </div>
-          <div style={{ fontSize: "0.8rem", color: "#999", marginBottom: "1rem", lineHeight: 1.5 }}>
-            These answers don't affect your Capacity Builders Score. They help us understand your recovery context.
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "1.8rem 0 1rem" }}>
+            <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
+            <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Recovery check · not scored</div>
+            <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
             <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>8. Sleep Quality</div>
@@ -1654,7 +1883,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
               {["None","Some disruption","Major disruption"].map(opt => (
                 <button key={opt} onClick={() => setCheck(c => ({...c, disruption: opt}))}
-                  style={{ padding: "0.5rem 1rem", border: `2px solid ${check.disruption === opt ? G : "#ddd"}`, borderRadius: "8px", background: check.disruption === opt ? G : "#fff", color: check.disruption === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check.disruption === opt ? "bold" : "normal" }}>
+                  style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `2px solid ${check.disruption === opt ? G : "#ddd"}`, borderRadius: "8px", background: check.disruption === opt ? G : "#fff", color: check.disruption === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check.disruption === opt ? "bold" : "normal", display: "flex", alignItems: "center" }}>
                   {opt}
                 </button>
               ))}
@@ -1685,7 +1914,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             return (
               <div style={{ background: allAnswered ? "#f0f7ec" : "#fafafa", border: `1.5px solid ${allAnswered ? G : "#ddd"}`, borderRadius: "12px", padding: "1rem 1.1rem", marginBottom: "1rem" }}>
                 <div style={{ fontSize: "0.75rem", fontWeight: "bold", color: allAnswered ? G : "#888", letterSpacing: "0.06em", marginBottom: "0.6rem" }}>
-                  {allAnswered ? "✓ READY TO SUBMIT — YOUR ANSWERS:" : "📋 YOUR ANSWERS SO FAR:"}
+                  {allAnswered ? "Ready to submit" : "Your answers so far"}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.3rem 1rem" }}>
                   {summary.map(({ label, val }) => (
@@ -1698,7 +1927,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               </div>
             );
           })()}
-          <button onClick={handleSubmitCheck}
+          {validationMsg && (
+            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "8px", border: "1px solid #fad0c8" }}>
+              {validationMsg}
+            </div>
+          )}
+          <button onClick={() => { setValidationMsg(""); handleSubmitCheck(); }}
             style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
             Submit Check-In →
           </button>
@@ -1934,6 +2168,158 @@ const LIBRARY_ARTICLES = [
     ]
   },
   {
+    id: "mew-guide",
+    title: "Minimum Effective Week",
+    category: "Protocols",
+    teaser: "When life gets busy, this is your floor. Hit these targets and you keep momentum, maintain fitness, and avoid starting over.",
+    weeklyFocusWeek: 2,
+    weeklyFocusMsg: "A Minimum Effective Week still counts. Staying consistent during hard weeks is the skill that builds long-term capacity.",
+    driverKeys: ["workouts", "movement", "reg"],
+    sections: [
+      { heading: "The Goal", body: "When life gets busy, this is your floor. If you hit this, you keep your momentum, maintain your fitness, and avoid starting over. A Minimum Effective Week is not failure — it is intelligent adaptation." },
+      { heading: "The Targets", body: "2 or more workouts (classes, lifting, running, cycling all count). At least 1 challenging strength session — push yourself a bit, leaving 2–3 reps in reserve. Move most days, aiming for 5–8k steps. 60 minutes of aerobic work for the week — break it up however works: 2 × 30 min, 3 × 20 min, 4 × 15 min. Protein at 2 or more meals most days. 3–4 nights with 7+ hours of sleep available. 1–2 intentional downshift sessions of 10+ minutes." },
+      { heading: "What This Week Does For You", body: "A Minimum Effective Week keeps the habit of training alive. It maintains the fitness you have built. It prevents the long gaps that force you to start over. It keeps your Capacity Index from declining. Consistency over time is what builds capacity — and Minimum Effective Weeks are how you stay consistent when life doesn't cooperate." },
+      { heading: "Important: This Is a Floor, Not a Ceiling", body: "A Minimum Effective Week maintains what you have — it does not build new capacity. If you stay here too long, progress slows and results plateau. Most months should look like 2–3 Build Weeks where you push forward, and 1–2 Minimum Weeks where you stay consistent. Think of this as your maintenance mode, not your growth mode." },
+      { heading: "The Rule", body: "Don't aim for perfect weeks. Aim for repeatable weeks. When life gets busy, come back to this, get a win, and keep going. This is how you break the cycle of on track → off track → start over. You don't need to do everything. You just need to stay consistent." },
+    ]
+  },
+  {
+    id: "build-week",
+    title: "Build Week",
+    category: "Protocols",
+    teaser: "When life opens up, this is your target. Build weeks are where real progress happens — strength, endurance, recovery, and capacity all improve here.",
+    weeklyFocusWeek: 3,
+    weeklyFocusMsg: "This is a Build Week. Take advantage of it. Stack the basics at a higher level and watch your capacity move forward.",
+    driverKeys: ["workouts", "aerobic", "strength"],
+    sections: [
+      { heading: "The Goal", body: "When you have more capacity available, this is your target. If you hit a Build Week, you build strength and endurance, improve energy and recovery, and move your fitness forward. This is where your Capacity Index improves." },
+      { heading: "The Targets", body: "3–4 or more workouts. 2 or more challenging strength sessions — push yourself, leaving 1–3 reps in reserve. Move daily, aiming for 7–10k or more steps. 60–90 or more minutes of aerobic work for the week: 3 × 20–30 min, 2 × 30–45 min, or 4 × 15–25 min — whatever fits your schedule. Protein at 3 or more meals most days to support recovery and strength. 5 or more nights with 7+ hours of sleep available. 3 or more intentional downshift sessions of 10+ minutes." },
+      { heading: "What This Week Does For You", body: "Build Weeks are where your capacity actually grows. Your score improves, your body adapts to higher workloads, and your recovery becomes more efficient. These weeks are the engine of progress during Capacity Season. They do not need to be every week — but when life allows, lean into them." },
+      { heading: "The Balance", body: "Most months should include 2–3 Build Weeks and 1–2 Minimum Effective Weeks. Build Weeks push capacity forward. Minimum Weeks keep consistency alive during harder periods. The two together create sustainable, long-term progress. During a Build Week: lean in, take advantage, build momentum. During a Minimum Week: protect the habit, stay consistent, do not stop." },
+      { heading: "The Rule", body: "Progress does not come from one perfect week. It comes from stacking Build Weeks when you can, and Minimum Weeks when you need to. Stay consistent, and progress will follow." },
+    ]
+  },
+  {
+    id: "high-soreness",
+    title: "High Muscle Soreness Protocol",
+    category: "Protocols",
+    teaser: "High soreness after a hard week or new training stimulus is normal. Here's how to recover well and keep training moving forward.",
+    weeklyFocusWeek: 0,
+    weeklyFocusMsg: "Muscle soreness is a sign your body is adapting. Support it with movement, nutrition, and sleep — not complete rest.",
+    driverKeys: ["recovery", "sleep", "movement"],
+    sections: [
+      { heading: "What's Normal", body: "Muscle soreness often appears after a new exercise, higher training volume, returning after time away, or pushing intensity during a hard week. This is called Delayed Onset Muscle Soreness (DOMS) and usually peaks 24–48 hours after training. Mild to moderate soreness is a sign your body is adapting. When soreness becomes high enough to limit movement or training quality, the goal shifts slightly — support recovery so your body can keep adapting without unnecessary strain. Most soreness improves within 48–72 hours when recovery is supported." },
+      { heading: "Step 1 — Keep Moving (But Reduce Intensity)", body: "Complete rest usually does not speed recovery from muscle soreness. Gentle movement helps by increasing circulation, delivering nutrients to tissues, and reducing stiffness. Good options include easy Zone 2 cardio, light cycling or rowing, a relaxed walk, mobility work, and light technique lifting. Avoid maximal effort training and high-volume eccentric work. The goal is to move the body — not stress the tissue." },
+      { heading: "Step 2 — Support Recovery With Nutrition", body: "Muscle tissue repairs using the nutrients you provide. Aim for 20–40g of protein per meal — eggs and fruit, chicken and rice, Greek yogurt with berries, or a protein smoothie all work well. Include carbohydrates to restore muscle energy: rice, potatoes, oats, fruit, or whole grains. Hydrate consistently throughout the day — drink until urine is light yellow. Under-fueling during soreness slows recovery significantly." },
+      { heading: "Step 3 — Improve Circulation to the Area", body: "Light circulation work reduces stiffness and helps muscles feel better. Helpful options include light stretching, mobility work, foam rolling, and massage or percussion tools. Use moderate pressure — very aggressive pressure on extremely sore tissue can increase irritation. Focus on gentle tissue movement, not deep pain." },
+      { heading: "Step 4 — Prioritize Sleep", body: "Muscle repair and adaptation occur primarily during sleep. Aim for 7–9 hours with a consistent bedtime and a cool, dark environment. If soreness is high, consider a short mobility session in the evening, a warm shower before bed, and quiet screen-free time before sleep. Quality sleep is one of the most powerful recovery tools available." },
+      { heading: "Step 5 — Adjust the Next Workout", body: "If soreness is still high during the next training session, modify rather than force maximal effort. Options include reducing load, reducing volume, focusing on technique, or training a different muscle group. Consistency matters more than pushing through poor-quality sessions. A well-adjusted workout still builds progress. Speak with a coach or healthcare professional if soreness lasts longer than 5–7 days, swelling or sharp pain is present, or range of motion is severely limited." },
+    ]
+  },
+  {
+    id: "overwhelm",
+    title: "High Stress and Overwhelm Protocol",
+    category: "Protocols",
+    teaser: "When stress builds beyond the physical, your body carries more than it can recover from. This protocol helps lower total load and restore recovery capacity.",
+    weeklyFocusWeek: 0,
+    weeklyFocusMsg: "You are not just managing training load — you are managing total life load. Your body responds to all of it.",
+    driverKeys: ["reg", "sleep", "energy"],
+    sections: [
+      { heading: "When to Use This Protocol", body: "Use this when two or more of the following are present for several days: high stress or mental pressure, poor or inconsistent sleep, low energy, workouts feeling harder than normal, or difficulty shutting off your mind. This is a system load issue. Your body is carrying more than it can currently recover from. The goal is not to eliminate stress completely — it is to reduce internal load, stabilize your system, and restore your ability to recover." },
+      { heading: "Step 1 — Lower the Training Load (Not the Habit)", body: "Keep showing up — just adjust the intensity. Good options include Zone 2 aerobic work, light to moderate strength work, longer warm-ups, and 20–40 minute walks. Avoid max effort training, high volume sessions, and pushing through fatigue. You are creating space for recovery without breaking consistency." },
+      { heading: "Step 2 — Reduce Input, Not Just Output", body: "Most people try to push through stress. Instead, reduce what your system is processing. For 24–72 hours, limit unnecessary phone use, reduce social media, avoid constant news or stimulation, and create small pockets of quiet. Your brain processes input as stress — less input means lower total load." },
+      { heading: "Step 3 — Daily Downshift (Non-Negotiable)", body: "Set aside 5–10 minutes of intentional stillness with no phone and no distractions. Options include sitting quietly, breathing slowly, lying down and relaxing, or stepping outside in silence. If your mind is busy — that's normal. Stay anyway. This is one of the fastest ways to shift into a recovery state." },
+      { heading: "Step 4 — Clear Internal Pressure", body: "Unprocessed thoughts keep your system activated. Take 2–3 minutes and ask: What is currently weighing on me? What feels unresolved? Write or mentally note it clearly. Examples: I am stressed about work deadlines. I feel behind this week. Naming pressure reduces its intensity." },
+      { heading: "Step 5 — Control What You Can", body: "Stress often comes from feeling overwhelmed. Shift your focus from 'I have too much going on' to 'What is the next simple action?' Then do just that one thing. Action restores control, and control reduces stress." },
+      { heading: "Step 6 — Support Recovery Fundamentals", body: "Reinforce the basics: eat regular balanced meals with protein at each meal, hydrate consistently, get outside early in the day, and aim for consistent sleep timing. No extremes — just consistency. Within 24–72 hours, most members notice a calmer mental state, improved sleep, more stable energy, and better training feel. If stress remains elevated for 7–10 days, speak with a coach for additional support." },
+    ]
+  },
+  {
+    id: "poor-sleep",
+    title: "Poor Sleep Recovery Protocol",
+    category: "Protocols",
+    teaser: "One poor night of sleep is not a crisis. What matters most is how you respond the next day. This protocol helps you stabilize quickly.",
+    weeklyFocusWeek: 0,
+    weeklyFocusMsg: "One night of poor sleep happens to everyone. Stabilize your routine the next day and protect the following night — your body regains rhythm quickly.",
+    driverKeys: ["sleep", "energy", "recovery"],
+    sections: [
+      { heading: "One Night Is Not a Crisis", body: "Everyone experiences nights when sleep is shorter or more disrupted than usual — maybe you woke up multiple times, stress kept your mind active, or your schedule cut sleep short. One poor night of sleep is not a crisis. What matters most is how you respond the next day. Use this protocol to support energy, recovery, and the next night of sleep." },
+      { heading: "Step 1 — Get Morning Light", body: "Within 30–60 minutes of waking, spend 5–15 minutes outside in daylight. Morning light helps regulate your circadian rhythm and signals to your body that the day has begun. This simple step often improves alertness during the day and supports better sleep the following night." },
+      { heading: "Step 2 — Move, But Keep It Easy", body: "If you planned to train, reduce intensity. Good options include easy Zone 2 cardio, light strength work, technique-focused training, or a brisk walk. Avoid maximal effort workouts and very high training volume. Light movement often improves energy, even after a poor night of sleep." },
+      { heading: "Step 3 — Eat Normally", body: "Do not skip meals. Focus on protein with each meal, whole foods most of the day, and carbohydrates with meals. Under-fueling often makes fatigue worse. Low energy after poor sleep is common, but stable nutrition helps the body maintain momentum." },
+      { heading: "Step 4 — Use Caffeine Strategically", body: "Caffeine can help restore alertness. Use it wisely: consume it earlier in the day and avoid caffeine within 8 hours of bedtime. Excess caffeine late in the day can worsen the next night's sleep — which is the opposite of what you need." },
+      { heading: "Step 5 — Protect Tonight's Sleep", body: "A single strong night of sleep usually restores balance. Tonight aim for 7–9 hours of sleep opportunity, dim lights in the evening, limited screens before bed, and a cool dark sleeping environment. Protecting the next night of sleep is the most important recovery step after a poor night. Consistency helps your body regain rhythm quickly." },
+    ]
+  },
+  {
+    id: "high-stress-week",
+    title: "High Stress Week Protocol",
+    category: "Protocols",
+    teaser: "Some weeks bring higher stress than usual. The goal is not to stop training — it's to adjust so your body can keep adapting.",
+    weeklyFocusWeek: 0,
+    weeklyFocusMsg: "Stressful weeks happen. Adjust instead of abandoning your routine. Small adjustments keep your body moving forward.",
+    driverKeys: ["reg", "sleep", "workouts"],
+    sections: [
+      { heading: "When Stress Spikes", body: "Some weeks bring higher stress than usual — work deadlines, family obligations, unexpected responsibilities. Stress affects recovery just like physical training does. The goal during these weeks is not to stop training. It is to adjust so your body can keep adapting." },
+      { heading: "Step 1 — Reduce Training Intensity", body: "Maintain movement but reduce load. Helpful adjustments include slightly shorter workouts, moderate effort instead of maximal effort, and fewer high-intensity sessions. Consistency matters more than pushing hard. Showing up at a lower intensity is far better than not showing up at all." },
+      { heading: "Step 2 — Protect Sleep Aggressively", body: "Sleep is one of the body's most powerful stress buffers. During stressful weeks, maintain a consistent sleep schedule, dim lights in the evening, limit screens before bed, and keep your sleeping environment cool and dark. Good sleep helps the body regulate stress hormones and restore energy." },
+      { heading: "Step 3 — Use Short Recovery Breaks", body: "Stress accumulates during the day. Taking 5-minute recovery breaks can help regulate your nervous system. Options include slow breathing, stepping outside for fresh air, a short walk, or quiet time away from screens. Small resets help prevent stress from building throughout the day." },
+      { heading: "Step 4 — Simplify Your Expectations", body: "During high stress weeks, success means showing up. Not personal records. Not perfect workouts. Maintaining movement keeps your routine intact and protects long-term progress. When stress is high: reduce training intensity, prioritize sleep, take short recovery breaks, and focus on consistency. Small adjustments allow your body to keep moving forward." },
+    ]
+  },
+  {
+    id: "travel-disruption",
+    title: "Travel and Schedule Disruption Protocol",
+    category: "Protocols",
+    teaser: "Travel, work demands, and schedule changes are a normal part of life. Here's how to protect the core habits that maintain your capacity when routine breaks.",
+    weeklyFocusWeek: 0,
+    weeklyFocusMsg: "A disrupted week handled well almost always leads to a very smooth return to training. Protect the basics and your capacity will hold.",
+    driverKeys: ["workouts", "movement", "sleep"],
+    sections: [
+      { heading: "When Routine Breaks", body: "Even highly consistent people experience weeks where routines are disrupted. When schedules shift, the goal is not to execute a perfect training week. The goal is to protect the core habits that maintain your capacity. Small actions during disrupted weeks prevent large setbacks and make it easier to return to full training when life settles. Use this protocol when traveling, when work schedules become unpredictable, when family responsibilities temporarily increase, or when normal training routines are interrupted." },
+      { heading: "Step 1 — Protect the Movement Habit", body: "Even when full workouts are difficult, keep some daily movement. Movement maintains circulation, joint mobility, and nervous system balance. Options include a 20–30 minute walk, a short bodyweight circuit, a light jog, bike, or row, or a mobility or stretching session. Even 10–20 minutes of movement is valuable. The goal is simply to do something rather than nothing." },
+      { heading: "Step 2 — Maintain Protein and Simple Nutrition", body: "Travel and busy schedules often disrupt nutrition. Rather than eating perfectly, focus on two simple anchors: protein at meals (20–40g when possible — eggs or yogurt at breakfast, chicken or fish at lunch, meat or tofu at dinner) and whole foods when available. Avoid the common disruption trap of skipping meals and relying entirely on convenience foods. Fuel supports recovery even during chaotic weeks." },
+      { heading: "Step 3 — Protect Sleep Where Possible", body: "Instead of chasing perfect sleep, protect two key behaviors. Get outside within 30–60 minutes of waking for 5–15 minutes — morning light helps stabilize your circadian rhythm. Before bed, dim lights, reduce screens, and allow 10–20 minutes of quiet time. Even small sleep rituals help maintain recovery during disruptions." },
+      { heading: "Step 4 — Reduce Training Intensity", body: "During travel or schedule disruption, lower the training demand temporarily. Options include shorter workouts, moderate effort instead of maximal effort, and aerobic sessions instead of high intensity work. Think of disruption weeks as maintenance weeks, not peak performance weeks. When life normalizes, intensity can return." },
+      { heading: "Step 5 — Return Gradually", body: "When your schedule stabilizes, return to your normal training rhythm gradually. Avoid the urge to double workouts, make up missed sessions, or jump immediately into maximal effort training. Resume your normal schedule and allow 3–5 days for the body to readjust. Capacity rebuilds quickly when consistency returns. Capacity is not built by perfect weeks — it is built by protecting consistency during imperfect weeks." },
+    ]
+  },
+  {
+    id: "illness-return",
+    title: "Illness and Return to Training Protocol",
+    category: "Protocols",
+    teaser: "When illness interrupts training, a short pause followed by a gradual return almost always leads to better long-term progress than pushing through.",
+    weeklyFocusWeek: 0,
+    weeklyFocusMsg: "Sometimes consistency means recovering well so you can train again soon. Both are part of building durable capacity.",
+    driverKeys: ["recovery", "sleep", "energy"],
+    sections: [
+      { heading: "The Priority Shifts", body: "When illness occurs, the priority shifts from training progress to supporting the immune system and allowing the body to recover fully. Returning to training too quickly often extends illness or delays recovery. A short pause followed by a gradual return almost always leads to better long-term progress. If symptoms are severe, persist longer than expected, or include chest pain, breathing difficulty, or high fever, consult a healthcare professional." },
+      { heading: "Phase 1 — During Illness", body: "When illness symptoms are present, your body is already under significant physiological stress. Focus on the fundamentals of recovery: sleep as much as needed, hydrate consistently, eat simple nourishing foods, reduce physical stress, and rest. Gentle movement such as short walks may feel helpful, but structured training should be paused until symptoms improve. Trying to push through illness rarely speeds recovery and often prolongs it." },
+      { heading: "Phase 2 — The 24-Hour Symptom Check", body: "Before returning to structured training, allow at least 24 hours symptom-free. Symptoms to monitor include fever, chills, significant fatigue, body aches, persistent cough, and gastrointestinal distress. Once symptoms have clearly improved and energy begins to return, light movement can begin." },
+      { heading: "Phase 3 — Light Movement Reset (Days 1–2 Back)", body: "The first goal is simply reintroducing movement, not testing performance. Choose low-intensity activities: a 20–30 minute walk, easy cycling or rowing, a light mobility session, or gentle stretching. Intensity should stay well below normal training effort — you should finish feeling better than when you started. If fatigue spikes or symptoms return, rest for another day." },
+      { heading: "Phase 4 — Gradual Training Rebuild (Days 3–5)", body: "Once light movement feels comfortable, begin reintroducing structured training at 60–70% of normal effort. Shorten workout duration if needed, avoid maximal effort work, and emphasize good movement quality. Most members return to normal training within 3–5 days after symptoms resolve." },
+      { heading: "Phase 5 — Full Return and Long-Term Perspective", body: "Once energy is normal, breathing is comfortable during workouts, and sleep has returned to normal patterns, you can resume your regular training schedule. Missing a few training days is rarely significant — what matters most is returning in a way that supports long-term consistency. Strong capacity is built through years of steady training, not by forcing workouts when the body needs recovery. Take care of the body now so it can keep training well in the weeks ahead." },
+    ]
+  },
+  {
+    id: "mindset-recovery",
+    title: "Mindset and Recovery Protocol",
+    category: "Protocols",
+    teaser: "Recovery is not just physical. Your internal state — thoughts, stress interpretation, emotional pressure — directly influences how well your body recovers.",
+    weeklyFocusWeek: 0,
+    weeklyFocusMsg: "You don't need a perfect mindset to recover well. You need the ability to regularly return to a calmer state. That is a trainable skill.",
+    driverKeys: ["reg", "sleep", "energy"],
+    sections: [
+      { heading: "Why Mindset Affects Recovery", body: "Two people can have the same training load, sleep, and nutrition and recover completely differently. Your nervous system decides whether the body is in stress mode (sympathetic) or recovery mode (parasympathetic) — and your mindset directly influences that switch. Common patterns that reduce recovery include constant self-criticism, feeling behind or overwhelmed, never-enough thinking, urgency without control, and unresolved stress loops. These keep the nervous system elevated even at rest, leading to poorer sleep, slower muscle recovery, higher fatigue, and reduced training output." },
+      { heading: "When to Use This Protocol", body: "Use this when stress feels high for several days, sleep is disrupted without a clear cause, workouts feel heavier than normal, your mind feels busy or hard to shut off, or your recovery is trending down. You do not need all of these — two or three signals together are enough to make this protocol worth running." },
+      { heading: "Step 1 — Create Awareness (2–3 minutes)", body: "Before you can shift your state, you need to see it. Ask: What has been on my mind most this week? Where am I creating pressure on myself? What feels unresolved or looping? No fixing yet — just awareness. The goal is to move from unconscious stress to conscious recognition. This alone begins to reduce the nervous system's threat response." },
+      { heading: "Step 2 — Interrupt the Stress Loop (2–5 minutes)", body: "Most people stay stuck because the stress loop never gets broken. Use one of the following: write down everything on your mind with no structure or filter, name it clearly by saying 'I am stressed about ___', or say it out loud or talk to someone. The brain reduces its threat response when thoughts become concrete rather than circling." },
+      { heading: "Step 3 — Shift the Frame (2–3 minutes)", body: "Now reduce unnecessary internal pressure. Ask: Is this actually urgent, or am I making it urgent? What is in my control right now? What is one simple next step? Replace 'I need to fix everything' with 'I'll handle the next step.' The goal is to move from overwhelm to direction." },
+      { heading: "Step 4 — Downshift the Nervous System (5–10 minutes)", body: "This is where recovery begins. Choose one: 5–10 minutes of slow walking with no phone, nasal breathing (in 4 seconds, out 6 seconds), quiet screen-free sitting, or light mobility with slow breathing. The key rule is no stimulation and no multitasking. This signals to your body that it is safe to recover. When this improves, sleep deepens, energy stabilizes, workouts feel better, and consistency increases." },
+      { heading: "The 10-Minute Reset", body: "When time is tight, use this simplified version: write down what is on your mind for 2 minutes, pick one next step for 1 minute, then walk or breathe quietly for 5–7 minutes. That alone can shift your entire recovery trajectory for the day. You do not need a perfect mindset to recover well. You need the ability to regularly return to a calmer state — and that is a trainable skill." },
+    ]
+  },
+  {
     id: "social-connection",
     title: "Social Connection as a Recovery Tool",
     category: "Community",
@@ -1951,7 +2337,7 @@ const LIBRARY_ARTICLES = [
   },
 ];
 
-const LIBRARY_CATEGORIES = ["Training Consistency", "Sleep", "Nutrition", "Stress Management", "Movement and Soreness", "Lifestyle Habits", "Wearables", "Community"];
+const LIBRARY_CATEGORIES = ["Training Consistency", "Sleep", "Nutrition", "Stress Management", "Movement and Soreness", "Lifestyle Habits", "Wearables", "Community", "Protocols"];
 
 // Map driver keys to article ids for personalized suggestions
 const DRIVER_ARTICLE_MAP = {
@@ -1965,6 +2351,10 @@ const DRIVER_ARTICLE_MAP = {
   aerobic:  "weekly-minimums",
   movement: "moving-well",
   sleepOpp: "sleep",
+  // Protocol articles
+  soreness: "high-soreness",
+  illness:  "illness-return",
+  travel:   "travel-disruption",
 };
 
 // ─── POD CARD (member-facing) ─────────────────────────────────────────────────
@@ -2408,7 +2798,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         </button>
       </div>
       <div style={{ display: "flex", borderTop: "1px solid #3a3a3a", padding: "0 1.5rem" }}>
-        {[["members", "👥 Members"], ["insights", "📊 Insights"], ["analytics", "📈 Analytics"], ["pods", "🫛 Pods"]].map(([tab, label]) => (
+        {[["members", "Members"], ["insights", "Insights"], ["analytics", "Analytics"], ["pods", "Pods"]].map(([tab, label]) => (
           <button key={tab} onClick={() => { setCoachTab(tab); setSelected(null); setEditingPod(null); setPodDraft(null); }}
             style={{ background: "none", border: "none", color: coachTab === tab ? G : "#aaa",
               borderBottom: coachTab === tab ? `2.5px solid ${G}` : "2.5px solid transparent",
@@ -3032,6 +3422,127 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
             )}
           </div>
 
+          {/* ── 5. Community Consistency ─────────────────────────────────── */}
+          {(() => {
+            const membersWithChecks = members.filter(m => (m.weeklyChecks || []).some(c => c && !c.isBaseline));
+            if (!membersWithChecks.length) return null;
+            // Count each member's latest check week status
+            let fullCapWeeks = 0, mewWeeks = 0, resetWeeks = 0, totalLatestChecks = 0;
+            membersWithChecks.forEach(m => {
+              const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+              if (!checks.length) return;
+              const latest = checks[checks.length - 1];
+              const ws = getWeekStatus(latest.score);
+              totalLatestChecks++;
+              if (ws?.status === "Full Capacity Week") fullCapWeeks++;
+              else if (ws?.status === "Minimum Effective Week") mewWeeks++;
+              else resetWeeks++;
+            });
+            // Count ALL historical weeks across all members
+            let allMEW = 0, allFull = 0;
+            members.forEach(m => {
+              (m.weeklyChecks || []).filter(c => c && !c.isBaseline).forEach(c => {
+                const ws = getWeekStatus(c.score);
+                if (ws?.status === "Full Capacity Week") allFull++;
+                else if (ws?.status === "Minimum Effective Week") allMEW++;
+              });
+            });
+            const successfulThisWeek = fullCapWeeks + mewWeeks;
+            const pctSuccess = totalLatestChecks ? Math.round((successfulThisWeek / totalLatestChecks) * 100) : 0;
+            return (
+              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
+                  <span style={{ fontSize: "1.2rem" }}>📅</span>
+                  <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Community Consistency</div>
+                  <div style={{ fontSize: "0.72rem", color: "#888" }}>{totalLatestChecks} active member{totalLatestChecks !== 1 ? "s" : ""}</div>
+                </div>
+                {/* This week success rate */}
+                <div style={{ marginBottom: "1rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.3rem" }}>
+                    <span style={{ fontSize: "0.82rem", color: DARK, fontWeight: "bold" }}>Successful Weeks This Week</span>
+                    <span style={{ fontSize: "1.1rem", fontWeight: "bold", color: pctSuccess >= 70 ? G : pctSuccess >= 50 ? "#e09020" : "#e05030" }}>{pctSuccess}%</span>
+                  </div>
+                  <div style={{ background: "#eee", borderRadius: "999px", height: "10px", overflow: "hidden" }}>
+                    <div style={{ background: pctSuccess >= 70 ? G : pctSuccess >= 50 ? "#e09020" : "#e05030", width: `${pctSuccess}%`, height: "100%", borderRadius: "999px", transition: "width 0.5s ease" }} />
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "0.72rem", background: "#1a7a0015", color: "#1a7a00", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>🔥 Full Capacity: {fullCapWeeks}</span>
+                    <span style={{ fontSize: "0.72rem", background: `${G}15`, color: "#2a7a14", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>✅ Min Effective: {mewWeeks}</span>
+                    <span style={{ fontSize: "0.72rem", background: "#e0503015", color: "#e05030", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>🔁 Reset: {resetWeeks}</span>
+                  </div>
+                </div>
+                {/* All-time totals */}
+                <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: "0.8rem" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#aaa", marginBottom: "0.5rem", fontWeight: "bold", letterSpacing: "0.05em" }}>ALL-TIME TOTALS</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                    {[
+                      { label: "Full Capacity Weeks", val: allFull, color: "#1a7a00" },
+                      { label: "Min Effective Weeks", val: allMEW, color: G },
+                    ].map(({ label, val, color }) => (
+                      <div key={label} style={{ background: "#f8f8f8", borderRadius: "10px", padding: "0.7rem", textAlign: "center" }}>
+                        <div style={{ fontSize: "1.4rem", fontWeight: "bold", color }}>{val}</div>
+                        <div style={{ fontSize: "0.68rem", color: "#888", marginTop: "0.1rem", lineHeight: 1.3 }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── 6. Role Distribution ─────────────────────────────────────────── */}
+          {(() => {
+            const membersWithChecks = members.filter(m => (m.weeklyChecks || []).some(c => c && !c.isBaseline));
+            if (!membersWithChecks.length) return null;
+            let performers = 0, builders = 0, stabilizers = 0, resets = 0;
+            membersWithChecks.forEach(m => {
+              const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+              if (!checks.length) return;
+              const latest = checks[checks.length - 1];
+              const role = getCapacityRole(latest.score);
+              if (role?.role === "Performer") performers++;
+              else if (role?.role === "Builder") builders++;
+              else if (role?.role === "Stabilizer") stabilizers++;
+              else resets++;
+            });
+            const total = performers + builders + stabilizers + resets;
+            if (!total) return null;
+            const pct = n => Math.round((n / total) * 100);
+            const roles = [
+              { label: "Performer", count: performers, color: "#1a7a00", emoji: "🔥" },
+              { label: "Builder",   count: builders,   color: G,         emoji: "📈" },
+              { label: "Stabilizer",count: stabilizers,color: "#e09020", emoji: "🛡️" },
+              { label: "Reset",     count: resets,     color: "#e05030", emoji: "🔁" },
+            ];
+            return (
+              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
+                  <span style={{ fontSize: "1.2rem" }}>🎭</span>
+                  <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Role Distribution</div>
+                  <div style={{ fontSize: "0.72rem", color: "#888" }}>{total} member{total !== 1 ? "s" : ""} this week</div>
+                </div>
+                {roles.map(({ label, count, color, emoji }) => {
+                  const p = pct(count);
+                  return (
+                    <div key={label} style={{ marginBottom: "0.75rem" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.25rem" }}>
+                        <span style={{ fontSize: "0.85rem", fontWeight: "bold", color }}>
+                          {emoji} {label}
+                        </span>
+                        <span style={{ fontSize: "0.82rem", color: count > 0 ? DARK : "#ccc", fontWeight: "bold" }}>
+                          {count} {count > 0 ? `(${p}%)` : ""}
+                        </span>
+                      </div>
+                      <div style={{ background: "#eee", borderRadius: "999px", height: "10px", overflow: "hidden" }}>
+                        <div style={{ background: color, width: `${p}%`, height: "100%", borderRadius: "999px", transition: "width 0.5s ease", minWidth: count > 0 ? "4px" : "0" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
         </div>
       </div>
     );
@@ -3331,6 +3842,9 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           const habitAvg = checks.length ? Math.round(checks.reduce((s,c)=>s+c.score,0)/checks.length) : null;
           const ci = habitAvg !== null ? calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, habitAvg) : null;
           const tier = ci !== null ? getCapacityTier(ci) : null;
+          const latestCheck = checks[checks.length - 1];
+          const mRole = latestCheck ? getCapacityRole(latestCheck.score) : null;
+          const mWS   = latestCheck ? getWeekStatus(latestCheck.score) : null;
           return (
             <div key={m.id} onClick={() => setSelected(m)}
               style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: CARD, borderRadius: "12px", padding: "1rem 1.2rem", marginBottom: "0.7rem", cursor: "pointer", border: "1.5px solid transparent", transition: "border 0.2s" }}
@@ -3341,6 +3855,16 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                 <div style={{ fontSize: "0.8rem", color: "#888" }}>Week {checks.length}/8 · Age {m.age}</div>
                 {tier && <div style={{ fontSize: "0.8rem", color: tier.color, fontWeight: "bold" }}>{tier.emoji} {tier.tier}</div>}
                 {!tier && <div style={{ fontSize: "0.8rem", color: "#bbb" }}>No check-ins yet</div>}
+                {mRole && mWS && (
+                  <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.3rem", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "0.68rem", fontWeight: "bold", color: mRole.color, background: mRole.color + "15", borderRadius: "999px", padding: "0.1rem 0.55rem" }}>
+                      {mRole.emoji} {mRole.role}
+                    </span>
+                    <span style={{ fontSize: "0.68rem", fontWeight: "bold", color: mWS.color, background: mWS.color + "15", borderRadius: "999px", padding: "0.1rem 0.55rem" }}>
+                      {mWS.emoji} {mWS.status}
+                    </span>
+                  </div>
+                )}
               </div>
               <div style={{ textAlign: "right" }}>
                 {ci !== null && <div style={{ fontSize: "2rem", fontWeight: "bold", color: G }}>{ci}</div>}
