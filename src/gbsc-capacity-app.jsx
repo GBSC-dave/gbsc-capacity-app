@@ -663,7 +663,7 @@ function GBSCIcon({ name, size = 28, color = "currentColor", strokeWidth = 2.5 }
     seedling: <svg viewBox="-32 -32 64 64" width={size} height={size}>
       <path d="M1.5,4.25L-9.75,8.0L-12.5,11.75L-13.75,19.0L-15.0,13.25L-17.75,10.0L-28.0,7.75L-27.5,12.5L-23.5,17.75L-14.5,21.0L-14.25,27.5L-20.75,29.0L-23.0,31.75L-15.0,29.75L-3.5,31.75L-6.0,29.25L-12.5,27.75L-12.5,21.0L-10.75,18.5L-1.75,15.25L1.0,10.5Z M-25.75,9.5L-20.75,10.75L-18.75,12.0L-16.5,14.75L-16.75,15.5L-20.25,12.5L-21.5,12.25L-22.0,12.75L-21.75,14.0L-17.75,17.25L-19.0,17.5L-22.5,15.75L-25.0,13.0L-26.0,10.25Z M-0.25,6.5L-1.75,11.75L-4.75,15.0L-8.0,16.5L-9.5,16.25L-4.75,12.0L-4.75,10.75L-6.0,10.5L-11.0,15.25L-11.0,13.25L-8.0,9.25L-4.0,7.0L-1.5,6.25Z" fill={color}/>
     </svg>,
-    dumbbell: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+    dumbbell: <svg viewBox="-10 -12 46 24" width={size} height={size}>
       <path d="M-6.5,-2.5L-6.5,4.0L-3.25,5.0L-1.5,8.5L4.0,8.25L5.75,3.25L20.25,3.25L21.75,8.25L27.5,8.25L28.75,5.25L31.5,5.0L31.5,-3.25L28.75,-3.5L27.5,-7.25L21.75,-7.25L20.5,-2.25L4.75,-2.5L4.5,-7.25L-1.75,-7.75L-2.75,-4.0Z M4.75,1.25L5.0,-0.5L20.75,-0.25L20.5,1.5Z M28.75,-1.5L30.25,-1.25L30.0,3.25L28.5,3.0Z M-4.25,-1.75L-3.25,-1.75L-2.75,-1.25L-3.0,3.25L-4.5,3.0L-4.75,2.25L-4.75,-1.25Z M23.0,-5.5L26.25,-5.25L26.25,6.5L22.75,6.25Z M0.25,-6.0L2.75,-5.5L3.0,-4.75L3.0,5.5L2.5,6.5L-0.5,6.5L-1.0,6.0L-1.0,-5.25Z" fill={color}/>
     </svg>,
     lungs: <svg viewBox="-32 -32 64 64" width={size} height={size}>
@@ -695,6 +695,18 @@ function GBSCIcon({ name, size = 28, color = "currentColor", strokeWidth = 2.5 }
     </svg>,
     hand: <svg viewBox="-32 -32 64 64" width={size} height={size}>
       <path d="M3.75,-15.75L0.5,-15.75L-2.5,-12.5L-3.5,-16.0L-7.25,-16.0L-15.75,-4.25L-19.0,-8.75L-23.0,-8.5L-21.25,5.5L-16.0,12.75L-12.0,14.5L-5.5,13.25L9.25,-0.5L9.5,-4.0L6.75,-5.25L8.5,-9.75L4.75,-12.0Z M2.5,-14.25L-5.0,-2.25L-3.5,-1.25L6.0,-9.5L6.25,-7.5L-1.5,1.5L0.0,2.5L6.75,-3.25L7.5,-1.5L-7.0,11.75L-13.75,11.75L-18.75,6.5L-21.5,-6.75L-15.5,-1.0L-6.5,-14.0L-4.25,-13.75L-9.5,-5.5L-8.5,-4.0Z" fill={color}/>
+    </svg>,
+    pencil: <svg viewBox="-13.0 2.0 46.8 47.2" width={size} height={size}>
+      <path d="M29.0,10.0L24.5,6.0L21.75,6.5L-4.25,32.25L-9.0,45.25L4.0,40.25L29.75,14.75Z M23.75,8.5L27.75,13.25L24.0,16.75L22.25,16.0L21.5,17.5L22.5,18.5L3.25,37.25L-0.25,36.0L1.5,38.75L-5.0,41.5L-2.5,34.25L-0.75,35.0L-1.5,33.0L17.75,14.0L20.75,15.5L21.25,14.25L19.5,12.25Z" fill={color}/>
+    </svg>,
+    arrow_up: <svg viewBox="-9.8 4.0 36.2 43.5" width={size} height={size}>
+      <path d="M9.0,8.0L6.75,8.75L-5.75,23.75L-5.25,25.75L3.75,26.0L4.25,43.5L13.0,43.25L13.5,25.75L22.5,25.25L22.0,23.0Z M8.0,11.0L19.0,23.25L11.75,23.5L11.0,24.5L10.75,41.25L5.75,41.0L5.5,23.75L-2.0,23.0Z" fill={color}/>
+    </svg>,
+    arrow_down: <svg viewBox="-19.8 4.5 36.2 42.8" width={size} height={size}>
+      <path d="M-5.75,8.5L-6.5,25.5L-15.25,26.0L-15.75,28.0L-4.0,42.0L-0.75,43.25L12.5,27.0L11.75,26.0L3.0,25.5L2.75,8.75Z M-3.5,10.5L0.75,11.0L1.0,27.75L9.0,28.25L-1.75,40.75L-12.25,28.25L-4.25,27.25Z" fill={color}/>
+    </svg>,
+    book: <svg viewBox="-35.2 6.0 55.2 42.8" width={size} height={size}>
+      <path d="M-31.25,11.75L-31.0,40.25L-6.75,44.75L16.0,40.0L15.75,11.5L4.5,10.0L-7.25,14.0L-19.75,10.0Z M-29.0,13.5L-28.0,37.0L-8.5,41.5L12.75,37.0L14.0,13.75L13.75,38.25L-7.75,42.5L-29.25,38.0Z M11.0,12.25L10.75,35.0L2.0,35.75L-6.5,38.25L-6.5,16.5L2.0,12.75Z M-25.75,12.0L-17.25,12.75L-9.0,16.0L-8.75,38.75L-17.0,35.75L-26.0,34.75Z" fill={color}/>
     </svg>,
   };
   return icons[name] || null;
@@ -880,8 +892,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <img src={LOGO_ICON} alt="GBSC" style={{ height: "36px", borderRadius: "4px" }} />
       <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.03em", flex: 1 }}>GBSC Capacity</div>
       <button onClick={() => setView("library")}
-        style={{ background: "none", border: `1px solid ${G}55`, color: G, borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold" }}>
-        Library
+        style={{ background: "none", border: `1px solid ${G}55`, color: G, borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold", display:"flex", alignItems:"center", gap:"0.35rem" }}>
+        <GBSCIcon name="book" size={16} color={G} strokeWidth={0}/>Library
       </button>
       <button onClick={onCoachAccess} style={{ background: "none", border: "1px solid #555", color: "#aaa", borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.75rem", cursor: "pointer" }}>Coach</button>
     </div>
@@ -1541,12 +1553,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   {/* Icon + tip */}
                   <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
                     <div style={{
-                      width: "42px", height: "42px", flexShrink: 0,
-                      background: `${G}15`, borderRadius: "12px",
+                      width: "56px", height: "56px", flexShrink: 0,
+                      background: `${G}15`, borderRadius: "14px",
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}>
                       {displayTip.iconName
-                        ? <GBSCIcon name={displayTip.iconName} size={24} color={G} strokeWidth={0}/>
+                        ? <GBSCIcon name={displayTip.iconName} size={48} color={G} strokeWidth={0}/>
                         : <span style={{fontSize:"1.4rem"}}>{displayTip.icon}</span>}
                     </div>
                     <div style={{ flex: 1 }}>
@@ -1564,7 +1576,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                         cursor: "pointer", gap: "0.5rem",
                       }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <span style={{ fontSize: "1rem" }}>📖</span>
+                        <GBSCIcon name="book" size={16} color="#2a7a14" strokeWidth={0}/>
                         <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#2a7a14" }}>Read: {linkedArticle.title}</span>
                       </div>
                       <span style={{ fontSize: "1rem", color: G }}>→</span>
@@ -1607,13 +1619,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               {/* Three community stat tiles */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.8rem", marginBottom: "1rem" }}>
                 {[
-                  { label: "Avg Capacity Index", val: community.avgCI ?? "—", iconName: "peak",     desc: "Our combined score" },
-                  { label: "Avg VO₂ Score",       val: community.avgVO2  ?? "—", iconName: "lungs",    desc: "Cardio engine" },
-                  { label: "Avg Grip Score",       val: community.avgGrip,        iconName: "dumbbell", desc: "Strength anchor" },
-                ].map(({ label, val, iconName, desc }) => (
+                  { label: "Avg Capacity Index", val: community.avgCI ?? "—", iconName: "peak",     sw: 2,   desc: "Our combined score" },
+                  { label: "Avg VO₂ Score",       val: community.avgVO2  ?? "—", iconName: "lungs",    sw: 0,   desc: "Cardio engine" },
+                  { label: "Avg Grip Score",       val: community.avgGrip,        iconName: "dumbbell", sw: 0,   desc: "Strength anchor" },
+                ].map(({ label, val, iconName, sw, desc }) => (
                   <div key={label} style={{ background: CARD, borderRadius: "14px", padding: "1rem 0.7rem", textAlign: "center" }}>
                     <div style={{ marginBottom: "0.2rem", display:"flex", justifyContent:"center" }}>
-                      <GBSCIcon name={iconName} size={48} color={G} strokeWidth={0}/>
+                      <GBSCIcon name={iconName} size={48} color={G} strokeWidth={sw}/>
                     </div>
                     <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: G, lineHeight: 1 }}>{val}</div>
                     <div style={{ fontSize: "0.68rem", color: "#666", marginTop: "0.3rem", lineHeight: 1.3 }}>{label}</div>
@@ -1653,19 +1665,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 });
                 const podPct = podTotal > 0 ? Math.round((podCheckedIn / podTotal) * 100) : null;
                 const stats = [
-                  pctConsistent !== null && { label: "Stayed Consistent", val: `${pctConsistent}%`, iconName: "dumbbell", desc: "Stabilizer or above this week" },
-                  { label: "Min Effective Weeks", val: mewTotal, iconName: "check",     desc: "All-time across gym" },
-                  { label: "Builder+ Weeks",      val: builderTotal, iconName: "builder", desc: "Score 70+ all time" },
-                  podPct !== null && { label: "Pod Engagement", val: `${podPct}%`, iconName: "star", desc: "Pods checked in this week" },
+                  pctConsistent !== null && { label: "Stayed Consistent", val: `${pctConsistent}%`, iconName: "trophy",   sw: 0, desc: "Stabilizer or above this week" },
+                  { label: "Min Effective Weeks", val: mewTotal,    iconName: "check",   sw: 0, desc: "All-time across gym" },
+                  { label: "Builder+ Weeks",      val: builderTotal, iconName: "builder", sw: 2, desc: "Score 70+ all time" },
+                  podPct !== null && { label: "Pod Engagement", val: `${podPct}%`, iconName: "star", sw: 0, desc: "Pods checked in this week" },
                 ].filter(Boolean);
                 if (!stats.length) return null;
                 return (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "0.5rem" }}>
-                    {stats.map(({ label, val, iconName, desc }) => (
+                    {stats.map(({ label, val, iconName, sw = 0, desc }) => (
                       <div key={label} style={{ background: "#f7f7f7", borderRadius: "12px", padding: "0.8rem 0.7rem", textAlign: "center" }}>
                         <div style={{ marginBottom: "0.25rem", display:"flex", justifyContent:"center" }}>
-                        <GBSCIcon name={iconName} size={24} color={G} strokeWidth={0}/>
-                      </div>
+                          <GBSCIcon name={iconName} size={40} color={G} strokeWidth={sw}/>
+                        </div>
                         <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: G, lineHeight: 1 }}>{val}</div>
                         <div style={{ fontSize: "0.66rem", color: "#666", marginTop: "0.25rem", lineHeight: 1.3 }}>{label}</div>
                         <div style={{ fontSize: "0.58rem", color: "#aaa", marginTop: "0.1rem" }}>{desc}</div>
@@ -1710,27 +1722,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   <GBSCIcon name={tier.icon} size={18} color={tier.color} strokeWidth={2}/>
                   {tier.tier}
                 </div>
-                {(() => {
-                  const latest = checks[checks.length - 1];
-                  const role = latest ? getCapacityRole(latest.score) : null;
-                  const ws   = latest ? getWeekStatus(latest.score) : null;
-                  if (!role) return null;
-                  return (
-                    <div style={{ marginTop: "0.7rem", display: "flex", flexDirection: "column", gap: "0.35rem", alignItems: "center" }}>
-                      <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: "999px", padding: "0.22rem 0.9rem", fontSize: "0.78rem", fontWeight: "bold", color: "#fff" }}>
-                        <span style={{display:"inline-flex",alignItems:"center",gap:"0.3rem"}}>{role.icon && <GBSCIcon name={role.icon} size={14} color="#fff" strokeWidth={2.5}/>}Capacity Role: {role.role}</span>
-                      </div>
-                      {ws && (
-                        <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "999px", padding: "0.22rem 0.9rem", fontSize: "0.75rem", color: "#ccc" }}>
-                          <span style={{display:"inline-flex",alignItems:"center",gap:"0.3rem"}}>
-                            {ws.icon ? <GBSCIcon name={ws.icon} size={12} color="#ccc" strokeWidth={0}/> : ws.emoji}
-                            This Week: {ws.status}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
+
               </>
             )}
           </div>
@@ -1966,13 +1958,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   return (
                     <div style={{ padding: "0.7rem 1.3rem 0", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                       {topPct >= 70 && (
-                        <span style={{ fontSize: "0.72rem", background: `${G}15`, color: "#2a7a14", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>
-                          ⬆ Main driver: {topDriver.label}
+                        <span style={{ fontSize: "0.72rem", background: `${G}15`, color: "#2a7a14", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
+                          <GBSCIcon name="arrow_up" size={12} color="#2a7a14" strokeWidth={0}/>Main driver: {topDriver.label}
                         </span>
                       )}
                       {bottomPct < 50 && (
-                        <span style={{ fontSize: "0.72rem", background: "#fff4ee", color: "#c05820", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>
-                          ⬇ Main limiter: {bottomDriver.label}
+                        <span style={{ fontSize: "0.72rem", background: "#fff4ee", color: "#c05820", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
+                          <GBSCIcon name="arrow_down" size={12} color="#c05820" strokeWidth={0}/>Main limiter: {bottomDriver.label}
                         </span>
                       )}
                     </div>
@@ -2166,8 +2158,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </button>
           )}
           <button onClick={startEdit}
-            style={{ width: "100%", background: "none", border: "2px solid #ddd", color: "#666", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.7rem" }}>
-            ✏️ Edit My Profile
+            style={{ width: "100%", background: "none", border: "2px solid #ddd", color: "#666", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.7rem", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.5rem" }}>
+            <GBSCIcon name="pencil" size={16} color="#666" strokeWidth={0}/>Edit My Profile
           </button>
         </div>
       </div>
@@ -2180,7 +2172,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setView("profile")} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>← Back to Profile</button>
-          <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: DARK, marginBottom: "1.5rem" }}>✏️ Edit My Profile</div>
+          <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: DARK, marginBottom: "1.5rem", display:"flex", alignItems:"center", gap:"0.5rem" }}><GBSCIcon name="pencil" size={18} color={DARK} strokeWidth={0}/>Edit My Profile</div>
           <F label="Full Name"><input type="text" value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <F label="Age"><input type="number" value={editForm.age} onChange={e => setEditForm(f => ({...f, age: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <F label="Sex"><RadioGroup options={["male","female"]} value={editForm.sex} onChange={v => setEditForm(f => ({...f, sex: v}))} /></F>
