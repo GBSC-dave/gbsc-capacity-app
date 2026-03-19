@@ -1882,13 +1882,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           })()}
 
           {(baseline || checks.length > 0) && (
-            <div style={{ marginBottom: "1.5rem" }}>
+            <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1.6rem", overflow: "hidden" }}>
               <button onClick={() => setHistoryOpen(o => !o)}
-                style={{ width: "100%", background: "none", border: "none", padding: "0 0 0.8rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                 <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Check-In History</span>
-                <span style={{ color: "#aaa", fontSize: "1.1rem", transition: "transform 0.2s", display: "inline-block", transform: historyOpen ? "rotate(180deg)" : "none" }}>▾</span>
+                <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: historyOpen ? "rotate(180deg)" : "none" }}>▾</span>
               </button>
-            {historyOpen && (<div>
+            {historyOpen && (<div style={{ padding: "0 1.3rem 1.2rem" }}>
               {baseline && (
                 <div style={{ display: "flex", justifyContent: "space-between", background: "#f0f7ec", border: `1px solid ${G}`, borderRadius: "8px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
                   <span style={{ color: "#555" }}>Baseline — {baseline.date}</span>
