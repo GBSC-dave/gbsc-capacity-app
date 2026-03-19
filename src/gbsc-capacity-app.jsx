@@ -312,9 +312,9 @@ function getCapacityRole(latestScore) {
 // ─── Week Status (based on latest weekly habit score) ─────────────────────────
 function getWeekStatus(latestScore) {
   if (latestScore === null || latestScore === undefined) return null;
-  if (latestScore >= 85) return { status: "Full Capacity Week", emoji: "🔥", color: "#1a7a00", msg: "You're building momentum." };
-  if (latestScore >= 55) return { status: "Minimum Effective Week", emoji: "✅", color: G, msg: "You stayed consistent during a busy week." };
-  return { status: "Reset Week", emoji: "🔁", color: "#e05030", msg: "Start simple and re-establish your baseline." };
+  if (latestScore >= 85) return { status: "Full Capacity Week", emoji: "🔥", icon: "flame",   color: "#1a7a00", msg: "You're building momentum." };
+  if (latestScore >= 55) return { status: "Minimum Effective Week", emoji: "✅", icon: "check",   color: G,         msg: "You stayed consistent during a busy week." };
+  return                        { status: "Reset Week",             emoji: "🔁", icon: "refresh", color: "#e05030", msg: "Start simple and re-establish your baseline." };
 }
 
 function calcCapacityIndex(vo2Score, gripScore, habitScore) {
@@ -324,7 +324,7 @@ function calcCapacityIndex(vo2Score, gripScore, habitScore) {
 }
 
 function getCapacityTier(score) {
-  if (score >= 85) return { tier: "Peak Capacity",       color: "#1a7a00", emoji: "🏆", icon: "peak" };
+  if (score >= 85) return { tier: "Peak Capacity",       color: "#1a7a00", emoji: "🏆", icon: "peak", badgeIcon: "trophy" };
   if (score >= 70) return { tier: "Durable Capacity",    color: G,         emoji: "💪", icon: "durable" };
   if (score >= 55) return { tier: "Building Capacity",   color: "#4a9e38", emoji: "📈", icon: "building" };
   if (score >= 40) return { tier: "Emerging Capacity",   color: "#8ab85a", emoji: "🌱", icon: "emerging" };
@@ -650,6 +650,51 @@ function GBSCIcon({ name, size = 28, color = "currentColor", strokeWidth = 2.5 }
     </svg>,
     performer: <svg viewBox="-14 -22 28 44" width={size} height={size} {...s}>
       <polyline points="8,-20 -4,-2 6,-2 -8,20"/>
+    </svg>,
+    check: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M30.75,4.75L28.0,1.75L25.25,1.75L7.25,19.5L-1.25,11.5L-3.25,11.5L-6.5,16.25L6.5,29.5L8.25,29.5L30.5,7.5Z M28.75,5.5L7.25,27.25L-4.5,15.75L-2.0,13.5L6.5,21.75L8.0,22.0L26.5,3.5Z" fill={color}/>
+    </svg>,
+    flame: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M2.0,-5.25L0.75,1.75L-8.25,12.0L-9.25,20.25L-5.25,27.75L3.0,31.5L4.0,30.5L-0.25,23.5L1.25,15.25L7.25,20.75L8.0,25.25L11.5,20.25L11.5,25.75L8.0,30.25L10.0,31.25L15.75,28.25L18.75,23.75L18.75,13.0L15.5,4.75L11.5,8.25L8.5,-0.75Z M4.0,-2.25L8.75,4.0L9.0,12.0L15.0,8.5L17.5,20.75L13.25,26.75L13.75,20.25L12.0,16.75L10.25,16.75L9.5,21.0L2.25,11.25L-2.0,17.75L-1.25,28.0L-6.0,23.5L-7.5,16.75L-5.75,11.75L2.0,3.75Z" fill={color}/>
+    </svg>,
+    refresh: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M7.5,3.25L5.75,4.5L9.0,8.25L11.0,14.25L8.0,24.0L1.5,28.75L-4.25,29.75L-10.75,27.5L-15.0,23.75L-10.0,23.5L-10.0,21.5L-18.25,21.5L-16.75,29.75L-15.5,29.5L-15.5,26.25L-7.75,31.0L-0.25,31.25L9.0,26.0L12.0,20.75L12.75,13.25Z M-2.75,-4.75L-4.25,-4.5L-4.25,-3.0L-2.0,-1.25L-10.5,0.0L-17.75,5.75L-20.25,11.75L-19.75,20.25L-18.0,20.0L-18.75,14.75L-17.75,10.0L-13.25,4.0L-7.25,1.0L-1.75,1.0L-4.5,3.25L-4.25,4.5L-2.75,4.5L2.5,0.5Z" fill={color}/>
+    </svg>,
+    seedling: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M1.5,4.25L-9.75,8.0L-12.5,11.75L-13.75,19.0L-15.0,13.25L-17.75,10.0L-28.0,7.75L-27.5,12.5L-23.5,17.75L-14.5,21.0L-14.25,27.5L-20.75,29.0L-23.0,31.75L-15.0,29.75L-3.5,31.75L-6.0,29.25L-12.5,27.75L-12.5,21.0L-10.75,18.5L-1.75,15.25L1.0,10.5Z M-25.75,9.5L-20.75,10.75L-18.75,12.0L-16.5,14.75L-16.75,15.5L-20.25,12.5L-21.5,12.25L-22.0,12.75L-21.75,14.0L-17.75,17.25L-19.0,17.5L-22.5,15.75L-25.0,13.0L-26.0,10.25Z M-0.25,6.5L-1.75,11.75L-4.75,15.0L-8.0,16.5L-9.5,16.25L-4.75,12.0L-4.75,10.75L-6.0,10.5L-11.0,15.25L-11.0,13.25L-8.0,9.25L-4.0,7.0L-1.5,6.25Z" fill={color}/>
+    </svg>,
+    dumbbell: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M-6.5,-2.5L-6.5,4.0L-3.25,5.0L-1.5,8.5L4.0,8.25L5.75,3.25L20.25,3.25L21.75,8.25L27.5,8.25L28.75,5.25L31.5,5.0L31.5,-3.25L28.75,-3.5L27.5,-7.25L21.75,-7.25L20.5,-2.25L4.75,-2.5L4.5,-7.25L-1.75,-7.75L-2.75,-4.0Z M4.75,1.25L5.0,-0.5L20.75,-0.25L20.5,1.5Z M28.75,-1.5L30.25,-1.25L30.0,3.25L28.5,3.0Z M-4.25,-1.75L-3.25,-1.75L-2.75,-1.25L-3.0,3.25L-4.5,3.0L-4.75,2.25L-4.75,-1.25Z M23.0,-5.5L26.25,-5.25L26.25,6.5L22.75,6.25Z M0.25,-6.0L2.75,-5.5L3.0,-4.75L3.0,5.5L2.5,6.5L-0.5,6.5L-1.0,6.0L-1.0,-5.25Z" fill={color}/>
+    </svg>,
+    lungs: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M31.75,4.5L31.25,4.5L28.5,6.75L28.5,8.0L29.0,8.25L29.75,8.25L30.25,8.0L31.0,7.25L31.25,7.25L31.75,6.75Z M-2.5,-13.25L-3.0,-5.0L-1.0,-2.5L-1.5,5.75L-0.75,7.5L5.0,11.25L11.75,13.0L13.0,10.5L13.5,3.75L11.0,-5.0L8.75,-8.5L5.25,-11.25L2.25,-11.0L-0.75,-5.5L-1.25,-13.5Z M4.0,-9.5L8.0,-6.0L11.0,0.75L11.75,6.0L10.25,11.25L2.5,7.75L0.25,4.75L0.75,-1.0L3.75,2.0L5.5,2.0L5.5,0.5L1.0,-3.75L2.25,-7.75Z M-5.0,-13.5L-6.25,-13.0L-6.5,-5.5L-9.0,-10.5L-12.5,-11.25L-18.25,-5.25L-20.75,2.75L-20.75,8.75L-19.25,13.0L-16.75,13.0L-10.75,10.5L-6.5,7.25L-5.75,5.0L-6.5,-2.5L-4.5,-4.5Z M-11.0,-9.25L-9.5,-7.5L-8.25,-3.75L-12.75,0.5L-12.75,2.0L-11.25,2.0L-8.0,-1.0L-7.5,4.25L-9.5,7.5L-17.75,11.25L-19.0,7.75L-18.25,0.25L-14.75,-6.75L-12.5,-9.0Z" fill={color}/>
+    </svg>,
+    bounce: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M6.75,-8.25L-1.75,-6.75L-1.5,-5.25L2.0,-5.25L-8.0,3.25L-20.0,-5.75L-32.0,4.0L-32.0,6.5L-19.25,-3.5L-9.0,5.25L-7.0,5.5L4.5,-4.0L4.5,0.75L6.0,0.5Z" fill={color}/>
+    </svg>,
+    star: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M-11.0,8.25L-1.75,16.5L-4.5,28.0L6.0,22.0L16.25,28.0L14.0,16.0L22.75,9.0L11.0,7.5L6.25,-3.5L1.0,7.25Z M-7.0,9.75L2.5,9.0L6.0,0.75L9.25,9.0L18.75,9.5L11.5,15.5L13.5,24.5L6.25,19.75L-1.5,24.5L0.25,15.5Z" fill={color}/>
+    </svg>,
+    wave: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M11.75,16.75L11.75,18.25L14.0,20.75L16.5,22.25L19.5,23.0L22.5,23.0L24.75,22.25L24.5,20.75L21.0,21.25L18.5,20.75L15.5,19.25L13.0,16.5Z M18.25,11.75L10.5,9.5L0.5,16.25L-1.5,10.25L6.75,6.25L-2.25,1.5L-19.0,14.75L-27.25,17.25L-18.75,17.0L-3.0,3.5L3.75,5.5L-3.5,9.75L-1.0,17.75L13.25,11.5L6.0,20.25L-4.5,20.5L-6.75,8.0L-13.0,17.5L-22.75,21.5L-15.25,21.25L-9.5,16.5L-5.25,22.5L3.25,23.75Z" fill={color}/>
+    </svg>,
+    ripple: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M-23.25,13.25L-22.5,15.75L-19.5,18.5L-6.5,21.75L10.5,20.25L16.5,17.25L18.5,13.75L18.25,12.75L16.5,13.0L14.75,16.0L8.5,18.75L-4.75,20.0L-15.75,18.0L-19.5,16.0L-21.5,12.75Z M-15.25,12.0L-15.0,14.0L-13.0,15.5L-5.5,17.0L5.75,16.25L8.75,15.25L10.5,13.75L9.75,11.0L7.0,9.75L1.25,8.75L-9.75,9.25L-12.75,10.0Z M-13.25,12.75L-11.75,11.75L-8.75,11.0L-0.25,10.5L6.25,11.5L8.0,12.25L8.25,13.25L2.25,15.0L-4.25,15.25L-10.75,14.25Z M-19.5,7.75L-19.5,8.75L-18.25,9.25L-11.75,6.5L-1.5,5.5L6.75,6.5L13.5,9.25L14.75,8.75L14.5,7.5L10.5,5.5L0.0,3.75L-12.5,4.75Z" fill={color}/>
+    </svg>,
+    trophy: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M-23.75,-0.75L-25.5,2.0L-25.0,6.25L-12.5,18.0L-13.0,20.25L-17.0,20.5L-17.25,22.75L-19.75,23.75L-19.75,26.5L-2.0,27.0L-1.5,23.75L-4.0,22.75L-4.5,20.25L-8.5,20.0L-8.25,16.75L3.25,7.5L3.5,0.0L-0.5,-0.75L-0.75,-2.5L-20.5,-2.25L-20.75,-1.0Z M-18.0,25.0L-17.75,24.5L-3.75,24.5L-3.25,25.0Z M1.0,0.75L2.25,2.0L2.5,2.75L2.25,4.75L1.5,6.25L-1.0,8.5L-1.25,7.25L-0.75,5.75L-0.75,1.5L-0.25,1.0Z M-22.5,1.0L-21.0,1.0L-20.5,1.5L-20.5,5.0L-20.0,7.25L-20.25,8.5L-22.5,6.5L-23.5,4.25L-23.5,2.25Z M-18.25,-0.75L-2.75,-0.5L-3.0,7.5L-4.25,10.75L-6.5,13.5L-9.25,15.0L-12.0,15.0L-16.0,12.25L-18.5,6.25L-18.75,-0.25Z" fill={color}/>
+    </svg>,
+    bounce2: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M29.0,-5.25L20.0,-4.0L20.25,-2.5L24.25,-2.5L13.25,6.0L2.0,-2.5L-13.25,10.5L-11.25,11.25L2.5,0.0L13.0,8.5L26.5,-1.0L26.25,3.5L27.75,3.5Z" fill={color}/>
+    </svg>,
+    meditation: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M0.75,-15.5L-1.5,-13.0L-1.75,-9.0L1.0,-6.0L-3.0,-4.0L-5.5,1.25L-5.5,4.75L-3.25,7.25L-10.5,8.25L-11.75,13.25L-8.0,15.5L17.5,14.75L19.25,12.75L18.75,9.25L15.75,7.25L10.75,7.0L12.5,5.0L12.5,1.25L10.25,-3.5L6.0,-6.0L8.75,-9.5L8.0,-13.75L5.5,-15.75Z M-10.25,11.25L-7.75,9.25L0.5,8.75L1.0,7.25L-2.25,5.5L-3.75,2.75L-2.0,-1.75L2.25,-5.75L5.0,-5.5L9.0,-1.75L10.75,4.0L6.0,7.5L6.75,9.25L15.25,9.25L17.25,12.0L14.25,13.75L4.75,12.75L-6.75,13.75L-9.25,13.0Z M2.5,-14.0L4.5,-14.0L5.0,-13.75L6.5,-12.25L7.0,-11.0L6.25,-8.75L5.0,-7.75L3.5,-7.25L2.25,-7.5L0.5,-9.0L0.0,-10.25L0.25,-12.0L1.5,-13.5Z" fill={color}/>
+    </svg>,
+    plate: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M-20.75,0.25L-19.5,5.25L-16.25,8.75L-11.75,11.25L-3.75,13.0L4.0,12.5L12.5,8.75L16.75,2.75L16.75,-0.25L14.75,-1.75L2.0,-4.0L-14.75,-3.0L-19.25,-1.5Z M-18.25,3.5L-7.5,5.0L3.0,5.0L13.5,3.25L14.25,3.75L11.25,7.0L6.25,9.75L1.0,11.0L-5.0,11.0L-12.5,8.75Z M-18.25,0.5L-13.75,-1.25L-2.0,-2.25L9.5,-1.25L14.5,0.75L7.5,2.75L-6.0,3.25L-15.75,2.0Z" fill={color}/>
+    </svg>,
+    hand: <svg viewBox="-32 -32 64 64" width={size} height={size}>
+      <path d="M3.75,-15.75L0.5,-15.75L-2.5,-12.5L-3.5,-16.0L-7.25,-16.0L-15.75,-4.25L-19.0,-8.75L-23.0,-8.5L-21.25,5.5L-16.0,12.75L-12.0,14.5L-5.5,13.25L9.25,-0.5L9.5,-4.0L6.75,-5.25L8.5,-9.75L4.75,-12.0Z M2.5,-14.25L-5.0,-2.25L-3.5,-1.25L6.0,-9.5L6.25,-7.5L-1.5,1.5L0.0,2.5L6.75,-3.25L7.5,-1.5L-7.0,11.75L-13.75,11.75L-18.75,6.5L-21.5,-6.75L-15.5,-1.0L-6.5,-14.0L-4.25,-13.75L-9.5,-5.5L-8.5,-4.0Z" fill={color}/>
     </svg>,
   };
   return icons[name] || null;
@@ -1190,7 +1235,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {/* Welcome moment for new registrations */}
           {weekNum === 0 && (
             <div style={{ background: `linear-gradient(135deg, ${DARK}, #2a4a1a)`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", textAlign: "center", ...fadeUp(0) }}>
-              <div style={{ fontSize: "2rem", marginBottom: "0.4rem" }}>👋</div>
+              <div style={{ marginBottom: "0.6rem", display:"flex", justifyContent:"center" }}><GBSCIcon name="hand" size={36} color="#fff" strokeWidth={0}/></div>
               <div style={{ fontWeight: "bold", color: "#fff", fontSize: "1.1rem", marginBottom: "0.3rem" }}>
                 Welcome to the program, {(currentMember.name || "there").split(" ")[0]}!
               </div>
@@ -1413,7 +1458,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               energy:   { icon: "⚡", label: "Energy", focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
               recovery: { icon: "🔄", label: "Recovery", focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
               protein:  { icon: "🥩", label: "Nutrition", focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
-              reg:      { icon: "🧘", label: "Downshift", focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
+              reg:      { icon: "🧘", iconName: "meditation", label: "Downshift", focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
               workouts: { icon: "🏋️", label: "Training", focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
               strength: { icon: "💪", label: "Strength", focus: "Schedule one dedicated strength session this week. Even 30 minutes of compound movements counts." },
               aerobic:  { icon: "🫁", label: "Zone 2", focus: "Aim for at least one 30–60 min Zone 2 session this week — a pace where you can speak in short sentences but not comfortably hold a conversation." },
@@ -1703,7 +1748,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             if (!ws || !role) return null;
             return (
               <div style={{ background: CARD, borderRadius: "16px", padding: "1.1rem 1.4rem", marginBottom: "1.8rem", display: "flex", alignItems: "center", gap: "1rem" }}>
-                <div style={{ fontSize: "2rem", lineHeight: 1 }}>{ws.emoji}</div>
+                <div style={{ lineHeight: 1, display:"flex", alignItems:"center" }}>
+                  {ws.icon ? <GBSCIcon name={ws.icon} size={32} color={ws.color} strokeWidth={0}/> : <span style={{fontSize:"2rem"}}>{ws.emoji}</span>}
+                </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: "0.7rem", color: "#888", fontWeight: "bold", letterSpacing: "0.07em", marginBottom: "0.15rem" }}>THIS WEEK</div>
                   <div style={{ fontWeight: "bold", color: ws.color, fontSize: "0.95rem" }}>{ws.status}</div>
@@ -1840,8 +1887,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                         <span style={{ color: "#666" }}>Week {c.week} — {c.date}</span>
                         {ws && (
                           <div style={{ marginTop: "0.2rem" }}>
-                            <span style={{ fontSize: "0.7rem", fontWeight: "bold", color: ws.color, background: ws.color + "15", borderRadius: "999px", padding: "0.1rem 0.55rem" }}>
-                              {ws.emoji} {ws.status}
+                            <span style={{ fontSize: "0.7rem", fontWeight: "bold", color: ws.color, background: ws.color + "15", borderRadius: "999px", padding: "0.1rem 0.55rem", display:"inline-flex", alignItems:"center", gap:"0.25rem" }}>
+                              {ws.icon ? <GBSCIcon name={ws.icon} size={12} color={ws.color} strokeWidth={0}/> : ws.emoji} {ws.status}
                             </span>
                           </div>
                         )}
@@ -1850,7 +1897,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     </div>
                     {c.disruption && c.disruption !== "None" && (
                       <div style={{ fontSize: "0.72rem", color: c.disruption === "Major disruption" ? "#c07030" : "#b09020", marginTop: "0.25rem" }}>
-                        {c.disruption === "Major disruption" ? "🌊" : "〰️"} {c.disruption}
+                        {c.disruption === "Major disruption"
+                        ? <><GBSCIcon name="wave" size={14} color="#c07030" strokeWidth={0}/> {c.disruption}</>
+                        : <><GBSCIcon name="ripple" size={14} color="#b09020" strokeWidth={0}/> {c.disruption}</>}
                       </div>
                     )}
                   </div>
@@ -1957,42 +2006,42 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const latest = checks[checks.length - 1];
             const earned = [];
             if (last3.length === 3 && last3.every(c => (workoutMap[c.workouts] || 0) >= 3))
-              earned.push({ emoji: "🏋", title: "Consistent Trainer", desc: "3+ workouts every week for 3 weeks." });
+              earned.push({ emoji: "🏋", icon: "dumbbell", title: "Consistent Trainer", desc: "3+ workouts every week for 3 weeks." });
             if (last3.length === 3 && (parseInt(last3[2].sleepQuality)||0) > (parseInt(last3[1].sleepQuality)||0) && (parseInt(last3[1].sleepQuality)||0) > (parseInt(last3[0].sleepQuality)||0))
-              earned.push({ emoji: "⚡", title: "Recovery Builder", desc: "Sleep score improved 2 weeks running." });
+              earned.push({ emoji: "⚡", icon: "bounce",   title: "Recovery Builder", desc: "Sleep score improved 2 weeks running." });
             if (last3.length === 3 && last3[2].score > last3[1].score && last3[1].score > last3[0].score)
-              earned.push({ emoji: "🔥", title: "Momentum", desc: "Score increased 3 weeks in a row." });
+              earned.push({ emoji: "🔥", icon: "flame",    title: "Momentum", desc: "Score increased 3 weeks in a row." });
             if (last3.length === 3 && last3.every(c => c.strengthRPE === "Yes"))
-              earned.push({ emoji: "💪", title: "Strength Streak", desc: "Challenging strength session 3 weeks running." });
+              earned.push({ emoji: "💪", icon: "dumbbell", title: "Strength Streak", desc: "Challenging strength session 3 weeks running." });
             if (last3.length === 3 && last3.every(c => (zone2Map[c.zone2] ?? 0) >= 2))
-              earned.push({ emoji: "🫁", title: "Aerobic Engine", desc: "60+ min Zone 2 work 3 weeks straight." });
+              earned.push({ emoji: "🫁", icon: "lungs",    title: "Aerobic Engine", desc: "60+ min Zone 2 work 3 weeks straight." });
             if (last2.length === 2 && last2.every(c => (proteinMap[c.protein ?? c.proteinFloor] ?? 0) >= 2))
-              earned.push({ emoji: "🥩", title: "Protein Pro", desc: "Hit protein target most days, 2 weeks running." });
+              earned.push({ emoji: "🥩", icon: "plate",      title: "Protein Pro", desc: "Hit protein target most days, 2 weeks running." });
             if (last2.length === 2 && last2.every(c => (c.downshift === "3+ times" || c.regulation === "Yes")))
-              earned.push({ emoji: "🧘", title: "Downshifter", desc: "Intentional downshift 3x/week, 2 weeks straight." });
+              earned.push({ emoji: "🧘", icon: "meditation", title: "Downshifter", desc: "Intentional downshift 3x/week, 2 weeks straight." });
             if (checks.length === 1)
-              earned.push({ emoji: "🌱", title: "First Step", desc: "Completed your first weekly check-in." });
+              earned.push({ emoji: "🌱", icon: "seedling", title: "First Step", desc: "Completed your first weekly check-in." });
             if (last3.length === 3 && last3[1].score < last3[0].score && last3[2].score > last3[1].score)
-              earned.push({ emoji: "↗️", title: "Bounce Back", desc: "Score dropped then came back stronger." });
+              earned.push({ emoji: "↗️", icon: "bounce2",    title: "Bounce Back", desc: "Score dropped then came back stronger." });
             if (latest.score >= 80)
-              earned.push({ emoji: "🏆", title: "High Performer", desc: `Habit score of ${latest.score} this week.` });
+              earned.push({ emoji: "🏆", icon: "trophy",     title: "High Performer", desc: `Habit score of ${latest.score} this week.` });
             // New behavior-based badges
             const successWeeks = checks.filter(c => c.score >= 55);
             if (successWeeks.length >= 1 && checks.some(c => c.score < 55) === false && checks.length >= 3)
-              earned.push({ emoji: "🔰", title: "No Zero Weeks", desc: "Every week has been at Minimum Effective Week or better." });
+              earned.push({ emoji: "🔰", icon: "check",    title: "No Zero Weeks", desc: "Every week has been at Minimum Effective Week or better." });
             // Stayed in Motion: had disruption but still hit MEW
             if (checks.some(c => c.disruption && c.disruption !== "None" && c.score >= 55))
-              earned.push({ emoji: "🏃", title: "Stayed in Motion", desc: "Hit Minimum Effective Week during a disrupted week." });
+              earned.push({ emoji: "🏃", icon: "check",    title: "Stayed in Motion", desc: "Hit Minimum Effective Week during a disrupted week." });
             // Stacked Weeks: 3 consecutive successful weeks (score >= 55)
             const hasStack = checks.length >= 3 && checks.slice(-3).every(c => c.score >= 55);
             if (hasStack)
-              earned.push({ emoji: "📚", title: "Stacked Weeks", desc: "3 successful weeks in a row." });
+              earned.push({ emoji: "📚", icon: "bounce",   title: "Stacked Weeks", desc: "3 successful weeks in a row." });
             // Adapted Under Pressure: disruption week but still hit 55+
             if (last2.length === 2 && last2[last2.length-1].disruption && last2[last2.length-1].disruption !== "None" && last2[last2.length-1].score >= 55)
               earned.push({ emoji: "🔧", title: "Adapted Under Pressure", desc: "Stayed consistent despite disruption this week." });
             // Consistency Leader: 5+ successful weeks, no reset weeks
             if (checks.length >= 5 && checks.every(c => c.score >= 55))
-              earned.push({ emoji: "🥇", title: "Consistency Leader", desc: "5+ successful weeks with no reset weeks." });
+              earned.push({ emoji: "🥇", icon: "flame",    title: "Consistency Leader", desc: "5+ successful weeks with no reset weeks." });
             if (earned.length === 0) return null;
             return (
               <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1.6rem", overflow: "hidden" }}>
@@ -2005,7 +2054,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   <div style={{ padding: "0 1.3rem 1.2rem" }}>
                     {earned.map((badge, i) => (
                       <div key={i} style={{ display: "flex", gap: "0.8rem", alignItems: "flex-start", marginBottom: i < earned.length - 1 ? "0.8rem" : 0, paddingBottom: i < earned.length - 1 ? "0.8rem" : 0, borderBottom: i < earned.length - 1 ? "1px solid #f0f0f0" : "none" }}>
-                        <div style={{ fontSize: "1.5rem", lineHeight: 1, flexShrink: 0 }}>{badge.emoji}</div>
+                        <div style={{ lineHeight: 1, flexShrink: 0, display:"flex", alignItems:"center" }}>
+                          {badge.icon
+                            ? <GBSCIcon name={badge.icon} size={24} color={G} strokeWidth={0}/>
+                            : <span style={{fontSize:"1.5rem"}}>{badge.emoji}</span>}
+                        </div>
                         <div>
                           <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>{badge.title}</div>
                           <div style={{ fontSize: "0.76rem", color: "#777", marginTop: "0.1rem" }}>{badge.desc}</div>
@@ -2768,7 +2821,7 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
           )}
           <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>
             Your support pod
-            {isCaptain && <span style={{ color: "#f0a500", fontWeight: "bold" }}> · ⭐ You're the captain</span>}
+            {isCaptain && <span style={{ color: "#f0a500", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.25rem" }}> · <GBSCIcon name="star" size={12} color="#f0a500" strokeWidth={0}/> You're the captain</span>}
           </div>
         </div>
       </div>
