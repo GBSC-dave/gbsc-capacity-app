@@ -1454,16 +1454,16 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const weakest = areas[0];
 
             const tips = {
-              sleep:    { icon: "😴", label: "Sleep", focus: "Try locking in a consistent bedtime — even 30 minutes earlier makes a meaningful difference this week." },
-              energy:   { icon: "⚡", label: "Energy", focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
-              recovery: { icon: "🔄", label: "Recovery", focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
-              protein:  { icon: "🥩", label: "Nutrition", focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
-              reg:      { icon: "🧘", iconName: "meditation", label: "Downshift", focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
-              workouts: { icon: "🏋️", label: "Training", focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
-              strength: { icon: "💪", label: "Strength", focus: "Schedule one dedicated strength session this week. Even 30 minutes of compound movements counts." },
-              aerobic:  { icon: "🫁", label: "Zone 2", focus: "Aim for at least one 30–60 min Zone 2 session this week — a pace where you can speak in short sentences but not comfortably hold a conversation." },
-              movement: { icon: "🚶", label: "Daily Movement", focus: "Add one 20-minute walk per day. Total movement volume matters as much as structured workouts." },
-              sleepOpp: { icon: "🛏️", label: "Sleep Opportunity", focus: "Try to protect 7+ hours in bed at least 4 nights this week. Even one extra night of full sleep makes a measurable difference in recovery." },
+              sleep:    { icon: "😴", iconName: "ripple",     label: "Sleep",        focus: "Try locking in a consistent bedtime — even 30 minutes earlier makes a meaningful difference this week." },
+              energy:   { icon: "⚡", iconName: "bounce2",   label: "Energy",       focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
+              recovery: { icon: "🔄", iconName: "refresh",   label: "Recovery",     focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
+              protein:  { icon: "🥩", iconName: "plate",     label: "Nutrition",    focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
+              reg:      { icon: "🧘", iconName: "meditation",label: "Downshift",    focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
+              workouts: { icon: "🏋️", iconName: "dumbbell",  label: "Training",     focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
+              strength: { icon: "💪", iconName: "dumbbell",  label: "Strength",          focus: "Schedule one dedicated strength session this week. Even 30 minutes of compound movements counts." },
+              aerobic:  { icon: "🫁", iconName: "lungs",      label: "Zone 2",            focus: "Aim for at least one 30–60 min Zone 2 session this week — a pace where you can speak in short sentences but not comfortably hold a conversation." },
+              movement: { icon: "🚶", iconName: "bounce2",    label: "Daily Movement",    focus: "Add one 20-minute walk per day. Total movement volume matters as much as structured workouts." },
+              sleepOpp: { icon: "🛏️", iconName: "ripple",     label: "Sleep Opportunity", focus: "Try to protect 7+ hours in bed at least 4 nights this week. Even one extra night of full sleep makes a measurable difference in recovery." },
             };
             const tip = tips[weakest.key];
             if (!tip) return null;
@@ -1478,13 +1478,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const lowDownshift = reg === 0;
             const highPerf    = latestScore >= 85;
             if (lowSleep && lowRecovery) {
-              focusTip = { icon: "🛌", label: "Recovery Support Day", focus: "Walk, fuel well, and wind down early tonight. Your body needs a reset, not more load.", articleIds: ["recovery-reset","sleep","nervous-system"] };
+              focusTip = { icon: "🛌", iconName: "ripple", label: "Recovery Support Day", focus: "Walk, fuel well, and wind down early tonight. Your body needs a reset, not more load.", articleIds: ["recovery-reset","sleep","nervous-system"] };
             } else if (lowWorkouts) {
-              focusTip = { icon: "🚶", label: "Stay in Motion", focus: "Short movement counts today. Any 20–30 minutes of activity keeps the habit alive.", articleIds: ["weekly-minimums","lifestyle-habits","recovery-reset"] };
+              focusTip = { icon: "🚶", iconName: "bounce2", label: "Stay in Motion", focus: "Short movement counts today. Any 20–30 minutes of activity keeps the habit alive.", articleIds: ["weekly-minimums","lifestyle-habits","recovery-reset"] };
             } else if (lowDownshift && lowSleep) {
-              focusTip = { icon: "🧘", label: "Downshift Daily", focus: "10 quiet minutes today. Walk, breathe, journal, or go screen-free.", articleIds: ["nervous-system","sleep"] };
+              focusTip = { icon: "🧘", iconName: "meditation", label: "Downshift Daily", focus: "10 quiet minutes today. Walk, breathe, journal, or go screen-free.", articleIds: ["nervous-system","sleep"] };
             } else if (highPerf) {
-              focusTip = { icon: "🏋️", label: "Push + Recover", focus: "Train hard today, then protect sleep and protein. Don't outrun your recovery.", articleIds: ["weekly-minimums","sleep","nutrition-recovery"] };
+              focusTip = { icon: "🏋️", iconName: "dumbbell", label: "Push + Recover", focus: "Train hard today, then protect sleep and protein. Don't outrun your recovery.", articleIds: ["weekly-minimums","sleep","nutrition-recovery"] };
             }
             const linkedArticle = focusTip.articleIds?.length
               ? LIBRARY_ARTICLES.find(a => focusTip.articleIds.includes(a.id))
@@ -1507,7 +1507,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     color: scoreDiff > 0 ? "#3a8a20" : scoreDiff < 0 ? "#c05820" : "#666",
                     display: "flex", alignItems: "center", gap: "0.4rem",
                   }}>
-                    <span style={{ fontSize: "1rem" }}>{scoreDiff > 0 ? "📈" : scoreDiff < 0 ? "📉" : "➡️"}</span>
+                    <span style={{ display:"inline-flex", alignItems:"center" }}>
+                      {scoreDiff > 0
+                        ? <GBSCIcon name="bounce2" size={18} color="#3a8a20" strokeWidth={0}/>
+                        : scoreDiff < 0
+                        ? <GBSCIcon name="bounce" size={18} color="#c05820" strokeWidth={0}/>
+                        : <GBSCIcon name="ripple" size={18} color="#666" strokeWidth={0}/>}
+                    </span>
                     {scoreDiff > 0 ? `Up ${scoreDiff} point${scoreDiff !== 1 ? "s" : ""} from last week` :
                      scoreDiff < 0 ? `Down ${Math.abs(scoreDiff)} point${Math.abs(scoreDiff) !== 1 ? "s" : ""} from last week` :
                      "Score held steady from last week"}
@@ -1538,8 +1544,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                       width: "42px", height: "42px", flexShrink: 0,
                       background: `${G}15`, borderRadius: "12px",
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "1.4rem",
-                    }}>{displayTip.icon}</div>
+                    }}>
+                      {displayTip.iconName
+                        ? <GBSCIcon name={displayTip.iconName} size={24} color={G} strokeWidth={0}/>
+                        : <span style={{fontSize:"1.4rem"}}>{displayTip.icon}</span>}
+                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: "0.9rem", color: DARK, lineHeight: 1.65 }}>{displayTip.focus}</div>
                     </div>
@@ -1577,7 +1586,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               {/* CI change headline */}
               {community.ciChange !== null && (
                 <div style={{ background: community.ciChange >= 0 ? `linear-gradient(135deg, #f0f7ec, #e0f0d8)` : `linear-gradient(135deg, #fff7f0, #ffeedd)`, border: `1.5px solid ${community.ciChange >= 0 ? G : "#e8a060"}`, borderRadius: "14px", padding: "1rem 1.2rem", marginBottom: "1rem", textAlign: "center" }}>
-                  <div style={{ fontSize: "1.6rem", marginBottom: "0.2rem" }}>{community.ciChange > 0 ? "📈" : community.ciChange < 0 ? "📉" : "➡️"}</div>
+                  <div style={{ marginBottom: "0.4rem", display:"flex", justifyContent:"center" }}>
+                    {community.ciChange > 0
+                      ? <GBSCIcon name="bounce2" size={28} color="#3a8a20" strokeWidth={0}/>
+                      : community.ciChange < 0
+                      ? <GBSCIcon name="bounce" size={28} color="#c05820" strokeWidth={0}/>
+                      : <GBSCIcon name="ripple" size={28} color="#888" strokeWidth={0}/>}
+                  </div>
                   <div style={{ fontWeight: "bold", fontSize: "1rem", color: DARK }}>
                     {community.ciChange > 0
                       ? `As a gym, we're up ${community.ciChange} point${community.ciChange !== 1 ? "s" : ""} this week`
@@ -1592,12 +1607,14 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               {/* Three community stat tiles */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.8rem", marginBottom: "1rem" }}>
                 {[
-                  { label: "Avg Capacity Index", val: community.avgCI ?? "—", icon: "⚡", desc: "Our combined score" },
-                  { label: "Avg VO₂ Score",       val: community.avgVO2  ?? "—", icon: "🫁", desc: "Cardio engine" },
-                  { label: "Avg Grip Score",       val: community.avgGrip, icon: "🤝", desc: "Strength anchor" },
-                ].map(({ label, val, icon, desc }) => (
+                  { label: "Avg Capacity Index", val: community.avgCI ?? "—", iconName: "peak",     desc: "Our combined score" },
+                  { label: "Avg VO₂ Score",       val: community.avgVO2  ?? "—", iconName: "lungs",    desc: "Cardio engine" },
+                  { label: "Avg Grip Score",       val: community.avgGrip,        iconName: "dumbbell", desc: "Strength anchor" },
+                ].map(({ label, val, iconName, desc }) => (
                   <div key={label} style={{ background: CARD, borderRadius: "14px", padding: "1rem 0.7rem", textAlign: "center" }}>
-                    <div style={{ fontSize: "1.5rem", marginBottom: "0.2rem" }}>{icon}</div>
+                    <div style={{ marginBottom: "0.2rem", display:"flex", justifyContent:"center" }}>
+                      <GBSCIcon name={iconName} size={24} color={G} strokeWidth={0}/>
+                    </div>
                     <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: G, lineHeight: 1 }}>{val}</div>
                     <div style={{ fontSize: "0.68rem", color: "#666", marginTop: "0.3rem", lineHeight: 1.3 }}>{label}</div>
                     <div style={{ fontSize: "0.62rem", color: "#aaa", marginTop: "0.1rem" }}>{desc}</div>
@@ -1687,7 +1704,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             {ci !== null && (
               <>
                 <div style={{ fontSize: "3rem", fontWeight: "bold", color: G, margin: "0.5rem 0", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{ci}</div>
-                <div style={{ color: tier.color, fontSize: "1rem", fontWeight: "bold" }}>{tier.emoji} {tier.tier}</div>
+                <div style={{ color: tier.color, fontSize: "1rem", fontWeight: "bold", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.35rem" }}>
+                  <GBSCIcon name={tier.icon} size={18} color={tier.color} strokeWidth={2}/>
+                  {tier.tier}
+                </div>
                 {(() => {
                   const latest = checks[checks.length - 1];
                   const role = latest ? getCapacityRole(latest.score) : null;
@@ -1700,7 +1720,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                       </div>
                       {ws && (
                         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "999px", padding: "0.22rem 0.9rem", fontSize: "0.75rem", color: "#ccc" }}>
-                          {ws.emoji} This Week: {ws.status}
+                          <span style={{display:"inline-flex",alignItems:"center",gap:"0.3rem"}}>
+                            {ws.icon ? <GBSCIcon name={ws.icon} size={12} color="#ccc" strokeWidth={0}/> : ws.emoji}
+                            This Week: {ws.status}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -3228,7 +3251,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
               <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", gap: "1rem" }}>
                 <div style={{ fontSize: "2.5rem", fontWeight: "bold", color: G }}>{ci}</div>
                 <div>
-                  <div style={{ color: tier.color, fontWeight: "bold" }}>{tier.emoji} {tier.tier}</div>
+                  <div style={{ color: tier.color, fontWeight: "bold", display:"flex", alignItems:"center", gap:"0.3rem" }}><GBSCIcon name={tier.icon} size={14} color={tier.color} strokeWidth={0}/>{tier.tier}</div>
                   <div style={{ color: "#aaa", fontSize: "0.8rem" }}>Week {checks.length} of 8</div>
                 </div>
               </div>
@@ -3635,7 +3658,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.9rem" }}>{m.name}</div>
-                      <div style={{ fontSize: "0.72rem", color: tier.color, fontWeight: "bold" }}>{tier.emoji} {tier.tier}</div>
+                      <div style={{ fontSize: "0.72rem", color: tier.color, fontWeight: "bold", display:"flex", alignItems:"center", gap:"0.25rem" }}><GBSCIcon name={tier.icon} size={12} color={tier.color} strokeWidth={0}/>{tier.tier}</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", justifyContent: "flex-end" }}>
@@ -4251,7 +4274,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
               <div>
                 <div style={{ fontWeight: "bold", color: DARK }}>{m.name}</div>
                 <div style={{ fontSize: "0.8rem", color: "#888" }}>Week {checks.length}/8 · Age {m.age}</div>
-                {tier && <div style={{ fontSize: "0.8rem", color: tier.color, fontWeight: "bold" }}>{tier.emoji} {tier.tier}</div>}
+                {tier && <div style={{ fontSize: "0.8rem", color: tier.color, fontWeight: "bold", display:"flex", alignItems:"center", gap:"0.3rem" }}><GBSCIcon name={tier.icon} size={14} color={tier.color} strokeWidth={0}/>{tier.tier}</div>}
                 {!tier && <div style={{ fontSize: "0.8rem", color: "#bbb" }}>No check-ins yet</div>}
                 {mRole && mWS && (
                   <div style={{ display: "flex", gap: "0.4rem", marginTop: "0.3rem", flexWrap: "wrap" }}>
