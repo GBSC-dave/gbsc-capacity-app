@@ -1489,7 +1489,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const linkedArticle = focusTip.articleIds?.length
               ? LIBRARY_ARTICLES.find(a => focusTip.articleIds.includes(a.id))
               : (DRIVER_ARTICLE_MAP[weakest.key] ? LIBRARY_ARTICLES.find(a => a.id === DRIVER_ARTICLE_MAP[weakest.key]) : null);
-            const displayTip = { icon: focusTip.icon, label: focusTip.label, focus: focusTip.focus };
+            const displayTip = { icon: focusTip.icon, iconName: focusTip.iconName, label: focusTip.label, focus: focusTip.focus };
 
             // ── Week-over-week change (if available) ──
             const prev = nonBaseline.length >= 2 ? nonBaseline[nonBaseline.length - 2] : null;
@@ -1613,7 +1613,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 ].map(({ label, val, iconName, desc }) => (
                   <div key={label} style={{ background: CARD, borderRadius: "14px", padding: "1rem 0.7rem", textAlign: "center" }}>
                     <div style={{ marginBottom: "0.2rem", display:"flex", justifyContent:"center" }}>
-                      <GBSCIcon name={iconName} size={24} color={G} strokeWidth={0}/>
+                      <GBSCIcon name={iconName} size={48} color={G} strokeWidth={0}/>
                     </div>
                     <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: G, lineHeight: 1 }}>{val}</div>
                     <div style={{ fontSize: "0.68rem", color: "#666", marginTop: "0.3rem", lineHeight: 1.3 }}>{label}</div>
@@ -1653,17 +1653,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 });
                 const podPct = podTotal > 0 ? Math.round((podCheckedIn / podTotal) * 100) : null;
                 const stats = [
-                  pctConsistent !== null && { label: "Stayed Consistent", val: `${pctConsistent}%`, icon: "💪", desc: "Stabilizer or above this week" },
-                  { label: "Min Effective Weeks", val: mewTotal, icon: "✅", desc: "All-time across gym" },
-                  { label: "Builder+ Weeks", val: builderTotal, icon: "📈", desc: "Score 70+ all time" },
-                  podPct !== null && { label: "Pod Engagement", val: `${podPct}%`, icon: "🫛", desc: "Pods checked in this week" },
+                  pctConsistent !== null && { label: "Stayed Consistent", val: `${pctConsistent}%`, iconName: "dumbbell", desc: "Stabilizer or above this week" },
+                  { label: "Min Effective Weeks", val: mewTotal, iconName: "check",     desc: "All-time across gym" },
+                  { label: "Builder+ Weeks",      val: builderTotal, iconName: "builder", desc: "Score 70+ all time" },
+                  podPct !== null && { label: "Pod Engagement", val: `${podPct}%`, iconName: "star", desc: "Pods checked in this week" },
                 ].filter(Boolean);
                 if (!stats.length) return null;
                 return (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem", marginBottom: "0.5rem" }}>
-                    {stats.map(({ label, val, icon, desc }) => (
+                    {stats.map(({ label, val, iconName, desc }) => (
                       <div key={label} style={{ background: "#f7f7f7", borderRadius: "12px", padding: "0.8rem 0.7rem", textAlign: "center" }}>
-                        <div style={{ fontSize: "1.2rem", marginBottom: "0.15rem" }}>{icon}</div>
+                        <div style={{ marginBottom: "0.25rem", display:"flex", justifyContent:"center" }}>
+                        <GBSCIcon name={iconName} size={24} color={G} strokeWidth={0}/>
+                      </div>
                         <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: G, lineHeight: 1 }}>{val}</div>
                         <div style={{ fontSize: "0.66rem", color: "#666", marginTop: "0.25rem", lineHeight: 1.3 }}>{label}</div>
                         <div style={{ fontSize: "0.58rem", color: "#aaa", marginTop: "0.1rem" }}>{desc}</div>
