@@ -172,13 +172,141 @@ function getGripScore(grip, bw, age, sex) {
   return 8;
 }
 
+// ─── Declared Week Engine ─────────────────────────────────────────────────────
+function getDeclaredWeek(allChecks) {
+  const nonBaseline = (allChecks || []).filter(c => c && !c.isBaseline);
+  const latest = nonBaseline[nonBaseline.length - 1];
+  if (!latest) return null;
+
+  const weekCount = nonBaseline.length;
+  const score = latest.score;
+
+  // Pull signals from latest check-in
+  const sleep    = parseInt(latest.sleepQuality) || 0;
+  const energy   = parseInt(latest.energyLevel) || 0;
+  const recovery = parseInt(latest.physicalRecovery) || 0;
+  const hasMajorDisruption = latest.disruption === "Major disruption";
+  const hasSomeDisruption  = latest.disruption === "Some disruption";
+  const workouts = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[latest.workouts] ?? 0;
+
+  // Recovery signal: avg of sleep/energy/recovery (out of 5)
+  const recoverySignal = (sleep + energy + recovery) / 3;
+
+  // Trend signals (week 3+)
+  let consistencyTrend = null;
+  let recoveryTrend = null;
+  if (weekCount >= 3) {
+    const prev2 = nonBaseline.slice(-3, -1);
+    const avgPrevScore = prev2.reduce((s, c) => s + c.score, 0) / prev2.length;
+    consistencyTrend = score >= avgPrevScore ? "up" : "down";
+    const avgPrevRecovery = prev2.reduce((s, c) => ((parseInt(c.sleepQuality)||0) + (parseInt(c.energyLevel)||0) + (parseInt(c.physicalRecovery)||0)) / 3, 0) / prev2.length;
+    recoveryTrend = recoverySignal >= avgPrevRecovery ? "up" : "down";
+  }
+
+  // ── Declaration logic ──────────────────────────────────────────────────────
+  // Stabilizer bias: disruption, poor recovery, low score, low workouts
+  const stabilizerSignals = [
+    hasMajorDisruption,
+    hasSomeDisruption && recoverySignal < 2.5,
+    recoverySignal < 2,
+    score < 55,
+    workouts < 2,
+    consistencyTrend === "down" && recoveryTrend === "down",
+  ].filter(Boolean).length;
+
+  // Performer safeguard: requires 2 of 3 strong signals
+  const performerSignals = [
+    recoverySignal >= 3.5,
+    score >= 80,
+    consistencyTrend === "up",
+  ].filter(Boolean).length;
+  const performerUnlocked = performerSignals >= 2;
+
+  // Performer: high score, good recovery, no disruption, safeguard met
+  const isPerformer = performerUnlocked && score >= 80 && recoverySignal >= 3.5 && !hasMajorDisruption && workouts >= 3;
+
+  // Stabilizer: clear signal
+  const isStabilizer = stabilizerSignals >= 2 || score < 55 || hasMajorDisruption;
+
+  let role;
+  if (isStabilizer) role = "Stabilizer";
+  else if (isPerformer) role = "Performer";
+  else role = "Builder";
+
+  // ── Reason lines ───────────────────────────────────────────────────────────
+  // Week 1-2: score-based, honest about thin data
+  // Week 3+: can reference trends
+  const reasonLines = {
+    Stabilizer: weekCount < 3
+      ? (hasMajorDisruption ? "Looks like a heavy week — keeping things simple." : recoverySignal < 2.5 ? "Recovery signals suggest holding steady this week." : "Based on your check-in today, this is a consistency week.")
+      : (hasMajorDisruption ? "Disruption in your recent pattern — protecting consistency." : recoveryTrend === "down" ? "Recovery has dipped recently — we're holding steady." : "Life looked heavier recently — keep this week simple."),
+    Builder: weekCount < 3
+      ? "Solid signals from your check-in — time to build with control."
+      : (consistencyTrend === "up" ? "Your recent trend supports a stronger week." : "Consistency and recovery look good — time to build."),
+    Performer: weekCount < 3
+      ? "Strong signals across the board — you're ready for a higher-output week."
+      : "Consistency and recovery are both strong — perform with control.",
+  };
+
+  const ROLE_CONFIG = {
+    Stabilizer: {
+      color: "#8A94A6", bg: "#F4F6F8", accent: "#C7CED6", textSupport: "#5F6B7A", iconName: "stabilizer",
+      subtext: "Hold the line.",
+      targets: [
+        { label: "Training", value: "2 workouts" },
+        { label: "Engine",   value: "60 min aerobic work" },
+        { label: "Nutrition",value: "Protein in 2+ meals most days" },
+        { label: "Recovery", value: "3–4 nights of 7+ hours sleep · 1–2 recovery actions" },
+      ],
+      winLine: "Win the week by staying consistent.",
+      footerLine: "Stay in motion. That's the win.",
+      buttonLabel: "Got It — Show My Results",
+    },
+    Builder: {
+      color: "#2FBF71", bg: "#F3FBF6", accent: "#A7E3C2", textSupport: "#2F6B4A", iconName: "builder",
+      subtext: "This week, we build.",
+      targets: [
+        { label: "Training", value: "3 workouts" },
+        { label: "Engine",   value: "75–120 min aerobic work" },
+        { label: "Nutrition",value: "Protein in most meals" },
+        { label: "Recovery", value: "4+ nights of 7+ hours sleep · 2–3 recovery actions" },
+      ],
+      winLine: "Win the week by moving something forward.",
+      footerLine: "Small progress compounds.",
+      buttonLabel: "Let's Build — Show My Results",
+    },
+    Performer: {
+      color: "#FF5A3C", bg: "#FFF4F2", accent: "#FFB3A7", textSupport: "#9C3E2E", iconName: "performer",
+      subtext: "Perform at a high level — and recover well.",
+      targets: [
+        { label: "Training",       value: "3–4 workouts" },
+        { label: "Engine",         value: "90–150+ min aerobic work" },
+        { label: "Nutrition",      value: "High-quality fueling" },
+        { label: "Recovery",       value: "5+ nights of 7+ hours sleep · 3+ recovery actions" },
+        { label: "Optional Push",  value: "Choose one session this week to push intensity" },
+      ],
+      winLine: "Win the week by performing well and recovering well.",
+      footerLine: "Push — then recover well.",
+      buttonLabel: "Go Perform — Show My Results",
+    },
+  };
+
+  const cfg = ROLE_CONFIG[role];
+  return {
+    role,
+    weekCount,
+    reasonLine: reasonLines[role],
+    ...cfg,
+  };
+}
+
 // ─── Capacity Role (based on latest weekly habit score) ──────────────────────
 function getCapacityRole(latestScore) {
   if (latestScore === null || latestScore === undefined) return null;
-  if (latestScore >= 85) return { role: "Performer", color: "#1a7a00", emoji: "🔥", desc: "Performs at a high level without burning out." };
-  if (latestScore >= 70) return { role: "Builder",   color: G,         emoji: "📈", desc: "Builds capacity week to week." };
-  if (latestScore >= 55) return { role: "Stabilizer",color: "#e09020", emoji: "🛡️", desc: "Stays consistent when life gets busy." };
-  return { role: "Reset",     color: "#e05030", emoji: "🔄", desc: "Reestablish the basics and bounce back." };
+  if (latestScore >= 85) return { role: "Performer", color: "#1a7a00", emoji: "🔥", icon: "performer",  desc: "Performs at a high level without burning out." };
+  if (latestScore >= 70) return { role: "Builder",   color: G,         emoji: "📈", icon: "builder",    desc: "Builds capacity week to week." };
+  if (latestScore >= 55) return { role: "Stabilizer",color: "#e09020", emoji: "🛡️", icon: "stabilizer", desc: "Stays consistent when life gets busy." };
+  return { role: "Reset", color: "#e05030", emoji: "🔄", icon: null, desc: "Reestablish the basics and bounce back." };
 }
 
 // ─── Week Status (based on latest weekly habit score) ─────────────────────────
@@ -196,11 +324,11 @@ function calcCapacityIndex(vo2Score, gripScore, habitScore) {
 }
 
 function getCapacityTier(score) {
-  if (score >= 85) return { tier: "Peak Capacity", color: "#1a7a00", emoji: "🏆" };
-  if (score >= 70) return { tier: "Durable Capacity", color: G, emoji: "💪" };
-  if (score >= 55) return { tier: "Building Capacity", color: "#4a9e38", emoji: "📈" };
-  if (score >= 40) return { tier: "Emerging Capacity", color: "#8ab85a", emoji: "🌱" };
-  return { tier: "Foundation Capacity", color: "#b0c090", emoji: "🔧" };
+  if (score >= 85) return { tier: "Peak Capacity",       color: "#1a7a00", emoji: "🏆", icon: "peak" };
+  if (score >= 70) return { tier: "Durable Capacity",    color: G,         emoji: "💪", icon: "durable" };
+  if (score >= 55) return { tier: "Building Capacity",   color: "#4a9e38", emoji: "📈", icon: "building" };
+  if (score >= 40) return { tier: "Emerging Capacity",   color: "#8ab85a", emoji: "🌱", icon: "emerging" };
+  return               { tier: "Foundation Capacity", color: "#b0c090", emoji: "🔧", icon: "foundation" };
 }
 
 // ─── Weekly Check Score Calculator ────────────────────────────────────────────
@@ -482,6 +610,51 @@ function ScaleGroup({ value, onChange, field, setCheck, labels }) {
   );
 }
 
+// ─── GBSC Icon Set ────────────────────────────────────────────────────────────
+// Geometric line icons matching the Recraft aesthetic. color="currentColor" by default.
+function GBSCIcon({ name, size = 28, color = "currentColor", strokeWidth = 2.5 }) {
+  const s = { fill: "none", stroke: color, strokeWidth, strokeLinecap: "round", strokeLinejoin: "round" };
+  const icons = {
+    foundation: <svg viewBox="-32 -20 64 36" width={size} height={size} {...s}>
+      <rect x="-28" y="10" width="56" height="5" rx="1" stroke={color} fill="none" strokeWidth={strokeWidth}/>
+      <rect x="-20" y="0"  width="40" height="5" rx="1" stroke={color} fill="none" strokeWidth={strokeWidth}/>
+      <rect x="-12" y="-10" width="24" height="5" rx="1" stroke={color} fill="none" strokeWidth={strokeWidth}/>
+    </svg>,
+    emerging: <svg viewBox="-20 -32 40 50" width={size} height={size} {...s}>
+      <line x1="0" y1="14" x2="0" y2="-10"/>
+      <path d="M0 -2 Q-14 -14 -14 -28"/>
+      <path d="M0 4 Q14 -8 14 -22"/>
+    </svg>,
+    building: <svg viewBox="-26 -22 52 38" width={size} height={size} {...s}>
+      <rect x="-22" y="8"  width="44" height="10" rx="1" stroke={color} fill="none" strokeWidth={strokeWidth}/>
+      <rect x="-16" y="-4" width="32" height="10" rx="1" stroke={color} fill="none" strokeWidth={strokeWidth}/>
+      <rect x="-10" y="-16" width="20" height="10" rx="1" stroke={color} fill="none" strokeWidth={strokeWidth}/>
+    </svg>,
+    durable: <svg viewBox="-24 -22 48 38" width={size} height={size} {...s}>
+      <path d="M-20 14 L-20 0 Q-20 -20 0 -20 Q20 -20 20 0 L20 14"/>
+      <path d="M-10 14 L-10 4 Q-10 -8 0 -8 Q10 -8 10 4 L10 14"/>
+    </svg>,
+    peak: <svg viewBox="-28 -22 56 38" width={size} height={size} {...s}>
+      <polyline points="-24,14 0,-18 24,14"/>
+      <polyline points="-12,14 0,-6 12,14"/>
+    </svg>,
+    stabilizer: <svg viewBox="-32 -22 64 38" width={size} height={size} {...s}>
+      <path d="M-24 10 L-24 2 Q-24 -18 0 -18 Q24 -18 24 2 L24 10"/>
+      <line x1="-30" y1="14" x2="30" y2="14"/>
+    </svg>,
+    builder: <svg viewBox="-16 -22 32 40" width={size} height={size} {...s}>
+      <line x1="0" y1="14" x2="0" y2="-14"/>
+      <polyline points="-8,-6 0,-18 8,-6"/>
+      <line x1="-12" y1="4" x2="12" y2="4"/>
+      <line x1="-12" y1="-3" x2="12" y2="-3"/>
+    </svg>,
+    performer: <svg viewBox="-14 -22 28 44" width={size} height={size} {...s}>
+      <polyline points="8,-20 -4,-2 6,-2 -8,20"/>
+    </svg>,
+  };
+  return icons[name] || null;
+}
+
 // ─── MEMBER PORTAL ────────────────────────────────────────────────────────────
 function MemberPortal({ view, setView, members, currentMember, setCurrentMember, saveMember, pods, setPods, onRegistered, onCoachAccess }) {
   const [form, setForm] = useState({ name: "", email: "", age: "", sex: "male", weight: "", grip: "", vo2: "" });
@@ -490,6 +663,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [displayedScore, setDisplayedScore] = useState(0);
   const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
   const [validationMsg, setValidationMsg] = useState("");
+  const [declaredWeek, setDeclaredWeek] = useState(null);
 
   // Scroll to top on every view transition so the header is always visible
   useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [view]);
@@ -611,7 +785,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     onRegistered();
-    setView("checkFeedback");
+    const dw = getDeclaredWeek(member.weeklyChecks);
+    setDeclaredWeek(dw);
+    setView("declaredWeek");
   }
 
   async function handleSubmitCheck() {
@@ -649,7 +825,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setCurrentMember(updatedMember);
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
-    setView("checkFeedback");
+    const dw = getDeclaredWeek(updatedMember.weeklyChecks);
+    setDeclaredWeek(dw);
+    setView("declaredWeek");
   }
 
   const hdr = (
@@ -789,6 +967,86 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             Complete Setup & See My Score →
           </button>
           <button onClick={() => setOnboardStep(1)} style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>← Back to Profile</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "declaredWeek" && currentMember && declaredWeek) {
+    const dw = declaredWeek;
+    const isFirstWeeks = dw.weekCount <= 2;
+    return (
+      <div style={{ minHeight: "100vh", background: dw.bg, fontFamily: "Georgia, serif", display: "flex", flexDirection: "column" }}>
+        {/* Header */}
+        <div style={{ background: dw.color, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
+          <img src={LOGO_ICON} alt="GBSC" style={{ height: "36px", borderRadius: "4px" }} />
+          <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.03em", flex: 1 }}>GBSC Capacity</div>
+        </div>
+
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", gap: "0" }}>
+
+          {/* ── Role reveal ── */}
+          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+            <div style={{ display: "inline-block", background: dw.color, color: "#fff", borderRadius: "999px", padding: "0.3rem 1.1rem", fontSize: "0.72rem", fontWeight: "bold", letterSpacing: "0.08em", marginBottom: "1.2rem" }}>
+              YOUR WEEK IS SET
+            </div>
+            {dw.iconName && (
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.8rem" }}>
+                <GBSCIcon name={dw.iconName} size={52} color={dw.color} strokeWidth={2}/>
+              </div>
+            )}
+            <div style={{ fontSize: "2.4rem", fontWeight: "bold", color: dw.color, letterSpacing: "-0.01em", lineHeight: 1.1, marginBottom: "0.5rem" }}>
+              {dw.role} Week
+            </div>
+            <div style={{ fontSize: "1.1rem", color: dw.textSupport, fontStyle: "italic", marginBottom: "1.2rem" }}>
+              {dw.subtext}
+            </div>
+            <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6, marginBottom: "0.5rem" }}>
+              {dw.reasonLine}
+            </div>
+            <div style={{ fontSize: "0.72rem", color: dw.accent === "#C7CED6" ? "#8A94A6" : dw.textSupport, opacity: 0.8 }}>
+              {isFirstWeeks ? "Based on your check-in today." : "Based on your recent trends."}
+            </div>
+          </div>
+
+          {/* ── What to do ── */}
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem", boxShadow: `0 2px 12px ${dw.color}18` }}>
+            <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginBottom: "0.9rem", fontWeight: "bold" }}>WHAT TO DO THIS WEEK</div>
+            {dw.targets.map(({ label, value }) => (
+              <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.7rem", alignItems: "flex-start" }}>
+                <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.1rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+                <div style={{ fontSize: "0.88rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Win condition ── */}
+          <div style={{ background: `${dw.color}18`, border: `1.5px solid ${dw.color}44`, borderRadius: "12px", padding: "1rem 1.2rem", marginBottom: "1.4rem", textAlign: "center" }}>
+            <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6, fontStyle: "italic" }}>{dw.winLine}</div>
+          </div>
+
+          {/* ── Fail-safe ── */}
+          <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
+            <div style={{ fontSize: "0.78rem", color: dw.textSupport, opacity: 0.75 }}>
+              If the week shifts, reduce the load — stay in motion.
+            </div>
+          </div>
+
+          {/* ── CTA button ── */}
+          <button onClick={() => setView("checkFeedback")}
+            style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.8rem" }}>
+            {dw.buttonLabel} →
+          </button>
+          <button onClick={() => setView("profile")}
+            style={{ width: "100%", background: "none", border: "none", color: dw.textSupport, cursor: "pointer", fontSize: "0.85rem" }}>
+            Back to My Profile
+          </button>
+
+          {/* ── Footer line ── */}
+          <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
+            <div style={{ fontSize: "0.8rem", color: dw.textSupport, opacity: 0.6, fontStyle: "italic" }}>{dw.footerLine}</div>
+          </div>
+
         </div>
       </div>
     );
@@ -975,19 +1233,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const firstWeekMessages = {
               "Reset":      { headline: "Your starting role: Reset", body: "Start simple. Small actions compound. Your next check-in is the first step." },
               "Stabilizer": { headline: "Your starting role: Stabilizer", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
-              "Builder":    { headline: "Your starting role: Builder", body: "Your habits are already creating real capacity. Keep stacking weeks." },
+              "Builder":    { headline: "Your starting role: Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
               "Performer":  { headline: "Your starting role: Performer", body: "You can push, recover, and sustain. That's rare. Protect it." },
             };
             const upgradeMessages = {
               "Stabilizer": { headline: "You've become a Stabilizer", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
-              "Builder":    { headline: "You're now a Builder", body: "Your consistency is creating real capacity. Keep stacking weeks." },
+              "Builder":    { headline: "You're now a Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
               "Performer":  { headline: "You've reached Performer", body: "You can push, recover, and sustain. This is rare." },
             };
             const msg = isFirstWeek ? firstWeekMessages[currentRole.role] : upgradeMessages[currentRole.role];
             if (!msg) return null;
             return (
               <div style={{ background: `linear-gradient(135deg, ${currentRole.color}22, ${currentRole.color}10)`, border: `1.5px solid ${currentRole.color}55`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", ...fadeUp(300) }}>
-                <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>{currentRole.emoji}</div>
+                <div style={{ marginBottom: "0.7rem", display: "flex", justifyContent: "center" }}>{currentRole.icon ? <GBSCIcon name={currentRole.icon} size={40} color={currentRole.color} strokeWidth={2}/> : <span style={{fontSize:"2rem"}}>{currentRole.emoji}</span>}</div>
                 <div style={{ fontWeight: "bold", color: currentRole.color, fontSize: "1.1rem", marginBottom: "0.3rem" }}>
                   {msg.headline}
                 </div>
@@ -1007,7 +1265,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 style={{ width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", borderRadius: "10px", textAlign: "left" }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                  <div style={{ fontSize: "2.8rem", lineHeight: 1 }}>{tier.emoji}</div>
+                  <div style={{ lineHeight: 1, display: "flex", alignItems: "center" }}><GBSCIcon name={tier.icon} size={44} color={tier.color} /></div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: "0.7rem", color: "#aaa", letterSpacing: "0.05em" }}>Capacity Identity</div>
                     <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color }}>{tier.tier}</div>
@@ -1056,7 +1314,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                         background: isCurrent ? `${t.color}18` : "transparent",
                         border: isCurrent ? `1.5px solid ${t.color}55` : "1.5px solid transparent",
                       }}>
-                        <div style={{ fontSize: "1.3rem", flexShrink: 0 }}>{t.emoji}</div>
+                        <div style={{ flexShrink: 0, display: "flex", alignItems: "center" }}><GBSCIcon name={t.icon} size={20} color={isCurrent ? t.color : "#bbb"} strokeWidth={2} /></div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: isCurrent ? "bold" : "normal", color: isCurrent ? t.color : "#555", fontSize: "0.88rem" }}>
                             {t.name} {isCurrent && <span style={{ fontSize: "0.72rem", background: t.color, color: "#fff", borderRadius: "4px", padding: "1px 5px", marginLeft: "4px", verticalAlign: "middle" }}>YOU</span>}
@@ -1393,7 +1651,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   return (
                     <div style={{ marginTop: "0.7rem", display: "flex", flexDirection: "column", gap: "0.35rem", alignItems: "center" }}>
                       <div style={{ background: "rgba(255,255,255,0.12)", borderRadius: "999px", padding: "0.22rem 0.9rem", fontSize: "0.78rem", fontWeight: "bold", color: "#fff" }}>
-                        {role.emoji} Capacity Role: {role.role}
+                        <span style={{display:"inline-flex",alignItems:"center",gap:"0.3rem"}}>{role.icon && <GBSCIcon name={role.icon} size={14} color="#fff" strokeWidth={2.5}/>}Capacity Role: {role.role}</span>
                       </div>
                       {ws && (
                         <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "999px", padding: "0.22rem 0.9rem", fontSize: "0.75rem", color: "#ccc" }}>
@@ -1406,6 +1664,24 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               </>
             )}
           </div>
+          {/* ── Declared week home banner ────────────────────────────────── */}
+          {(() => {
+            const allChecks = currentMember.weeklyChecks || [];
+            const dw = getDeclaredWeek(allChecks);
+            if (!dw) return null;
+            return (
+              <div style={{ background: dw.color, borderRadius: "14px", padding: "0.9rem 1.2rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer" }}
+                onClick={() => { setDeclaredWeek(dw); setView("declaredWeek"); }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.75)", letterSpacing: "0.07em", fontWeight: "bold", marginBottom: "0.15rem" }}>THIS WEEK</div>
+                  <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#fff" }}>{dw.role} Week</div>
+                  <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.85)", marginTop: "0.1rem", fontStyle: "italic" }}>{dw.subtext}</div>
+                </div>
+                <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "1.2rem", flexShrink: 0 }}>→</div>
+              </div>
+            );
+          })()}
+
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.8rem", marginBottom: "1.5rem" }}>
             {[
               { label: "VO₂ Score", val: currentMember.vo2Score_pre },
@@ -1444,11 +1720,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {/* ── Tier Progress Bar ─────────────────────────────────────────── */}
           {ci !== null && (() => {
             const tierOrder = [
-              { name: "Foundation Capacity", min: 0,  max: 39,  emoji: "🔧", next: "Emerging Capacity",  color: "#b0c090" },
-              { name: "Emerging Capacity",   min: 40, max: 54,  emoji: "🌱", next: "Building Capacity",  color: "#8ab85a" },
-              { name: "Building Capacity",   min: 55, max: 69,  emoji: "📈", next: "Durable Capacity",   color: "#4a9e38" },
-              { name: "Durable Capacity",    min: 70, max: 84,  emoji: "💪", next: "Peak Capacity",     color: G },
-              { name: "Peak Capacity",      min: 85, max: 100, emoji: "🏆", next: null,                  color: "#1a7a00" },
+              { name: "Foundation Capacity", min: 0,  max: 39,  emoji: "🔧", icon: "foundation", next: "Emerging Capacity",  color: "#b0c090" },
+              { name: "Emerging Capacity",   min: 40, max: 54,  emoji: "🌱", icon: "emerging",   next: "Building Capacity",  color: "#8ab85a" },
+              { name: "Building Capacity",   min: 55, max: 69,  emoji: "📈", icon: "building",   next: "Durable Capacity",   color: "#4a9e38" },
+              { name: "Durable Capacity",    min: 70, max: 84,  emoji: "💪", icon: "durable",    next: "Peak Capacity",     color: G },
+              { name: "Peak Capacity",      min: 85, max: 100, emoji: "🏆", icon: "peak",        next: null,                  color: "#1a7a00" },
             ];
             const currentTierData = tierOrder.find(t => ci >= t.min && ci <= t.max) || tierOrder[0];
             const pointsToNext = currentTierData.next ? (currentTierData.max + 1) - ci : 0;
@@ -1457,7 +1733,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.8rem" }}>
                 <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginBottom: "0.8rem" }}>Tier Progress</div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#888", marginBottom: "0.35rem" }}>
-                  <span style={{ fontWeight: "bold", color: tier.color }}>{currentTierData.emoji} {currentTierData.name}</span>
+                  <span style={{ fontWeight: "bold", color: tier.color, display: "flex", alignItems: "center", gap: "0.3rem" }}><GBSCIcon name={currentTierData.icon} size={16} color={tier.color} strokeWidth={2}/>{currentTierData.name}</span>
                   {currentTierData.next && <span>{tierOrder.find(t => t.name === currentTierData.next)?.emoji} {currentTierData.next}</span>}
                 </div>
                 <div style={{ background: "#e0e0e0", borderRadius: "999px", height: "12px", overflow: "hidden", marginBottom: "0.7rem" }}>
@@ -1635,22 +1911,35 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 </button>
                 {driversOpen && (
                   <div style={{ padding: "0 1.3rem 1.2rem" }}>
-                    {rows.map(row => {
-                      const pct = Math.round((row.value / row.max) * 100);
-                      const barColor = pct >= 80 ? G : pct >= 50 ? "#8ab85a" : pct >= 25 ? "#e0a030" : "#e05030";
+                    {[
+                      { group: "Performance", keys: ["Training","Zone 2","Strength"] },
+                      { group: "Lifestyle",   keys: ["Movement","Protein"] },
+                      { group: "Recovery",    keys: ["Sleep Opp.","Sleep Quality","Downshift","Energy","Recovery"] },
+                    ].map(({ group, keys }) => {
+                      const groupRows = rows.filter(r => keys.includes(r.label));
+                      if (!groupRows.length) return null;
                       return (
-                        <div key={row.label} style={{ marginBottom: "0.7rem" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.2rem" }}>
-                            <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: DARK }}>{row.label}</span>
-                            <span style={{ fontSize: "0.75rem", color: "#888" }}>{row.display}</span>
-                          </div>
-                          <div style={{ background: "#e8e8e8", borderRadius: "999px", height: "7px" }}>
-                            <div style={{ background: barColor, width: `${pct}%`, height: "100%", borderRadius: "999px" }} />
-                          </div>
+                        <div key={group} style={{ marginBottom: "1rem" }}>
+                          <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.5rem", fontWeight: "bold" }}>{group.toUpperCase()}</div>
+                          {groupRows.map(row => {
+                            const pct = Math.round((row.value / row.max) * 100);
+                            const barColor = pct >= 80 ? G : pct >= 50 ? "#8ab85a" : pct >= 25 ? "#e0a030" : "#e05030";
+                            return (
+                              <div key={row.label} style={{ marginBottom: "0.6rem" }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.2rem" }}>
+                                  <span style={{ fontSize: "0.8rem", color: DARK }}>{row.label}</span>
+                                  <span style={{ fontSize: "0.75rem", color: "#888" }}>{row.display}</span>
+                                </div>
+                                <div style={{ background: "#e8e8e8", borderRadius: "999px", height: "7px" }}>
+                                  <div style={{ background: barColor, width: `${pct}%`, height: "100%", borderRadius: "999px" }} />
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       );
                     })}
-                    <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: "0.5rem" }}>Based on your most recent check-in</div>
+                    <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: "0.3rem" }}>Based on your most recent check-in</div>
                   </div>
                 )}
               </div>
