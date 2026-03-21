@@ -541,10 +541,7 @@ export default function GBSCApp() {
           animation: "iconRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both, glowPulse 3.5s ease-in-out 2.4s infinite",
           marginBottom: "2.6rem",
         }}>
-          <img
-            src={LOGO_ICON_TRANSPARENT} alt="GBSC"
-            style={{ width: "min(110px, 28vw)", display: "block", mixBlendMode: "multiply" }}
-          />
+          <GBSCMark size={108} color={G} />
         </div>
 
         {/* Hair-line rule — expands like a breath */}
@@ -711,6 +708,34 @@ function ScaleGroup({ value, onChange, field, setCheck, labels }) {
         );
       })}
     </div>
+  );
+}
+
+// ─── GBSC Brand Mark SVG ─────────────────────────────────────────────────────
+// Pure vector trace of the GBSC logo mark — no background, transparent by default.
+// The mark is a stylised BG monogram inside an open circle (G shape), with three
+// horizontal speed lines extending left. All strokes, round caps/joins.
+function GBSCMark({ size = 48, color = "#5DC842" }) {
+  return (
+    <svg viewBox="0 0 200 200" width={size} height={size} fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Outer G arc — open at upper-right */}
+      <path
+        d="M148 22 C108 4, 54 14, 30 52 C6 90, 12 138, 42 164 C72 190, 118 196, 154 176 C176 163, 190 144, 192 122 L192 100 L158 100"
+        stroke={color} strokeWidth="17" strokeLinecap="round" strokeLinejoin="round"
+      />
+      {/* B vertical spine */}
+      <line x1="86" y1="52" x2="86" y2="148" stroke={color} strokeWidth="17" strokeLinecap="round"/>
+      {/* B upper bump */}
+      <path d="M86 52 C86 52 146 52 146 76 C146 100 86 100 86 100"
+        stroke={color} strokeWidth="17" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* B lower bump */}
+      <path d="M86 100 C86 100 150 100 150 124 C150 148 86 148 86 148"
+        stroke={color} strokeWidth="17" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* Three speed lines */}
+      <line x1="20" y1="76"  x2="86" y2="76"  stroke={color} strokeWidth="17" strokeLinecap="round"/>
+      <line x1="12" y1="100" x2="86" y2="100" stroke={color} strokeWidth="17" strokeLinecap="round"/>
+      <line x1="20" y1="124" x2="86" y2="124" stroke={color} strokeWidth="17" strokeLinecap="round"/>
+    </svg>
   );
 }
 
@@ -1032,7 +1057,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   const hdr = (
     <div style={{ background: DARK, padding: "0.85rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
-      <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{ height: "32px", objectFit: "contain", mixBlendMode: "multiply" }} />
+      <GBSCMark size={30} color={G} />
       <div style={{ flex: 1 }} />
       <button onClick={() => setView("library")}
         style={{ background: "none", border: `1px solid ${G}55`, color: G, borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold", display:"flex", alignItems:"center", gap:"0.35rem" }}>
