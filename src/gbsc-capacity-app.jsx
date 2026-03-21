@@ -540,32 +540,40 @@ export default function GBSCApp() {
           }
         `}</style>
 
-        {/* Icon mark — rises from below, slow and deliberate, then glow pulse */}
-        <div style={{
-          animation: "iconRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both, glowPulse 3.5s ease-in-out 2.4s infinite",
-          marginBottom: "2.6rem",
-        }}>
-          <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{ width: "min(110px, 28vw)", display: "block" }} />
-        </div>
+        {/* Centered column — logo + rule + tagline all share same width so they align */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "min(110px, 28vw)" }}>
 
-        {/* Hair-line rule — expands like a breath */}
-        <div style={{
-          height: "1px",
-          background: `linear-gradient(90deg, transparent, ${G}90, transparent)`,
-          marginBottom: "2rem",
-          animation: "lineExpand 1s ease 2.1s both",
-        }} />
+          {/* Icon mark */}
+          <div style={{
+            animation: "iconRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both, glowPulse 3.5s ease-in-out 2.4s infinite",
+            marginBottom: "2.6rem", width: "100%",
+          }}>
+            <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{ width: "100%", display: "block" }} />
+          </div>
 
-        {/* Tagline — brand green, wide tracking, drifts up */}
-        <div style={{
-          fontFamily: SERIF,
-          fontSize: "clamp(0.74rem, 1.8vw, 0.84rem)",
-          color: G,
-          letterSpacing: "0.26em",
-          textTransform: "uppercase",
-          animation: "taglineRise 1.1s cubic-bezier(0.16, 1, 0.3, 1) 2.6s both",
-        }}>
-          Build Capacity.
+          {/* Hair-line rule */}
+          <div style={{
+            height: "1px", width: "100%",
+            background: `linear-gradient(90deg, transparent, ${G}90, transparent)`,
+            marginBottom: "2rem",
+            animation: "lineExpand 1s ease 2.1s both",
+          }} />
+
+          {/* Tagline — letter-spacing offset corrected with matching right padding */}
+          <div style={{
+            fontFamily: SERIF,
+            fontSize: "clamp(0.74rem, 1.8vw, 0.84rem)",
+            color: G,
+            letterSpacing: "0.26em",
+            paddingRight: "0.26em",
+            textTransform: "uppercase",
+            textAlign: "center",
+            whiteSpace: "nowrap",
+            animation: "taglineRise 1.1s cubic-bezier(0.16, 1, 0.3, 1) 2.6s both",
+          }}>
+            Build Capacity.
+          </div>
+
         </div>
 
         {/* Spinner — barely there, appears after the moment lands */}
