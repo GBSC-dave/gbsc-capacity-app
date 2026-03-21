@@ -1881,7 +1881,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           )}
 
           <button onClick={() => setView("profile")}
-            style={{ width: "100%", background  if (view === "profile" && currentMember) {
+            style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>← Back to Profile</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "profile" && currentMember) {
     const allChecks = currentMember.weeklyChecks || [];
     const baseline  = allChecks.find(c => c.isBaseline);
     const checks    = allChecks.filter(c => c && !c.isBaseline);
@@ -2353,14 +2359,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <GBSCIcon name="pencil" size={16} color="#666" strokeWidth={0}/>Edit My Profile
           </button>
 
-        </div>
-      </div>
-    );
-  }
-
-play:"flex", alignItems:"center", justifyContent:"center", gap:"0.5rem" }}>
-            <GBSCIcon name="pencil" size={16} color="#666" strokeWidth={0}/>Edit My Profile
-          </button>
         </div>
       </div>
     );
