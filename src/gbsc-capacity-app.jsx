@@ -1069,22 +1069,24 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   const hdr = (
     <div style={{ background: DARK, padding: "0.75rem 1.2rem", display: "flex", alignItems: "center" }}>
-      {/* Left third — Library */}
+      {/* Left third — Library, quieter secondary chrome */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
         <button onClick={() => setView("library")}
-          style={{ background: "none", border: `1px solid ${G}55`, color: G, borderRadius: "6px", padding: "0.3rem 0.8rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold", display:"flex", alignItems:"center", gap:"0.35rem" }}>
+          style={{ background: "none", border: "none", color: G, borderRadius: "6px", padding: "0.3rem 0.5rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600", display:"flex", alignItems:"center", gap:"0.35rem", opacity: 0.85 }}>
           <GBSCIcon name="book" size={15} color={G} strokeWidth={0}/>Library
         </button>
       </div>
-      {/* Center — Logo mark, optically centered to G circle */}
+      {/* Center — Logo mark, 40px, glow halo to signal hierarchy */}
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
         <img src={LOGO_ICON_TRANSPARENT} alt="GBSC"
-          style={{ height: "36px", width: "auto", objectFit: "contain", transform: "translateX(-7.1%)" }} />
+          style={{ height: "40px", width: "auto", objectFit: "contain",
+            transform: "translateX(-7.1%)",
+            filter: "drop-shadow(0 0 7px rgba(93,200,66,0.40)) drop-shadow(0 0 18px rgba(93,200,66,0.15))" }} />
       </div>
-      {/* Right third — Coach */}
+      {/* Right third — Coach, muted */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
         <button onClick={onCoachAccess}
-          style={{ background: "none", border: "1px solid #555", color: "#aaa", borderRadius: "6px", padding: "0.3rem 0.8rem", fontSize: "0.75rem", cursor: "pointer" }}>
+          style={{ background: "none", border: "none", color: "#666", padding: "0.3rem 0.5rem", fontSize: "0.75rem", cursor: "pointer" }}>
           Coach
         </button>
       </div>
