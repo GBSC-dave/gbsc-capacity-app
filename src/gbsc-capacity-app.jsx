@@ -81,8 +81,10 @@ const POD_NAMES = [
 
 const G = "#5DC842";
 const DARK = "#2D2D2D";
-const CARD = "#fff";
+const CARD = "#fdfcfb";
 const PAGE_BG = "#f9f7f4";
+const SERIF = "'Georgia', serif";
+const SANS  = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
 // ─── Capacity Index Calculators ───────────────────────────────────────────────
 // VO2 Max 12-Tier System (Eric's updated table — age + sex adjusted, ml/kg/min)
@@ -424,7 +426,7 @@ export default function GBSCApp() {
   useEffect(() => { init(); }, []);
 
   async function init() {
-    const MIN_SPLASH_MS = 2200; // minimum time logo is visible
+    const MIN_SPLASH_MS = 2600; // minimum time logo is visible
     const startTime = Date.now();
 
     // Load pods
@@ -501,34 +503,59 @@ export default function GBSCApp() {
     return (
       <div style={{
         minHeight: "100vh", background: DARK,
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2.5rem",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         opacity: splashFading ? 0 : 1,
-        transition: splashFading ? "opacity 0.6s ease" : "none",
+        transition: splashFading ? "opacity 0.8s ease" : "none",
       }}>
+        <style>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+          @keyframes logoRise {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes taglineIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+          }
+          @keyframes spinnerIn {
+            from { opacity: 0; }
+            to   { opacity: 0.45; }
+          }
+        `}</style>
+
+        {/* Logo — bare against darkness, no card */}
+        <img
+          src={LOGO_HORIZ} alt="GBSC"
+          style={{
+            width: "min(240px, 58vw)",
+            display: "block",
+            animation: "logoRise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both",
+            marginBottom: "1.6rem",
+          }}
+        />
+
+        {/* Tagline — fades in after logo settles */}
         <div style={{
-          background: "#fff",
-          borderRadius: "24px",
-          padding: "2rem 2.8rem",
-          boxShadow: "0 8px 40px rgba(0,0,0,0.45), 0 2px 12px rgba(0,0,0,0.3)",
-          opacity: splashFading ? 0 : 1,
-          transform: splashFading ? "scale(0.97)" : "scale(1)",
-          transition: "opacity 0.6s ease, transform 0.6s ease",
+          fontFamily: SERIF,
+          fontSize: "clamp(0.82rem, 2.2vw, 0.92rem)",
+          color: "rgba(255,255,255,0.45)",
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          animation: "taglineIn 1s ease 1.05s both",
         }}>
-          <img
-            src={LOGO_HORIZ} alt="GBSC"
-            style={{ width: "min(280px, 65vw)", display: "block" }}
-          />
+          Build Capacity.
         </div>
+
+        {/* Spinner — whisper quiet, appears late */}
         <div style={{
-          width: "44px", height: "44px",
-          border: `3px solid rgba(255,255,255,0.12)`,
-          borderTop: `3px solid ${G}`,
+          width: "28px", height: "28px",
+          border: `2px solid rgba(255,255,255,0.07)`,
+          borderTop: `2px solid ${G}`,
           borderRadius: "50%",
-          animation: "spin 1.1s linear infinite",
-          opacity: splashFading ? 0 : 0.85,
-          transition: "opacity 0.3s ease",
+          animation: "spin 1.1s linear infinite, spinnerIn 0.6s ease 1.7s both",
+          position: "absolute",
+          bottom: "min(10vh, 80px)",
         }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
@@ -536,7 +563,7 @@ export default function GBSCApp() {
   // ── COACH PIN ─────────────────────────────────────────────────────────────
   if (view === "coachPin") {
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "'Georgia', serif", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <img src={LOGO_HORIZ} alt="GBSC" style={{ width: "min(280px, 80vw)", marginBottom: "2rem" }} />
         <div style={{ background: DARK, borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "320px" }}>
           <div style={{ color: "#fff", fontWeight: "bold", fontSize: "1.1rem", marginBottom: "1.2rem", textAlign: "center" }}>🔒 Coach Access</div>
@@ -650,20 +677,17 @@ function ScaleGroup({ value, onChange, field, setCheck, labels }) {
   };
   const selectedLabel = resolvedValue && labels ? labels[parseInt(resolvedValue) - 1] : null;
   return (
-    <div>
-      <div style={{ display: "flex", gap: "0.4rem", marginBottom: "0.3rem" }}>
-        {[1,2,3,4,5].map(n => (
-          <button key={n} onClick={() => handleClick(n)}
-            style={{ flex: 1, height: "44px", border: `2px solid ${String(n) === resolvedValue ? G : "#ddd"}`, borderRadius: "8px", background: String(n) === resolvedValue ? G : "#fff", color: String(n) === resolvedValue ? "#fff" : DARK, cursor: "pointer", fontWeight: "bold", fontSize: "1rem" }}>
-            {n}
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+      {labels.map((label, i) => {
+        const n = String(i + 1);
+        const isSelected = n === resolvedValue;
+        return (
+          <button key={n} onClick={() => handleClick(i + 1)}
+            style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `1.5px solid ${isSelected ? G : "#e0e0e0"}`, borderRadius: "12px", background: isSelected ? G : "#fff", color: isSelected ? "#fff" : DARK, cursor: "pointer", fontSize: "0.88rem", fontWeight: isSelected ? "600" : "normal", display: "flex", alignItems: "center", transition: "all 0.15s ease" }}>
+            {label}
           </button>
-        ))}
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.7rem", marginTop: "0.2rem" }}>
-        {labels && <span style={{ color: "#bbb" }}>{labels[0]}</span>}
-        {selectedLabel && <span style={{ color: G, fontWeight: "bold", fontSize: "0.78rem" }}>✓ {selectedLabel}</span>}
-        {labels && <span style={{ color: "#bbb" }}>{labels[4]}</span>}
-      </div>
+        );
+      })}
     </div>
   );
 }
@@ -803,6 +827,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [moreOpen, setMoreOpen]     = useState(false);
   const [whyOpen, setWhyOpen]       = useState(false);
   const [focusOpen, setFocusOpen]   = useState(false);
+  const [communityOpen, setCommunityOpen] = useState(false);
+  const [thisWeekOpen, setThisWeekOpen]   = useState(false);
+  const [tierProgressOpen, setTierProgressOpen] = useState(false);
 
   // Scroll to top and reset accordion state on every view transition
   useEffect(() => {
@@ -812,6 +839,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       setMoreOpen(false);
       setWhyOpen(false);
       setFocusOpen(false);
+    }
+    if (view === "profile") {
+      setThisWeekOpen(false);
+      setTierProgressOpen(false);
     }
   }, [view]);
 
@@ -978,9 +1009,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   }
 
   const hdr = (
-    <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
-      <img src={LOGO_ICON} alt="GBSC" style={{ height: "36px", borderRadius: "4px" }} />
-      <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.03em", flex: 1 }}>GBSC Capacity</div>
+    <div style={{ background: DARK, padding: "0.85rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
+      <img src={LOGO_HORIZ} alt="GBSC" style={{ height: "28px", objectFit: "contain", flex: 1, maxWidth: "160px" }} />
+      <div style={{ flex: 1 }} />
       <button onClick={() => setView("library")}
         style={{ background: "none", border: `1px solid ${G}55`, color: G, borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold", display:"flex", alignItems:"center", gap:"0.35rem" }}>
         <GBSCIcon name="book" size={16} color={G} strokeWidth={0}/>Library
@@ -992,26 +1023,28 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "onboard") {
     // Step 1: Profile info
     if (onboardStep === 1) return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
-          <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-            <div style={{ display: "inline-block", background: CARD, borderRadius: "999px", padding: "0.3rem 1.1rem", fontSize: "0.78rem", color: "#888", marginBottom: "0.7rem", letterSpacing: "0.06em" }}>STEP 1 OF 2</div>
-            <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK }}>Welcome to Capacity Season</div>
-            <div style={{ color: "#666", fontSize: "0.9rem", marginTop: "0.3rem" }}>Let's get your baseline measurements set up.</div>
+          <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
+            <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: DARK, marginBottom: "0.5rem" }}>Welcome to Capacity Season</div>
+            <div style={{ fontSize: "0.88rem", color: "#666", lineHeight: 1.65, maxWidth: "360px", margin: "0 auto" }}>
+              Your Capacity Index is a personal score built from your training, recovery, and daily habits. These two steps set your starting point. Takes about two minutes.
+            </div>
           </div>
-          <div style={{ fontWeight: "bold", marginBottom: "1rem", color: DARK }}>Your Profile</div>
-          <F label="Full Name"><input type="text" placeholder="Jane Smith" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
-          <F label="Email"><input type="email" placeholder="jane@email.com" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
-          <F label="Age"><input type="number" placeholder="42" value={form.age} onChange={e => setForm(f => ({...f, age: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.9rem" }}>Your profile</div>
+          <F label="Full Name"><input type="text" placeholder="Jane Smith" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="Email"><input type="email" placeholder="jane@email.com" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="Age"><input type="number" placeholder="42" value={form.age} onChange={e => setForm(f => ({...f, age: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <F label="Sex">
             <RadioGroup options={["male","female"]} value={form.sex} onChange={v => setForm(f=>({...f,sex:v}))} />
           </F>
-          <F label="Bodyweight (lbs)"><input type="number" placeholder="160" value={form.weight} onChange={e => setForm(f => ({...f, weight: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
-          <F label="Grip Strength (lbs)  — from dynamometer"><input type="number" placeholder="95" value={form.grip} onChange={e => setForm(f => ({...f, grip: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
-          <F label="VO₂ Estimate — from Polar test"><input type="number" placeholder="36" value={form.vo2} onChange={e => setForm(f => ({...f, vo2: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="Bodyweight (lbs)"><input type="number" placeholder="160" value={form.weight} onChange={e => setForm(f => ({...f, weight: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", margin: "1.2rem 0 0.9rem" }}>From your GBSC assessment</div>
+          <F label="Grip Strength (lbs)  — from dynamometer"><input type="number" placeholder="95" value={form.grip} onChange={e => setForm(f => ({...f, grip: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="VO₂ Estimate — from Polar test"><input type="number" placeholder="36" value={form.vo2} onChange={e => setForm(f => ({...f, vo2: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           {validationMsg && (
-            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "8px", border: "1px solid #fad0c8" }}>
+            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "12px", border: "1px solid #fad0c8" }}>
               {validationMsg}
             </div>
           )}
@@ -1025,7 +1058,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     // Step 2: Baseline check-in
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
@@ -1034,9 +1067,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const pct = Math.round((answered / fields.length) * 100);
             return (
               <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-                <div style={{ display: "inline-block", background: CARD, borderRadius: "999px", padding: "0.3rem 1.1rem", fontSize: "0.78rem", color: "#888", marginBottom: "0.7rem", letterSpacing: "0.06em" }}>STEP 2 OF 2</div>
-                <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK }}>Baseline Check-In</div>
-                <div style={{ color: "#666", fontSize: "0.9rem", marginTop: "0.3rem", marginBottom: "0.8rem" }}>This gives us your starting point. ~45 seconds · First instinct is fine.</div>
+                <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.4rem" }}>This week's habits</div>
+                <div style={{ color: "#666", fontSize: "0.88rem", lineHeight: 1.6, marginBottom: "0.8rem" }}>Your answers set your starting point. First instinct is fine — takes about 45 seconds.</div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
                   <div style={{ flex: 1, background: "#eee", borderRadius: "999px", height: "5px" }}>
                     <div style={{ background: G, borderRadius: "999px", height: "5px", width: `${pct}%`, transition: "width 0.3s ease" }} />
@@ -1051,21 +1083,21 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           <div style={{ borderBottom: "1px solid #e8e8e8", marginBottom: "1.2rem" }} />
           {[
-            { label: "1. Workouts This Week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
-            { label: "2. Challenging Strength Session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
-            { label: "3. Daily Movement Outside Workouts", field: "dailyMovement", options: ["High","Moderate","Low"], hints: ["High (8k+ steps/day or very active job)", "Moderate (5–8k/day)", "Low (<5k/day)"] },
-            { label: "4. Zone 2 Aerobic Work (Minutes This Week)", field: "zone2", options: ["0-30","30-60","60-90","90+"], hint: "Steady effort — breathing elevated but sustainable" },
-            { label: "5. Protein in 3+ Meals Per Day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal" },
-            { label: "6. Sleep Opportunity", field: "sleepOpportunity", options: ["5+ nights","3-4 nights","1-2 nights","Rarely"], hint: "How many nights did you have 7+ hours available for sleep?" },
-            { label: "7. Intentional Downshift (10+ min)", field: "downshift", options: ["3+ times","1-2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
-          ].map(q => (
-            <div key={q.field} style={{ marginBottom: "1.5rem" }}>
-              <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>{q.label}</div>
-              {(q.hint || q.hints) && <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{q.hint || q.hints.join(" · ")}</div>}
+            { label: "Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
+            { label: "Challenging strength session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
+            { label: "Daily movement outside workouts", field: "dailyMovement", options: ["High","Moderate","Low"], hints: ["High (8k+ steps/day or very active job)", "Moderate (5–8k/day)", "Low (<5k/day)"] },
+            { label: "Zone 2 aerobic work this week", field: "zone2", options: ["0–30 min","30–60 min","60–90 min","90+ min"], hint: "Steady effort — breathing elevated but sustainable" },
+            { label: "Protein in 3+ meals per day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal" },
+            { label: "Sleep opportunity", field: "sleepOpportunity", options: ["5+ nights","3–4 nights","1–2 nights","Rarely"], hint: "How many nights did you have 7+ hours available for sleep?" },
+            { label: "Intentional downshift (10+ min)", field: "downshift", options: ["3+ times","1–2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
+          ].map((q, qi) => (
+            <div key={q.field} style={{ paddingTop: "1.3rem", borderTop: qi === 0 ? "none" : "1px solid #efefef", marginBottom: "0.2rem" }}>
+              <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>{q.label}</div>
+              {(q.hint || q.hints) && <div style={{ color: "#aaa", fontSize: "0.78rem", marginBottom: "0.65rem" }}>{q.hint || q.hints.join(" · ")}</div>}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                 {q.options.map(opt => (
                   <button key={opt} onClick={() => setCheck(c => ({...c, [q.field]: opt}))}
-                    style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `2px solid ${check[q.field] === opt ? G : "#ddd"}`, borderRadius: "8px", background: check[q.field] === opt ? G : "#fff", color: check[q.field] === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check[q.field] === opt ? "bold" : "normal", display: "flex", alignItems: "center" }}>
+                    style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `1.5px solid ${check[q.field] === opt ? G : "#e0e0e0"}`, borderRadius: "12px", background: check[q.field] === opt ? G : "#fff", color: check[q.field] === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.88rem", fontWeight: check[q.field] === opt ? "600" : "normal", display: "flex", alignItems: "center", transition: "all 0.15s ease" }}>
                     {opt}
                   </button>
                 ))}
@@ -1073,26 +1105,29 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           ))}
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "1.8rem 0 1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "1.8rem 0 0.6rem" }}>
             <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
             <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Recovery check · not scored</div>
             <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
           </div>
+          <div style={{ fontSize: "0.82rem", color: "#888", marginBottom: "1.2rem", lineHeight: 1.5 }}>
+            These help us personalize your weekly coaching.
+          </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>8. Sleep Quality</div>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Sleep quality</div>
             <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor most nights","Restless several nights","Mixed sleep","Good most nights","Consistently deep"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>9. Energy This Week</div>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Energy this week</div>
             <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Exhausted often","Low most days","Mixed energy","Steady most days","High and stable"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>10. Physical Recovery</div>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Physical recovery</div>
             <ScaleGroup field="physicalRecovery" value={check.physicalRecovery} setCheck={setCheck} labels={["Sore most of week","Soreness lingered","Average recovery","Recovered well","Consistently fresh"]} />
           </div>
 
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>11. Weekly Disruption</div>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Weekly disruption</div>
             <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Illness, travel, sick kids, heavy workload — won't affect your score, just helps interpret it</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
               {["None","Some disruption","Major disruption"].map(opt => (
@@ -1105,7 +1140,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           </div>
 
           {validationMsg && (
-            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "8px", border: "1px solid #fad0c8" }}>
+            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "12px", border: "1px solid #fad0c8" }}>
               {validationMsg}
             </div>
           )}
@@ -1125,7 +1160,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     // Accordion state for the 4 expandable sections
     return (
-      <div style={{ minHeight: "100vh", background: dw.bg, fontFamily: "Georgia, serif", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: dw.bg, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {/* Header */}
         <div style={{ background: dw.color, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
           <img src={LOGO_ICON} alt="GBSC" style={{ height: "36px", borderRadius: "4px" }} />
@@ -1144,10 +1179,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 <GBSCIcon name={dw.iconName} size={52} color={dw.color} strokeWidth={2}/>
               </div>
             )}
-            <div style={{ fontSize: "2.4rem", fontWeight: "bold", color: dw.color, letterSpacing: "-0.01em", lineHeight: 1.1, marginBottom: "0.4rem" }}>
+            <div style={{ fontSize: "2.4rem", fontWeight: "bold", color: dw.color, letterSpacing: "-0.01em", lineHeight: 1.1, marginBottom: "0.4rem", fontFamily: SERIF }}>
               {dw.role} Week
             </div>
-            <div style={{ fontSize: "1.1rem", color: dw.textSupport, fontStyle: "italic", marginBottom: "1rem" }}>
+            <div style={{ fontSize: "1.1rem", color: dw.textSupport, fontStyle: "italic", marginBottom: "1rem", fontFamily: SERIF }}>
               {dw.subtext}
             </div>
             <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6 }}>
@@ -1168,7 +1203,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* ── Win condition (above the fold) ── */}
           <div style={{ background: `${dw.color}18`, border: `1.5px solid ${dw.color}44`, borderRadius: "12px", padding: "0.9rem 1.2rem", marginBottom: "1.4rem", textAlign: "center" }}>
-            <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6, fontStyle: "italic" }}>{dw.winLine}</div>
+            <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6, fontStyle: "italic", fontFamily: SERIF }}>{dw.winLine}</div>
           </div>
 
           {/* ── CTA (above the fold) ── */}
@@ -1191,6 +1226,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ fontSize: "0.75rem", color: dw.textSupport, marginTop: "0.7rem", fontStyle: "italic", opacity: 0.85 }}>
               Staying in motion beats stopping completely.
             </div>
+            <button onClick={() => { setView("library"); }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: "0.5rem 0 0", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+              <GBSCIcon name="book" size={13} color={dw.color} strokeWidth={0}/>
+              <span style={{ fontSize: "0.75rem", color: dw.color, fontWeight: "bold" }}>Browse protocols in the library →</span>
+            </button>
           </AccordionSection>
 
           <AccordionSection label="If you have more to give" open={moreOpen} onToggle={() => setMoreOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
@@ -1333,7 +1373,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
 
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
         <style>{`
           @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
           @keyframes gbscTierSlide {
@@ -1359,14 +1399,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
-          {/* Quick nav back — visible immediately */}
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "1rem" }}>
-            <button onClick={() => setView("profile")}
-              style={{ background: "none", border: `1.5px solid ${G}`, color: G, borderRadius: "999px", padding: "0.3rem 0.9rem", fontSize: "0.8rem", fontWeight: "bold", cursor: "pointer" }}>
-              ← My Profile
-            </button>
-          </div>
-
           {/* Welcome moment for new registrations */}
           {weekNum === 0 && (
             <div style={{ background: `linear-gradient(135deg, ${DARK}, #2a4a1a)`, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", textAlign: "center", ...fadeUp(0) }}>
@@ -1377,25 +1409,56 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <div style={{ fontSize: "0.82rem", color: "#aaa", lineHeight: 1.5 }}>
                 Your baseline is set. This is your starting Capacity Index — check in every week and watch it grow over 8 weeks.
               </div>
+              <button onClick={() => setView("library")}
+                style={{ background: "none", border: "none", cursor: "pointer", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.35rem", justifyContent: "center", width: "100%" }}>
+                <GBSCIcon name="book" size={14} color="#aaa" strokeWidth={0}/>
+                <span style={{ fontSize: "0.78rem", color: "#aaa" }}>Explore the resource library</span>
+                <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>→</span>
+              </button>
             </div>
           )}
-
-          {/* Week badge */}
-          <div style={{ textAlign: "center", marginBottom: "1.5rem", ...fadeUp(50) }}>
-            <div style={{ display: "inline-block", color: "#aaa", fontSize: "0.78rem", letterSpacing: "0.03em" }}>
-              {weekNum === 0 ? "Baseline complete ✓" : `Week ${weekNum} of 8 complete ✓`}
-            </div>
-          </div>
 
           {/* Main score card */}
           <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #2a4a1a 100%)`, borderRadius: "20px", padding: "2rem 1.5rem", color: "#fff", textAlign: "center", marginBottom: "1.5rem", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", ...fadeUp(150) }}>
             <div style={{ fontSize: "0.78rem", color: "#aaa", marginBottom: "0.5rem", letterSpacing: "0.04em" }}>Habit score</div>
-            <div style={{ fontSize: "5rem", fontWeight: "bold", color: G, lineHeight: 1, fontVariantNumeric: "tabular-nums", minWidth: "3ch", display: "inline-block" }}>{displayedScore}</div>
+            <div style={{ fontSize: "5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", minWidth: "3ch", display: "inline-block" }}>{displayedScore}</div>
             <div style={{ fontSize: "0.85rem", color: "#888", marginTop: "0.3rem" }}>out of 100</div>
             <div style={{ fontSize: "0.72rem", color: "#666", marginTop: "0.9rem", borderTop: "1px solid #ffffff18", paddingTop: "0.9rem" }}>
               Measures your weekly habits around training, recovery, and resilience.
             </div>
           </div>
+
+          {/* Score movement — week 2+ */}
+          {(() => {
+            const nonBaseline = checks.filter(c => c && !c.isBaseline);
+            if (nonBaseline.length < 2) return null;
+            const latest = nonBaseline[nonBaseline.length - 1];
+            const prev   = nonBaseline[nonBaseline.length - 2];
+            const diff = latest.score - prev.score;
+            return (
+              <div style={{
+                background: diff > 0 ? "#f0f9eb" : diff < 0 ? "#fff4ee" : "#f5f5f5",
+                border: `1px solid ${diff > 0 ? "#c8eab8" : diff < 0 ? "#fad8c0" : "#e8e8e8"}`,
+                borderRadius: "12px", padding: "0.65rem 1.2rem",
+                display: "flex", alignItems: "center", gap: "0.5rem",
+                marginBottom: "1.2rem", ...fadeUp(200)
+              }}>
+                <span style={{ display:"inline-flex", alignItems:"center" }}>
+                  {diff > 0
+                    ? <GBSCIcon name="bounce2" size={18} color="#3a8a20" strokeWidth={0}/>
+                    : diff < 0
+                    ? <GBSCIcon name="bounce" size={18} color="#c05820" strokeWidth={0}/>
+                    : <GBSCIcon name="ripple" size={18} color="#666" strokeWidth={0}/>}
+                </span>
+                <span style={{ fontSize: "0.82rem", fontWeight: "bold",
+                  color: diff > 0 ? "#3a8a20" : diff < 0 ? "#c05820" : "#666" }}>
+                  {diff > 0 ? `Up ${diff} point${diff !== 1 ? "s" : ""} from last week`
+                   : diff < 0 ? `Down ${Math.abs(diff)} point${Math.abs(diff) !== 1 ? "s" : ""} from last week`
+                   : "Score held steady from last week"}
+                </span>
+              </div>
+            );
+          })()}
 
           {/* Role milestone card — first check-in, or when role improves */}
           {(() => {
@@ -1432,7 +1495,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             };
             const rc = roleColors[currentRole.role] || roleColors.Reset;
             return (
-              <div onClick={() => setView("declaredWeek")}
+              <div onClick={() => { const dw = getDeclaredWeek(currentMember.weeklyChecks || []); if (dw) { setDeclaredWeek(dw); setView("declaredWeek"); } }}
                 style={{ background: rc.bg, border: `1.5px solid ${rc.color}44`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", cursor: "pointer", ...fadeUp(300) }}>
                 <div style={{ marginBottom: "0.7rem", display: "flex", justifyContent: "center" }}>
                   {currentRole.icon ? <GBSCIcon name={currentRole.icon} size={40} color={rc.color} strokeWidth={2}/> : <span style={{fontSize:"2rem"}}>{currentRole.emoji}</span>}
@@ -1462,7 +1525,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   <div style={{ lineHeight: 1, display: "flex", alignItems: "center" }}><GBSCIcon name={tier.icon} size={44} color={tier.color} /></div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: "0.7rem", color: "#aaa", letterSpacing: "0.05em" }}>Capacity Identity</div>
-                    <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color }}>{tier.tier}</div>
+                    <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color, fontFamily: SERIF }}>{tier.tier}</div>
                     <div style={{ fontSize: "0.8rem", color: "#666" }}>Capacity Index: <strong style={{ color: DARK }}>{ci}</strong></div>
                   </div>
                   <div style={{ fontSize: "1.4rem", color: "#666", transition: "transform 0.25s", transform: tierExpanded ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}>▾</div>
@@ -1556,7 +1619,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const isMajor = latest.disruption === "Major disruption";
             return (
               <div style={{ background: isMajor ? "#fff7f0" : "#fffbf0", border: `1.5px solid ${isMajor ? "#e8a060" : "#e0c040"}`, borderRadius: "14px", padding: "1rem 1.2rem", marginBottom: "1.5rem", display: "flex", gap: "0.8rem", alignItems: "flex-start" }}>
-                <div style={{ fontSize: "1.6rem", lineHeight: 1, flexShrink: 0 }}>{isMajor ? "🌊" : "〰️"}</div>
+                <div style={{ lineHeight: 1, flexShrink: 0, display:"flex", alignItems:"center" }}>
+                {isMajor
+                  ? <GBSCIcon name="wave" size={28} color="#e8a060" strokeWidth={0}/>
+                  : <GBSCIcon name="ripple" size={28} color="#e0c040" strokeWidth={0}/>}
+              </div>
                 <div>
                   <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.9rem", marginBottom: "0.2rem" }}>
                     {isMajor ? "Major disruption logged this week" : "Some disruption logged this week"}
@@ -1646,28 +1713,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
             return (
               <div style={{ background: CARD, border: `1.5px solid #e0e0e0`, borderRadius: "16px", overflow: "hidden", marginBottom: "1.5rem", ...fadeUp(480) }}>
-                {/* Score movement banner — only week 2+ */}
-                {scoreDiff !== null && (
-                  <div style={{
-                    background: scoreDiff > 0 ? "#f0f9eb" : scoreDiff < 0 ? "#fff4ee" : "#f5f5f5",
-                    borderBottom: `1px solid ${scoreDiff > 0 ? "#c8eab8" : scoreDiff < 0 ? "#fad8c0" : "#e8e8e8"}`,
-                    padding: "0.55rem 1.4rem",
-                    fontSize: "0.8rem", fontWeight: "bold",
-                    color: scoreDiff > 0 ? "#3a8a20" : scoreDiff < 0 ? "#c05820" : "#666",
-                    display: "flex", alignItems: "center", gap: "0.4rem",
-                  }}>
-                    <span style={{ display:"inline-flex", alignItems:"center" }}>
-                      {scoreDiff > 0
-                        ? <GBSCIcon name="bounce2" size={18} color="#3a8a20" strokeWidth={0}/>
-                        : scoreDiff < 0
-                        ? <GBSCIcon name="bounce" size={18} color="#c05820" strokeWidth={0}/>
-                        : <GBSCIcon name="ripple" size={18} color="#666" strokeWidth={0}/>}
-                    </span>
-                    {scoreDiff > 0 ? `Up ${scoreDiff} point${scoreDiff !== 1 ? "s" : ""} from last week` :
-                     scoreDiff < 0 ? `Down ${Math.abs(scoreDiff)} point${Math.abs(scoreDiff) !== 1 ? "s" : ""} from last week` :
-                     "Score held steady from last week"}
-                  </div>
-                )}
                 {/* Focus body */}
                 <div style={{ padding: "1.2rem 1.4rem" }}>
                   {/* Label pills */}
@@ -1724,13 +1769,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
-          {/* ── Community Scoreboard ─────────────────────────────────────── */}
+          {/* ── Community Scoreboard (collapsible) ──────────────────────── */}
           {community && (
-            <div style={{ marginBottom: "1.5rem", ...fadeUp(1010) }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.9rem" }}>
-                <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Community</div>
-                <div style={{ fontSize: "0.72rem", color: "#999", marginLeft: "auto" }}>{community.memberCount} member{community.memberCount !== 1 ? "s" : ""}</div>
-              </div>
+            <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1.5rem", overflow: "hidden", ...fadeUp(600) }}>
+              <button onClick={() => setCommunityOpen(o => !o)}
+                style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>How the gym is doing</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#999" }}>{community.memberCount} member{community.memberCount !== 1 ? "s" : ""}</span>
+                  <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: communityOpen ? "rotate(180deg)" : "none" }}>▾</span>
+                </div>
+              </button>
+            {communityOpen && (
+            <div style={{ padding: "0 1.3rem 1.3rem" }}>
 
               {/* CI change headline */}
               {community.ciChange !== null && (
@@ -1764,7 +1815,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     <div style={{ marginBottom: "0.2rem", display:"flex", justifyContent:"center" }}>
                       <GBSCIcon name={iconName} size={48} color={G} strokeWidth={sw}/>
                     </div>
-                    <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: G, lineHeight: 1 }}>{val}</div>
+                    <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF }}>{val}</div>
                     <div style={{ fontSize: "0.68rem", color: "#666", marginTop: "0.3rem", lineHeight: 1.3 }}>{label}</div>
                     <div style={{ fontSize: "0.62rem", color: "#aaa", marginTop: "0.1rem" }}>{desc}</div>
                   </div>
@@ -1825,137 +1876,277 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               })()}
 
             </div>
+            )}
+            </div>
           )}
 
           <button onClick={() => setView("profile")}
-            style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
-            Back to My Profile →
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (view === "profile" && currentMember) {
+            style={{ width: "100%", background  if (view === "profile" && currentMember) {
     const allChecks = currentMember.weeklyChecks || [];
-    const baseline = allChecks.find(c => c.isBaseline);
-    const checks = allChecks.filter(c => c && !c.isBaseline);
-    const habitAvg = checks.length
+    const baseline  = allChecks.find(c => c.isBaseline);
+    const checks    = allChecks.filter(c => c && !c.isBaseline);
+    const habitAvg  = checks.length
       ? Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length)
       : (baseline ? baseline.score : null);
-    const ci = habitAvg !== null ? calcCapacityIndex(currentMember.vo2Score_pre, currentMember.gripScore_pre, habitAvg) : null;
+    const ci   = habitAvg !== null ? calcCapacityIndex(currentMember.vo2Score_pre, currentMember.gripScore_pre, habitAvg) : null;
     const tier = ci !== null ? getCapacityTier(ci) : null;
+    const latest = checks[checks.length - 1] || null;
+    const ws     = latest ? getWeekStatus(latest.score) : null;
+    const role   = latest ? getCapacityRole(latest.score) : null;
+
+    // Declared week — computed once for both banner and navigation
+    const dw = getDeclaredWeek(allChecks);
+
+    // Tier progress data
+    const tierOrder = [
+      { name: "Foundation Capacity", min: 0,  max: 39,  icon: "foundation", next: "Emerging Capacity",  color: "#b0c090" },
+      { name: "Emerging Capacity",   min: 40, max: 54,  icon: "emerging",   next: "Building Capacity",  color: "#8ab85a" },
+      { name: "Building Capacity",   min: 55, max: 69,  icon: "building",   next: "Durable Capacity",   color: "#4a9e38" },
+      { name: "Durable Capacity",    min: 70, max: 84,  icon: "durable",    next: "Peak Capacity",      color: G },
+      { name: "Peak Capacity",       min: 85, max: 100, icon: "peak",       next: null,                 color: "#1a7a00" },
+    ];
+    const currentTierData = tierOrder.find(t => ci >= t.min && ci <= t.max) || tierOrder[0];
+    const pointsToNext    = currentTierData.next ? (currentTierData.max + 1) - ci : 0;
+    const progressPct     = ci !== null ? Math.min(100, Math.round(((ci - currentTierData.min) / (currentTierData.max - currentTierData.min + 1)) * 100)) : 0;
+
+    // Today's Focus — same driver logic as feedback screen
+    const focusTipForProfile = (() => {
+      if (!latest) return null;
+      const sleep    = parseInt(latest.sleepQuality) || 0;
+      const energy   = parseInt(latest.energyLevel) || 0;
+      const recovery = parseInt(latest.physicalRecovery) || 0;
+      const workouts = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[latest.workouts] || 0;
+      const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 }[latest.protein]
+                    ?? (latest.proteinFloor ? { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 }[latest.proteinFloor] || 0 : 0);
+      const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift]
+                    ?? (latest.regulation ? { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0 : 0);
+      const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3 }[latest.zone2]
+                    ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0);
+      const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3 }[latest.sleepOpportunity] ?? null;
+      const areas = [
+        { key: "sleep",    pct: sleep / 5 },
+        { key: "energy",   pct: energy / 5 },
+        { key: "recovery", pct: recovery / 5 },
+        { key: "protein",  pct: protein / 3 },
+        { key: "reg",      pct: reg / 2 },
+        { key: "workouts", pct: workouts / 4 },
+        { key: "aerobic",  pct: zone2Val / 3 },
+        ...(sleepOpp !== null ? [{ key: "sleepOpp", pct: sleepOpp / 3 }] : []),
+      ].sort((a, b) => a.pct - b.pct);
+      const weakest = areas[0];
+      const tips = {
+        sleep:    { iconName: "ripple",    label: "Sleep",            focus: "Try locking in a consistent bedtime — even 30 minutes earlier makes a meaningful difference this week." },
+        energy:   { iconName: "bounce2",   label: "Energy",           focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
+        recovery: { iconName: "refresh",   label: "Recovery",         focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
+        protein:  { iconName: "plate",     label: "Nutrition",        focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
+        reg:      { iconName: "meditation",label: "Downshift",        focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
+        workouts: { iconName: "dumbbell",  label: "Training",         focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
+        aerobic:  { iconName: "lungs",     label: "Zone 2",           focus: "Aim for at least one 30–60 min Zone 2 session this week." },
+        sleepOpp: { iconName: "ripple",    label: "Sleep Opportunity",focus: "Try to protect 7+ hours in bed at least 4 nights this week." },
+      };
+      const lowSleep = sleep <= 2 || (sleepOpp !== null && sleepOpp <= 1);
+      const lowRecovery = recovery <= 2;
+      const lowWorkouts = workouts < 2;
+      const lowDownshift = reg === 0;
+      const highPerf = latest.score >= 85;
+      if (lowSleep && lowRecovery)  return { iconName: "ripple",    label: "Recovery Support Day", focus: "Walk, fuel well, and wind down early tonight. Your body needs a reset, not more load." };
+      if (lowWorkouts)              return { iconName: "bounce2",   label: "Stay in Motion",       focus: "Short movement counts today. Any 20–30 minutes of activity keeps the habit alive." };
+      if (lowDownshift && lowSleep) return { iconName: "meditation",label: "Downshift Daily",      focus: "10 quiet minutes today. Walk, breathe, journal, or go screen-free." };
+      if (highPerf)                 return { iconName: "dumbbell",  label: "Push + Recover",       focus: "Train hard today, then protect sleep and protein. Don't outrun your recovery." };
+      return tips[weakest.key] || null;
+    })();
+
+    const lastCheck       = checks[checks.length - 1];
+    const completedProgram   = checks.length >= 8;
+    const checkedInThisWeek  = lastCheck && !isEligibleForCheckin(lastCheck.date);
+
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
-          <div style={{ background: DARK, borderRadius: "16px", padding: "1.5rem", color: "#fff", marginBottom: "1.5rem", textAlign: "center" }}>
-            <div style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{currentMember.name}</div>
-            <div style={{ color: "#aaa", fontSize: "0.85rem" }}>Week {checks.length} of 8</div>
-            {ci !== null && (
-              <>
-                <div style={{ fontSize: "3rem", fontWeight: "bold", color: G, margin: "0.5rem 0", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{ci}</div>
-                <div style={{ color: tier.color, fontSize: "1rem", fontWeight: "bold", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.35rem" }}>
-                  <GBSCIcon name={tier.icon} size={18} color={tier.color} strokeWidth={2}/>
-                  {tier.tier}
-                </div>
 
-              </>
-            )}
-          </div>
-          {/* ── Declared week home banner ────────────────────────────────── */}
-          {(() => {
-            const allChecks = currentMember.weeklyChecks || [];
-            const dw = getDeclaredWeek(allChecks);
-            if (!dw) return null;
-            return (
-              <div style={{ background: dw.color, borderRadius: "14px", padding: "0.9rem 1.2rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer" }}
+          {/* ── ZONE 1: YOUR WEEK ──────────────────────────────────────────── */}
+
+          {/* Hero card — name, CI, tier — with declared week integrated at bottom */}
+          <div style={{ background: DARK, borderRadius: "16px", marginBottom: "1.2rem", overflow: "hidden" }}>
+            <div style={{ padding: "1.5rem", color: "#fff", textAlign: "center" }}>
+              <div style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{currentMember.name}</div>
+              <div style={{ color: "#aaa", fontSize: "0.85rem", marginBottom: ci !== null ? "0" : "0" }}>Week {checks.length} of 8</div>
+              {ci !== null && (
+                <>
+                  <div style={{ fontSize: "3rem", fontWeight: "bold", color: G, margin: "0.5rem 0", fontFamily: SERIF, textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{ci}</div>
+                  <div style={{ color: tier.color, fontSize: "1rem", fontWeight: "bold", fontFamily: SERIF, display:"flex", alignItems:"center", justifyContent:"center", gap:"0.35rem" }}>
+                    <GBSCIcon name={tier.icon} size={18} color={tier.color} strokeWidth={2}/>
+                    {tier.tier}
+                  </div>
+                </>
+              )}
+            </div>
+            {/* Declared week — integrated as bottom strip of hero card */}
+            {dw && (
+              <div style={{ background: dw.color, padding: "0.85rem 1.3rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer" }}
                 onClick={() => { setDeclaredWeek(dw); setView("declaredWeek"); }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.75)", letterSpacing: "0.07em", fontWeight: "bold", marginBottom: "0.15rem" }}>THIS WEEK</div>
-                  <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#fff" }}>{dw.role} Week</div>
-                  <div style={{ fontSize: "0.78rem", color: "rgba(255,255,255,0.85)", marginTop: "0.1rem", fontStyle: "italic" }}>{dw.subtext}</div>
+                  <div style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.7)", letterSpacing: "0.08em", fontWeight: "bold", marginBottom: "0.1rem" }}>THIS WEEK</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>{dw.subtext}</span></div>
                 </div>
-                <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "1.2rem", flexShrink: 0 }}>→</div>
+                <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "1.1rem", flexShrink: 0 }}>→</div>
               </div>
-            );
-          })()}
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.8rem", marginBottom: "1.5rem" }}>
-            {[
-              { label: "VO₂ Score", val: currentMember.vo2Score_pre },
-              { label: "Grip Score", val: currentMember.gripScore_pre },
-              { label: checks.length === 0 ? "Baseline Score" : "Habit Avg", val: habitAvg ?? "—" }
-            ].map(({ label, val }) => (
-              <div key={label} style={{ background: CARD, borderRadius: "12px", padding: "1rem", textAlign: "center" }}>
-                <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: G }}>{val}</div>
-                <div style={{ fontSize: "0.75rem", color: "#666" }}>{label}</div>
-              </div>
-            ))}
+            )}
           </div>
 
-          {/* ── Week Status card ────────────────────────────────────────── */}
-          {checks.length > 0 && (() => {
-            const latest = checks[checks.length - 1];
-            const ws = getWeekStatus(latest.score);
-            const role = getCapacityRole(latest.score);
-            if (!ws || !role) return null;
-            return (
-              <div style={{ background: CARD, borderRadius: "16px", padding: "1.1rem 1.4rem", marginBottom: "1.8rem", display: "flex", alignItems: "center", gap: "1rem" }}>
-                <div style={{ lineHeight: 1, display:"flex", alignItems:"center" }}>
-                  {ws.icon ? <GBSCIcon name={ws.icon} size={32} color={ws.color} strokeWidth={0}/> : <span style={{fontSize:"2rem"}}>{ws.emoji}</span>}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.7rem", color: "#888", fontWeight: "bold", letterSpacing: "0.07em", marginBottom: "0.15rem" }}>THIS WEEK</div>
-                  <div style={{ fontWeight: "bold", color: ws.color, fontSize: "0.95rem" }}>{ws.status}</div>
-                  <div style={{ fontSize: "0.78rem", color: "#666", marginTop: "0.15rem" }}>{ws.msg}</div>
-                </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <div style={{ fontSize: "0.68rem", color: "#aaa", marginBottom: "0.15rem" }}>ROLE</div>
-                  <div style={{ fontWeight: "bold", color: role.color, fontSize: "0.85rem" }}>{role.role}</div>
-                </div>
+          {/* Today's Focus */}
+          {focusTipForProfile && (
+            <div style={{ background: CARD, border: `1.5px solid #e8e8e8`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.2rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.7rem" }}>
+                <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em", background: `${G}15`, border: `1px solid ${G}30`, borderRadius: "6px", padding: "0.2rem 0.5rem" }}>Today's Focus</div>
+                <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#666", letterSpacing: "0.06em", background: "#f0f0f0", borderRadius: "6px", padding: "0.2rem 0.5rem" }}>{focusTipForProfile.label.toUpperCase()}</div>
               </div>
-            );
-          })()}
+              <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+                <div style={{ width: "40px", height: "40px", flexShrink: 0, background: `${G}12`, borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <GBSCIcon name={focusTipForProfile.iconName} size={24} color={G} strokeWidth={0}/>
+                </div>
+                <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.65, flex: 1 }}>{focusTipForProfile.focus}</div>
+              </div>
+            </div>
+          )}
 
-          {/* ── Tier Progress Bar ─────────────────────────────────────────── */}
-          {ci !== null && (() => {
-            const tierOrder = [
-              { name: "Foundation Capacity", min: 0,  max: 39,  emoji: "🔧", icon: "foundation", next: "Emerging Capacity",  color: "#b0c090" },
-              { name: "Emerging Capacity",   min: 40, max: 54,  emoji: "🌱", icon: "emerging",   next: "Building Capacity",  color: "#8ab85a" },
-              { name: "Building Capacity",   min: 55, max: 69,  emoji: "📈", icon: "building",   next: "Durable Capacity",   color: "#4a9e38" },
-              { name: "Durable Capacity",    min: 70, max: 84,  emoji: "💪", icon: "durable",    next: "Peak Capacity",     color: G },
-              { name: "Peak Capacity",      min: 85, max: 100, emoji: "🏆", icon: "peak",        next: null,                  color: "#1a7a00" },
-            ];
-            const currentTierData = tierOrder.find(t => ci >= t.min && ci <= t.max) || tierOrder[0];
-            const pointsToNext = currentTierData.next ? (currentTierData.max + 1) - ci : 0;
-            const progressPct = Math.min(100, Math.round(((ci - currentTierData.min) / (currentTierData.max - currentTierData.min + 1)) * 100));
-            return (
-              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.8rem" }}>
-                <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginBottom: "0.8rem" }}>Tier Progress</div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#888", marginBottom: "0.35rem" }}>
-                  <span style={{ fontWeight: "bold", color: tier.color, display: "flex", alignItems: "center", gap: "0.3rem" }}><GBSCIcon name={currentTierData.icon} size={16} color={tier.color} strokeWidth={2}/>{currentTierData.name}</span>
-                  {currentTierData.next && <span>{tierOrder.find(t => t.name === currentTierData.next)?.emoji} {currentTierData.next}</span>}
+          {/* Action button — the primary CTA for the week */}
+          {completedProgram ? (
+            <div style={{ background: CARD, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "1.2rem" }}>
+              <GBSCIcon name="trophy" size={28} color={G} strokeWidth={0}/>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.4rem" }}>Program Complete</div>
+              <div style={{ fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }}>You've finished all 8 weeks. Outstanding work.</div>
+            </div>
+          ) : checkedInThisWeek ? (
+            <div style={{ background: "#f0f7ec", border: `1.5px solid ${G}`, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "1.2rem" }}>
+              <GBSCIcon name="check" size={24} color={G} strokeWidth={0}/>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.3rem" }}>Week {lastCheck.week} check-in submitted</div>
+              <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.2rem" }}>Next window opens Monday.</div>
+            </div>
+          ) : (
+            <button onClick={() => setView("checkin")}
+              style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.2rem" }}>
+              + Log This Week's Check-In
+            </button>
+          )}
+
+          {/* ── ZONE 2: YOUR RECORD ────────────────────────────────────────── */}
+
+          {/* This Week — status, role, and the three scores, all in one card */}
+          {(ws || ci !== null) && (
+            <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+              <button onClick={() => setThisWeekOpen(o => !o)}
+                style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>This Week</span>
+                <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: thisWeekOpen ? "rotate(180deg)" : "none" }}>▾</span>
+              </button>
+              {thisWeekOpen && (
+                <div style={{ padding: "0 1.3rem 1.2rem" }}>
+                  {ws && role && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid #f0f0f0" }}>
+                      <div style={{ lineHeight: 1 }}>
+                        {ws.icon ? <GBSCIcon name={ws.icon} size={28} color={ws.color} strokeWidth={0}/> : <span style={{fontSize:"1.8rem"}}>{ws.emoji}</span>}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: "bold", color: ws.color, fontSize: "0.92rem" }}>{ws.status}</div>
+                        <div style={{ fontSize: "0.76rem", color: "#666", marginTop: "0.1rem" }}>{ws.msg}</div>
+                      </div>
+                      <div style={{ textAlign: "right", flexShrink: 0 }}>
+                        <div style={{ fontSize: "0.65rem", color: "#aaa", marginBottom: "0.1rem" }}>ROLE</div>
+                        <div style={{ fontWeight: "bold", color: role.color, fontSize: "0.82rem" }}>{role.role}</div>
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
+                    {[
+                      { label: "VO₂ Score",  val: currentMember.vo2Score_pre },
+                      { label: "Grip Score", val: currentMember.gripScore_pre },
+                      { label: checks.length === 0 ? "Baseline" : "Habit Avg", val: habitAvg ?? "—" }
+                    ].map(({ label, val }) => (
+                      <div key={label} style={{ background: PAGE_BG, borderRadius: "10px", padding: "0.7rem", textAlign: "center" }}>
+                        <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: G }}>{val}</div>
+                        <div style={{ fontSize: "0.68rem", color: "#888", marginTop: "0.1rem" }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div style={{ background: "#e0e0e0", borderRadius: "999px", height: "12px", overflow: "hidden", marginBottom: "0.7rem" }}>
-                  <div style={{ background: `linear-gradient(90deg, ${tier.color}, ${G})`, width: `${progressPct}%`, height: "100%", borderRadius: "999px", transition: "width 0.6s ease" }} />
-                </div>
-                {currentTierData.next ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+              )}
+            </div>
+          )}
+
+          {/* Tier Progress */}
+          {ci !== null && (
+            <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+              <button onClick={() => setTierProgressOpen(o => !o)}
+                style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Tier Progress</span>
+                <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: tierProgressOpen ? "rotate(180deg)" : "none" }}>▾</span>
+              </button>
+              {tierProgressOpen && (
+                <div style={{ padding: "0 1.3rem 1.2rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#888", marginBottom: "0.35rem" }}>
+                    <span style={{ fontWeight: "bold", color: tier.color, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                      <GBSCIcon name={currentTierData.icon} size={14} color={tier.color} strokeWidth={2}/>{currentTierData.name}
+                    </span>
+                    {currentTierData.next && <span>{currentTierData.next}</span>}
+                  </div>
+                  <div style={{ background: "#e0e0e0", borderRadius: "999px", height: "10px", overflow: "hidden", marginBottom: "0.7rem" }}>
+                    <div style={{ background: `linear-gradient(90deg, ${tier.color}, ${G})`, width: `${progressPct}%`, height: "100%", borderRadius: "999px", transition: "width 0.6s ease" }} />
+                  </div>
+                  {currentTierData.next ? (
                     <div style={{ fontSize: "0.85rem", color: DARK }}>
                       <span style={{ fontWeight: "bold", color: G, fontSize: "1.1rem" }}>{pointsToNext}</span> point{pointsToNext !== 1 ? "s" : ""} to <strong>{currentTierData.next}</strong>
                     </div>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  ) : (
                     <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#1a7a00" }}>You've reached the top tier. Maintain the standard.</div>
-                  </div>
-                )}
-              </div>
-            );
-          })()}
+                  )}
+                  {/* Capacity Trend Chart — lives here now */}
+                  {checks.length >= 2 && (() => {
+                    const points = [
+                      ...(baseline ? [{ label: "Base", score: baseline.score }] : []),
+                      ...checks.map(c => ({ label: `W${c.week}`, score: c.score }))
+                    ];
+                    const minScore = Math.max(0, Math.min(...points.map(p => p.score)) - 10);
+                    const maxScore = Math.min(100, Math.max(...points.map(p => p.score)) + 10);
+                    const range = maxScore - minScore || 1;
+                    const W = 400, H = 90, PAD = 22;
+                    const plotW = W - PAD * 2;
+                    const plotH = H - PAD;
+                    const x = (i) => PAD + (i / (points.length - 1)) * plotW;
+                    const y = (score) => PAD / 2 + (1 - (score - minScore) / range) * plotH;
+                    const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p.score)}`).join(" ");
+                    const areaPath = `${linePath} L ${x(points.length - 1)} ${H} L ${x(0)} ${H} Z`;
+                    const totalChange = points[points.length-1].score - points[0].score;
+                    return (
+                      <div style={{ marginTop: "1rem", paddingTop: "0.9rem", borderTop: "1px solid #f0f0f0" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.5rem" }}>
+                          <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.05em" }}>Habit Score Trend</div>
+                          <div style={{ fontSize: "0.75rem", color: totalChange >= 0 ? G : "#e07030", fontWeight: "bold" }}>{totalChange >= 0 ? "+" : ""}{totalChange} pts overall</div>
+                        </div>
+                        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", display: "block" }}>
+                          {[0.25, 0.5, 0.75].map(t => (
+                            <line key={t} x1={PAD} y1={PAD/2+t*plotH} x2={W-PAD} y2={PAD/2+t*plotH} stroke="#e0e0e0" strokeWidth="1"/>
+                          ))}
+                          <path d={areaPath} fill={G} fillOpacity="0.08"/>
+                          <path d={linePath} fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          {points.map((p, i) => (
+                            <g key={i}>
+                              <circle cx={x(i)} cy={y(p.score)} r="4" fill={G}/>
+                              <text x={x(i)} y={H-2} textAnchor="middle" fontSize="9" fill="#aaa">{p.label}</text>
+                              <text x={x(i)} y={y(p.score)-8} textAnchor="middle" fontSize="9" fill="#444" fontWeight="bold">{p.score}</text>
+                            </g>
+                          ))}
+                        </svg>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* ── Pod Card ─────────────────────────────────────────────────── */}
+          {/* Pod card */}
           {(pods || []).find(pod => pod.memberIds?.includes(currentMember.id)) && (
             <PodCard
               myPod={(pods || []).find(pod => pod.memberIds?.includes(currentMember.id))}
@@ -1966,103 +2157,55 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             />
           )}
 
-          {/* ── Capacity Trend Chart ─────────────────────────────────────── */}
-          {checks.length >= 2 && (() => {
-            const points = [
-              ...(baseline ? [{ label: "Base", score: baseline.score }] : []),
-              ...checks.map((c, i) => ({ label: `W${c.week}`, score: c.score }))
-            ];
-            const minScore = Math.max(0, Math.min(...points.map(p => p.score)) - 10);
-            const maxScore = Math.min(100, Math.max(...points.map(p => p.score)) + 10);
-            const range = maxScore - minScore || 1;
-            const W = 400, H = 100, PAD = 24;
-            const plotW = W - PAD * 2;
-            const plotH = H - PAD;
-            const x = (i) => PAD + (i / (points.length - 1)) * plotW;
-            const y = (score) => PAD / 2 + (1 - (score - minScore) / range) * plotH;
-
-            const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p.score)}`).join(" ");
-            const areaPath = `${linePath} L ${x(points.length - 1)} ${H} L ${x(0)} ${H} Z`;
-            const latestScore = points[points.length - 1].score;
-            const firstScore = points[0].score;
-            const totalChange = latestScore - firstScore;
-
-            return (
-              <div style={{ background: DARK, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.8rem" }}>
-                  <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em" }}>Capacity Trend</div>
-                  <div style={{ fontSize: "0.82rem", color: totalChange >= 0 ? G : "#e07030", fontWeight: "bold" }}>
-                    {totalChange >= 0 ? "+" : ""}{totalChange} pts overall
-                  </div>
-                </div>
-                <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", display: "block" }}>
-                  {/* Grid lines */}
-                  {[0.25, 0.5, 0.75].map(t => (
-                    <line key={t} x1={PAD} y1={PAD / 2 + t * plotH} x2={W - PAD} y2={PAD / 2 + t * plotH}
-                      stroke="#ffffff18" strokeWidth="1" />
-                  ))}
-                  {/* Area fill */}
-                  <path d={areaPath} fill={G} fillOpacity="0.15" />
-                  {/* Line */}
-                  <path d={linePath} fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                  {/* Dots + labels */}
-                  {points.map((p, i) => (
-                    <g key={i}>
-                      <circle cx={x(i)} cy={y(p.score)} r="4" fill={G} />
-                      <text x={x(i)} y={H - 2} textAnchor="middle" fontSize="9" fill="#888">{p.label}</text>
-                      <text x={x(i)} y={y(p.score) - 8} textAnchor="middle" fontSize="9" fill="#fff" fontWeight="bold">{p.score}</text>
-                    </g>
-                  ))}
-                </svg>
-              </div>
-            );
-          })()}
-
+          {/* Check-In History */}
           {(baseline || checks.length > 0) && (
-            <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1.6rem", overflow: "hidden" }}>
+            <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
               <button onClick={() => setHistoryOpen(o => !o)}
                 style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                 <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Check-In History</span>
                 <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: historyOpen ? "rotate(180deg)" : "none" }}>▾</span>
               </button>
-            {historyOpen && (<div style={{ padding: "0 1.3rem 1.2rem" }}>
-              {baseline && (
-                <div style={{ display: "flex", justifyContent: "space-between", background: "#f0f7ec", border: `1px solid ${G}`, borderRadius: "8px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
-                  <span style={{ color: "#555" }}>Baseline — {baseline.date}</span>
-                  <span style={{ fontWeight: "bold", color: G }}>{baseline.score}/100</span>
-                </div>
-              )}
-              {checks.map((c, i) => {
-                const ws = getWeekStatus(c.score);
-                return (
-                  <div key={i} style={{ background: CARD, borderRadius: "8px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                      <div>
-                        <span style={{ color: "#666" }}>Week {c.week} — {c.date}</span>
-                        {ws && (
-                          <div style={{ marginTop: "0.2rem" }}>
-                            <span style={{ fontSize: "0.7rem", fontWeight: "bold", color: ws.color, background: ws.color + "15", borderRadius: "999px", padding: "0.1rem 0.55rem", display:"inline-flex", alignItems:"center", gap:"0.25rem" }}>
-                              {ws.icon ? <GBSCIcon name={ws.icon} size={12} color={ws.color} strokeWidth={0}/> : ws.emoji} {ws.status}
-                            </span>
+              {historyOpen && (
+                <div style={{ padding: "0 1.3rem 1.2rem" }}>
+                  {baseline && (
+                    <div style={{ display: "flex", justifyContent: "space-between", background: "#f0f7ec", border: `1px solid ${G}`, borderRadius: "12px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
+                      <span style={{ color: "#555" }}>Baseline — {baseline.date}</span>
+                      <span style={{ fontWeight: "bold", color: G }}>{baseline.score}/100</span>
+                    </div>
+                  )}
+                  {checks.map((c, i) => {
+                    const ws = getWeekStatus(c.score);
+                    return (
+                      <div key={i} style={{ background: CARD, borderRadius: "12px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <div>
+                            <span style={{ color: "#666" }}>Week {c.week} — {c.date}</span>
+                            {ws && (
+                              <div style={{ marginTop: "0.2rem" }}>
+                                <span style={{ fontSize: "0.7rem", fontWeight: "bold", color: ws.color, background: ws.color + "15", borderRadius: "999px", padding: "0.1rem 0.55rem", display:"inline-flex", alignItems:"center", gap:"0.25rem" }}>
+                                  {ws.icon ? <GBSCIcon name={ws.icon} size={12} color={ws.color} strokeWidth={0}/> : ws.emoji} {ws.status}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <span style={{ fontWeight: "bold", color: G, flexShrink: 0 }}>{c.score}/100</span>
+                        </div>
+                        {c.disruption && c.disruption !== "None" && (
+                          <div style={{ fontSize: "0.72rem", color: c.disruption === "Major disruption" ? "#c07030" : "#b09020", marginTop: "0.25rem" }}>
+                            {c.disruption === "Major disruption"
+                              ? <><GBSCIcon name="wave" size={14} color="#c07030" strokeWidth={0}/> {c.disruption}</>
+                              : <><GBSCIcon name="ripple" size={14} color="#b09020" strokeWidth={0}/> {c.disruption}</>}
                           </div>
                         )}
                       </div>
-                      <span style={{ fontWeight: "bold", color: G, flexShrink: 0 }}>{c.score}/100</span>
-                    </div>
-                    {c.disruption && c.disruption !== "None" && (
-                      <div style={{ fontSize: "0.72rem", color: c.disruption === "Major disruption" ? "#c07030" : "#b09020", marginTop: "0.25rem" }}>
-                        {c.disruption === "Major disruption"
-                        ? <><GBSCIcon name="wave" size={14} color="#c07030" strokeWidth={0}/> {c.disruption}</>
-                        : <><GBSCIcon name="ripple" size={14} color="#b09020" strokeWidth={0}/> {c.disruption}</>}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>)}
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
-          {/* ── Capacity Drivers (collapsed) ─────────────────────────────── */}
+
+          {/* Capacity Drivers */}
           {(() => {
             const latest = [...checks].reverse()[0];
             if (!latest) return null;
@@ -2073,40 +2216,38 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const movementMap = { "Low": 0, "Moderate": 1, "High": 2 };
             const sleepOppMap = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3 };
             const rows = [
-              { label: "Training",        value: workoutMap[latest.workouts] ?? 0,                                                          max: 4, display: `${latest.workouts} workouts` },
-              { label: "Zone 2",          value: zone2Map[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0), max: 3, display: latest.zone2 || latest.aerobic90 || "—" },
-              { label: "Strength",        value: latest.strengthRPE === "Yes" ? 1 : 0,                                                     max: 1, display: latest.strengthRPE },
-              { label: "Movement",        value: movementMap[latest.dailyMovement] ?? 0,                                                   max: 2, display: latest.dailyMovement },
-              { label: "Protein",         value: proteinMap[latest.protein ?? latest.proteinFloor] ?? 0,                                   max: 3, display: latest.protein || latest.proteinFloor || "—" },
-              { label: "Sleep Opp.",      value: sleepOppMap[latest.sleepOpportunity] ?? 0,                                                max: 3, display: latest.sleepOpportunity || "—" },
-              { label: "Downshift",       value: downshiftMap[latest.downshift ?? latest.regulation] ?? 0,                                 max: 2, display: latest.downshift || latest.regulation || "—" },
-              { label: "Sleep Quality",   value: parseInt(latest.sleepQuality) || 0,                                                       max: 5, display: `${latest.sleepQuality}/5` },
-              { label: "Energy",          value: parseInt(latest.energyLevel) || 0,                                                        max: 5, display: `${latest.energyLevel}/5` },
-              { label: "Recovery",        value: parseInt(latest.physicalRecovery) || 0,                                                   max: 5, display: `${latest.physicalRecovery}/5` },
+              { label: "Training",  value: workoutMap[latest.workouts] ?? 0, max: 4, display: `${latest.workouts} workouts` },
+              { label: "Zone 2",    value: zone2Map[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0), max: 3, display: latest.zone2 || latest.aerobic90 || "—" },
+              { label: "Strength",  value: latest.strengthRPE === "Yes" ? 1 : 0, max: 1, display: latest.strengthRPE },
+              { label: "Movement",  value: movementMap[latest.dailyMovement] ?? 0, max: 2, display: latest.dailyMovement },
+              { label: "Protein",   value: proteinMap[latest.protein ?? latest.proteinFloor] ?? 0, max: 3, display: latest.protein || latest.proteinFloor || "—" },
+              { label: "Sleep Opp.",value: sleepOppMap[latest.sleepOpportunity] ?? 0, max: 3, display: latest.sleepOpportunity || "—" },
+              { label: "Downshift", value: downshiftMap[latest.downshift ?? latest.regulation] ?? 0, max: 2, display: latest.downshift || latest.regulation || "—" },
+              { label: "Sleep Quality", value: parseInt(latest.sleepQuality) || 0, max: 5, display: `${latest.sleepQuality}/5` },
+              { label: "Energy",    value: parseInt(latest.energyLevel) || 0, max: 5, display: `${latest.energyLevel}/5` },
+              { label: "Recovery",  value: parseInt(latest.physicalRecovery) || 0, max: 5, display: `${latest.physicalRecovery}/5` },
             ];
+            const sortedRows   = [...rows].sort((a,b) => (b.value/b.max) - (a.value/a.max));
+            const topDriver    = sortedRows[0];
+            const bottomDriver = sortedRows[sortedRows.length - 1];
+            const topPct       = Math.round((topDriver.value / topDriver.max) * 100);
+            const bottomPct    = Math.round((bottomDriver.value / bottomDriver.max) * 100);
             return (
-              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1.6rem", overflow: "hidden" }}>
-                {(() => {
-                  const sortedRows = [...rows].sort((a,b) => (b.value/b.max) - (a.value/a.max));
-                  const topDriver = sortedRows[0];
-                  const bottomDriver = sortedRows[sortedRows.length - 1];
-                  const topPct = Math.round((topDriver.value / topDriver.max) * 100);
-                  const bottomPct = Math.round((bottomDriver.value / bottomDriver.max) * 100);
-                  return (
-                    <div style={{ padding: "0.7rem 1.3rem 0", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                      {topPct >= 70 && (
-                        <span style={{ fontSize: "0.72rem", background: `${G}15`, color: "#2a7a14", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
-                          <GBSCIcon name="arrow_up" size={12} color="#2a7a14" strokeWidth={0}/>Main driver: {topDriver.label}
-                        </span>
-                      )}
-                      {bottomPct < 50 && (
-                        <span style={{ fontSize: "0.72rem", background: "#fff4ee", color: "#c05820", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
-                          <GBSCIcon name="arrow_down" size={12} color="#c05820" strokeWidth={0}/>Main limiter: {bottomDriver.label}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })()}
+              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+                {(topPct >= 70 || bottomPct < 50) && (
+                  <div style={{ padding: "0.7rem 1.3rem 0", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    {topPct >= 70 && (
+                      <span style={{ fontSize: "0.72rem", background: `${G}15`, color: "#2a7a14", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
+                        <GBSCIcon name="arrow_up" size={12} color="#2a7a14" strokeWidth={0}/>Main driver: {topDriver.label}
+                      </span>
+                    )}
+                    {bottomPct < 50 && (
+                      <span style={{ fontSize: "0.72rem", background: "#fff4ee", color: "#c05820", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
+                        <GBSCIcon name="arrow_down" size={12} color="#c05820" strokeWidth={0}/>Main limiter: {bottomDriver.label}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <button onClick={() => setDriversOpen(o => !o)}
                   style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                   <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Capacity Drivers</span>
@@ -2126,79 +2267,49 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                           <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.5rem", fontWeight: "bold" }}>{group.toUpperCase()}</div>
                           {groupRows.map(row => {
                             const pct = Math.round((row.value / row.max) * 100);
-                            const barColor = pct >= 80 ? G : pct >= 50 ? "#8ab85a" : pct >= 25 ? "#e0a030" : "#e05030";
                             return (
-                              <div key={row.label} style={{ marginBottom: "0.6rem" }}>
-                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.2rem" }}>
-                                  <span style={{ fontSize: "0.8rem", color: DARK }}>{row.label}</span>
-                                  <span style={{ fontSize: "0.75rem", color: "#888" }}>{row.display}</span>
+                              <div key={row.label} style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "0.55rem" }}>
+                                <div style={{ fontSize: "0.78rem", color: "#666", minWidth: "80px" }}>{row.label}</div>
+                                <div style={{ flex: 1, background: "#eee", borderRadius: "999px", height: "6px", overflow: "hidden" }}>
+                                  <div style={{ width: `${pct}%`, height: "100%", background: pct >= 80 ? G : pct >= 50 ? "#a0c060" : "#e09050", borderRadius: "999px", transition: "width 0.4s ease" }}/>
                                 </div>
-                                <div style={{ background: "#e8e8e8", borderRadius: "999px", height: "7px" }}>
-                                  <div style={{ background: barColor, width: `${pct}%`, height: "100%", borderRadius: "999px" }} />
-                                </div>
+                                <div style={{ fontSize: "0.72rem", color: "#888", minWidth: "28px", textAlign: "right" }}>{pct}%</div>
                               </div>
                             );
                           })}
                         </div>
                       );
                     })}
-                    <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: "0.3rem" }}>Based on your most recent check-in</div>
                   </div>
                 )}
               </div>
             );
           })()}
 
-          {/* ── Identity Badges (collapsed) ──────────────────────────────── */}
+          {/* Capacity Badges */}
           {(() => {
-            if (checks.length < 1) return null;
-            const workoutMap = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
-            const zone2Map   = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3 };
-            const proteinMap = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3, "Yes": 3 };
-            const last3 = checks.slice(-3);
-            const last2 = checks.slice(-2);
-            const latest = checks[checks.length - 1];
+            if (!latest) return null;
+            const nonBaseline = checks.filter(c => c && !c.isBaseline);
+            const streak = (() => { let s = 0; for (let i = nonBaseline.length-1; i>=0; i--) { if (nonBaseline[i].score >= 55) s++; else break; } return s; })();
+            const allAbove55 = nonBaseline.length > 0 && nonBaseline.every(c => c.score >= 55);
+            const highCount  = nonBaseline.filter(c => c.score >= 85).length;
             const earned = [];
-            if (last3.length === 3 && last3.every(c => (workoutMap[c.workouts] || 0) >= 3))
-              earned.push({ emoji: "🏋", icon: "dumbbell", title: "Consistent Trainer", desc: "3+ workouts every week for 3 weeks." });
-            if (last3.length === 3 && (parseInt(last3[2].sleepQuality)||0) > (parseInt(last3[1].sleepQuality)||0) && (parseInt(last3[1].sleepQuality)||0) > (parseInt(last3[0].sleepQuality)||0))
-              earned.push({ emoji: "⚡", icon: "bounce",   title: "Recovery Builder", desc: "Sleep score improved 2 weeks running." });
-            if (last3.length === 3 && last3[2].score > last3[1].score && last3[1].score > last3[0].score)
-              earned.push({ emoji: "🔥", icon: "flame",    title: "Momentum", desc: "Score increased 3 weeks in a row." });
-            if (last3.length === 3 && last3.every(c => c.strengthRPE === "Yes"))
-              earned.push({ emoji: "💪", icon: "dumbbell", title: "Strength Streak", desc: "Challenging strength session 3 weeks running." });
-            if (last3.length === 3 && last3.every(c => (zone2Map[c.zone2] ?? 0) >= 2))
-              earned.push({ emoji: "🫁", icon: "lungs",    title: "Aerobic Engine", desc: "60+ min Zone 2 work 3 weeks straight." });
-            if (last2.length === 2 && last2.every(c => (proteinMap[c.protein ?? c.proteinFloor] ?? 0) >= 2))
-              earned.push({ emoji: "🥩", icon: "plate",      title: "Protein Pro", desc: "Hit protein target most days, 2 weeks running." });
-            if (last2.length === 2 && last2.every(c => (c.downshift === "3+ times" || c.regulation === "Yes")))
-              earned.push({ emoji: "🧘", icon: "meditation", title: "Downshifter", desc: "Intentional downshift 3x/week, 2 weeks straight." });
-            if (checks.length === 1)
-              earned.push({ emoji: "🌱", icon: "seedling", title: "First Step", desc: "Completed your first weekly check-in." });
-            if (last3.length === 3 && last3[1].score < last3[0].score && last3[2].score > last3[1].score)
-              earned.push({ emoji: "↗️", icon: "bounce2",    title: "Bounce Back", desc: "Score dropped then came back stronger." });
-            if (latest.score >= 80)
-              earned.push({ emoji: "🏆", icon: "trophy",     title: "High Performer", desc: `Habit score of ${latest.score} this week.` });
-            // New behavior-based badges
-            const successWeeks = checks.filter(c => c.score >= 55);
-            if (successWeeks.length >= 1 && checks.some(c => c.score < 55) === false && checks.length >= 3)
-              earned.push({ emoji: "🔰", icon: "check",    title: "No Zero Weeks", desc: "Every week has been at Minimum Effective Week or better." });
-            // Stayed in Motion: had disruption but still hit MEW
-            if (checks.some(c => c.disruption && c.disruption !== "None" && c.score >= 55))
-              earned.push({ emoji: "🏃", icon: "check",    title: "Stayed in Motion", desc: "Hit Minimum Effective Week during a disrupted week." });
-            // Stacked Weeks: 3 consecutive successful weeks (score >= 55)
-            const hasStack = checks.length >= 3 && checks.slice(-3).every(c => c.score >= 55);
-            if (hasStack)
-              earned.push({ emoji: "📚", icon: "bounce",   title: "Stacked Weeks", desc: "3 successful weeks in a row." });
-            // Adapted Under Pressure: disruption week but still hit 55+
-            if (last2.length === 2 && last2[last2.length-1].disruption && last2[last2.length-1].disruption !== "None" && last2[last2.length-1].score >= 55)
-              earned.push({ emoji: "🔧", title: "Adapted Under Pressure", desc: "Stayed consistent despite disruption this week." });
-            // Consistency Leader: 5+ successful weeks, no reset weeks
-            if (checks.length >= 5 && checks.every(c => c.score >= 55))
-              earned.push({ emoji: "🥇", icon: "flame",    title: "Consistency Leader", desc: "5+ successful weeks with no reset weeks." });
-            if (earned.length === 0) return null;
+            if (nonBaseline.length >= 1)  earned.push({ emoji: "🌱", icon: "seedling", title: "First Step",         desc: "Completed your first weekly check-in." });
+            if (allAbove55 && nonBaseline.length >= 2) earned.push({ emoji: "🏋", icon: "dumbbell", title: "Consistent Trainer", desc: "Stayed above 55 every week so far." });
+            if (latest.physicalRecovery >= 4 && latest.energyLevel >= 4) earned.push({ emoji: "⚡", icon: "bounce", title: "Recovery Builder", desc: "Strong recovery and energy this week." });
+            if (streak >= 2)              earned.push({ emoji: "🔥", icon: "flame",    title: "Momentum",           desc: `${streak} weeks in a row above 55.` });
+            if (latest.strengthRPE === "Yes" && nonBaseline.filter(c => c.strengthRPE === "Yes").length >= 3) earned.push({ emoji: "💪", icon: "dumbbell", title: "Strength Streak", desc: "Challenging strength session 3+ weeks." });
+            if ((latest.zone2 === "90+" || latest.aerobic90 === "Yes") && nonBaseline.filter(c => c.zone2 === "90+" || c.aerobic90 === "Yes").length >= 2) earned.push({ emoji: "🫁", icon: "lungs", title: "Aerobic Engine", desc: "90+ min Zone 2 in 2+ weeks." });
+            if (nonBaseline.some(c => c.score >= 55) && nonBaseline.some(c => c.score < 55) && latest.score >= 55) earned.push({ emoji: "↗️", icon: "bounce2", title: "Bounce Back", desc: "Recovered from a tough week." });
+            if (highCount >= 1)           earned.push({ emoji: "🏆", icon: "trophy",  title: "High Performer",     desc: "Scored 85+ in at least one week." });
+            if (nonBaseline.length >= 1 && nonBaseline.every(c => c.score >= 55)) earned.push({ emoji: "🔰", icon: "check",    title: "No Zero Weeks",     desc: "Every week above the minimum so far." });
+            if (streak >= 1 && nonBaseline.some(c => c.score < 55)) earned.push({ emoji: "🏃", icon: "check",    title: "Stayed in Motion",  desc: "Kept going even after a reset week." });
+            if (nonBaseline.length >= 3 && nonBaseline.slice(-3).every(c => c.score >= 55)) earned.push({ emoji: "📚", icon: "bounce2",  title: "Stacked Weeks",     desc: "3+ consecutive weeks above minimum." });
+            if (nonBaseline.some(c => c.disruption === "Major disruption" && c.score >= 55)) earned.push({ emoji: "🔧", title: "Adapted Under Pressure", desc: "Stayed above minimum during major disruption." });
+            if (highCount >= 3)           earned.push({ emoji: "🥇", icon: "flame",   title: "Consistency Leader", desc: "Scored 85+ in 3 or more weeks." });
+            if (!earned.length) return null;
             return (
-              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1.6rem", overflow: "hidden" }}>
+              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
                 <button onClick={() => setBadgesOpen(o => !o)}
                   style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                   <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Capacity Badges <span style={{ fontWeight: "normal", color: "#aaa", fontSize: "0.8rem" }}>· {earned.length} earned</span></span>
@@ -2207,11 +2318,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 {badgesOpen && (
                   <div style={{ padding: "0 1.3rem 1.2rem" }}>
                     {earned.map((badge, i) => (
-                      <div key={i} style={{ display: "flex", gap: "0.8rem", alignItems: "flex-start", marginBottom: i < earned.length - 1 ? "0.8rem" : 0, paddingBottom: i < earned.length - 1 ? "0.8rem" : 0, borderBottom: i < earned.length - 1 ? "1px solid #f0f0f0" : "none" }}>
+                      <div key={i} style={{ display: "flex", gap: "0.8rem", alignItems: "flex-start", marginBottom: i < earned.length-1 ? "0.8rem" : 0, paddingBottom: i < earned.length-1 ? "0.8rem" : 0, borderBottom: i < earned.length-1 ? "1px solid #f0f0f0" : "none" }}>
                         <div style={{ lineHeight: 1, flexShrink: 0, display:"flex", alignItems:"center" }}>
-                          {badge.icon
-                            ? <GBSCIcon name={badge.icon} size={24} color={G} strokeWidth={0}/>
-                            : <span style={{fontSize:"1.5rem"}}>{badge.emoji}</span>}
+                          {badge.icon ? <GBSCIcon name={badge.icon} size={24} color={G} strokeWidth={0}/> : <span style={{fontSize:"1.5rem"}}>{badge.emoji}</span>}
                         </div>
                         <div>
                           <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>{badge.title}</div>
@@ -2225,77 +2334,31 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
-          {/* ── Rotating success message ──────────────────────────────── */}
-          {checks.length > 0 && (() => {
-            const latest = checks[checks.length - 1];
-            const ws = getWeekStatus(latest.score);
-            const messages = {
-              "Full Capacity Week": [
-                "You stayed in the game this week.",
-                "Consistency beats perfection.",
-                "This is how long-term capacity is built.",
-                "Strong week. Keep compounding.",
-              ],
-              "Minimum Effective Week": [
-                "Busy week handled well.",
-                "You adapted instead of disappearing.",
-                "Showing up during hard weeks is the skill.",
-                "A Minimum Effective Week still counts.",
-              ],
-              "Reset Week": [
-                "Every week is a new start.",
-                "Small changes produce results.",
-                "Bounce back starts today.",
-                "One step forward is enough.",
-              ],
-            };
-            const pool = messages[ws?.status] || messages["Minimum Effective Week"];
-            const msg = pool[checks.length % pool.length];
-            return (
-              <div style={{ textAlign: "center", padding: "0.7rem 1rem", marginBottom: "1rem" }}>
-                <div style={{ fontSize: "0.82rem", color: "#888", fontStyle: "italic" }}>"{msg}"</div>
-              </div>
-            );
-          })()}
+          {/* Library nudge */}
+          <button onClick={() => setView("library")}
+            style={{ background: "none", border: "none", width: "100%", textAlign: "center", cursor: "pointer", padding: "0.3rem 0", marginBottom: "0.8rem" }}>
+            <span style={{ fontSize: "0.78rem", color: "#aaa" }}>Protocols, guides, and recovery tools</span>
+            <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}> → Library</span>
+          </button>
 
-          {/* ── Action buttons ───────────────────────────────────────────── */}
-          {(() => {
-            const lastCheck = checks[checks.length - 1];
-            const completedProgram = checks.length >= 8;
-            const checkedInThisWeek = lastCheck && !isEligibleForCheckin(lastCheck.date);
-            if (completedProgram) {
-              return (
-                <div style={{ background: CARD, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "0.7rem" }}>
-                  <div style={{ fontSize: "1.3rem", marginBottom: "0.3rem" }}>🏆</div>
-                  <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem" }}>Program Complete</div>
-                  <div style={{ fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }}>You've finished all 8 weeks. Outstanding work.</div>
-                </div>
-              );
-            }
-            if (checkedInThisWeek) {
-              return (
-                <div style={{ background: "#f0f7ec", border: `1.5px solid ${G}`, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "0.7rem" }}>
-                  <div style={{ fontSize: "1.3rem", marginBottom: "0.3rem" }}>✅</div>
-                  <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem" }}>Week {lastCheck.week} check-in submitted</div>
-                  <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.2rem" }}>Next window opens Monday.</div>
-                </div>
-              );
-            }
-            return (
-              <button onClick={() => setView("checkin")}
-                style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
-                + Log This Week's Check-In
-              </button>
-            );
-          })()}
+          {/* Secondary actions */}
           {checks.length > 0 && (
             <button onClick={() => setView("checkFeedback")}
-              style={{ width: "100%", background: "none", border: `2px solid ${G}`, color: G, borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.7rem" }}>
+              style={{ width: "100%", background: "none", border: `2px solid ${G}`, color: G, borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.7rem" }}>
               View My Last Results
             </button>
           )}
           <button onClick={startEdit}
-            style={{ width: "100%", background: "none", border: "2px solid #ddd", color: "#666", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.7rem", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.5rem" }}>
+            style={{ width: "100%", background: "none", border: "2px solid #ddd", color: "#666", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.5rem", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.5rem" }}>
+            <GBSCIcon name="pencil" size={16} color="#666" strokeWidth={0}/>Edit My Profile
+          </button>
+
+        </div>
+      </div>
+    );
+  }
+
+play:"flex", alignItems:"center", justifyContent:"center", gap:"0.5rem" }}>
             <GBSCIcon name="pencil" size={16} color="#666" strokeWidth={0}/>Edit My Profile
           </button>
         </div>
@@ -2305,22 +2368,22 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   if (view === "editProfile" && editForm) {
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setView("profile")} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>← Back to Profile</button>
           <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: DARK, marginBottom: "1.5rem", display:"flex", alignItems:"center", gap:"0.5rem" }}><GBSCIcon name="pencil" size={18} color={DARK} strokeWidth={0}/>Edit My Profile</div>
-          <F label="Full Name"><input type="text" value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
-          <F label="Age"><input type="number" value={editForm.age} onChange={e => setEditForm(f => ({...f, age: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="Full Name"><input type="text" value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="Age"><input type="number" value={editForm.age} onChange={e => setEditForm(f => ({...f, age: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <F label="Sex"><RadioGroup options={["male","female"]} value={editForm.sex} onChange={v => setEditForm(f => ({...f, sex: v}))} /></F>
-          <F label="Bodyweight (lbs)"><input type="number" value={editForm.weight} onChange={e => setEditForm(f => ({...f, weight: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
-          <F label="Grip Strength (lbs) — from dynamometer"><input type="number" value={editForm.grip} onChange={e => setEditForm(f => ({...f, grip: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
-          <F label="VO₂ Estimate — from Polar test"><input type="number" value={editForm.vo2} onChange={e => setEditForm(f => ({...f, vo2: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="Bodyweight (lbs)"><input type="number" value={editForm.weight} onChange={e => setEditForm(f => ({...f, weight: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="Grip Strength (lbs) — from dynamometer"><input type="number" value={editForm.grip} onChange={e => setEditForm(f => ({...f, grip: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
+          <F label="VO₂ Estimate — from Polar test"><input type="number" value={editForm.vo2} onChange={e => setEditForm(f => ({...f, vo2: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <div style={{ background: "#fff8e6", border: "1px solid #f0c040", borderRadius: "10px", padding: "0.8rem 1rem", fontSize: "0.82rem", color: "#7a5c00", marginBottom: "1.2rem" }}>
             ⚠️ Updating VO₂ or Grip will recalculate your Capacity Index scores.
           </div>
           {validationMsg && (
-            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "8px", border: "1px solid #fad0c8" }}>
+            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "12px", border: "1px solid #fad0c8" }}>
               {validationMsg}
             </div>
           )}
@@ -2340,7 +2403,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const lastCheckGate = existingWeeksGate.length > 0 ? existingWeeksGate[existingWeeksGate.length - 1] : null;
     if (lastCheckGate && lastCheckGate.date && !isEligibleForCheckin(lastCheckGate.date)) {
         return (
-          <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+          <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
             {hdr}
             <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", textAlign: "center" }}>
               <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>✅</div>
@@ -2364,7 +2427,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }
     const weekNum = (currentMember.weeklyChecks?.filter(c => c && !c.isBaseline).length || 0) + 1;
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
@@ -2389,21 +2452,21 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           <div style={{ borderBottom: "1px solid #e8e8e8", marginBottom: "1.2rem" }} />
           {[
-            { label: "1. Workouts This Week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
-            { label: "2. Challenging Strength Session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
-            { label: "3. Daily Movement Outside Workouts", field: "dailyMovement", options: ["High","Moderate","Low"], hints: ["High (8k+ steps/day or very active job)", "Moderate (5–8k/day)", "Low (<5k/day)"] },
-            { label: "4. Zone 2 Aerobic Work (Minutes This Week)", field: "zone2", options: ["0-30","30-60","60-90","90+"], hint: "Steady effort — breathing elevated but sustainable" },
-            { label: "5. Protein in 3+ Meals Per Day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal" },
-            { label: "6. Sleep Opportunity", field: "sleepOpportunity", options: ["5+ nights","3-4 nights","1-2 nights","Rarely"], hint: "How many nights did you have 7+ hours available for sleep?" },
-            { label: "7. Intentional Downshift (10+ min)", field: "downshift", options: ["3+ times","1-2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
-          ].map(q => (
-            <div key={q.field} style={{ marginBottom: "1.5rem" }}>
-              <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>{q.label}</div>
-              {(q.hint || q.hints) && <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>{q.hint || q.hints.join(" · ")}</div>}
+            { label: "Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
+            { label: "Challenging strength session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
+            { label: "Daily movement outside workouts", field: "dailyMovement", options: ["High","Moderate","Low"], hints: ["High (8k+ steps/day or very active job)", "Moderate (5–8k/day)", "Low (<5k/day)"] },
+            { label: "Zone 2 aerobic work this week", field: "zone2", options: ["0–30 min","30–60 min","60–90 min","90+ min"], hint: "Steady effort — breathing elevated but sustainable" },
+            { label: "Protein in 3+ meals per day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal" },
+            { label: "Sleep opportunity", field: "sleepOpportunity", options: ["5+ nights","3–4 nights","1–2 nights","Rarely"], hint: "How many nights did you have 7+ hours available for sleep?" },
+            { label: "Intentional downshift (10+ min)", field: "downshift", options: ["3+ times","1–2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
+          ].map((q, qi) => (
+            <div key={q.field} style={{ paddingTop: "1.3rem", borderTop: qi === 0 ? "none" : "1px solid #efefef", marginBottom: "0.2rem" }}>
+              <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>{q.label}</div>
+              {(q.hint || q.hints) && <div style={{ color: "#aaa", fontSize: "0.78rem", marginBottom: "0.65rem" }}>{q.hint || q.hints.join(" · ")}</div>}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
                 {q.options.map(opt => (
                   <button key={opt} onClick={() => setCheck(c => ({...c, [q.field]: opt}))}
-                    style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `2px solid ${check[q.field] === opt ? G : "#ddd"}`, borderRadius: "8px", background: check[q.field] === opt ? G : "#fff", color: check[q.field] === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check[q.field] === opt ? "bold" : "normal", display: "flex", alignItems: "center" }}>
+                    style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `1.5px solid ${check[q.field] === opt ? G : "#e0e0e0"}`, borderRadius: "12px", background: check[q.field] === opt ? G : "#fff", color: check[q.field] === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.88rem", fontWeight: check[q.field] === opt ? "600" : "normal", display: "flex", alignItems: "center", transition: "all 0.15s ease" }}>
                     {opt}
                   </button>
                 ))}
@@ -2417,20 +2480,20 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>8. Sleep Quality</div>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Sleep quality</div>
             <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor most nights","Restless several nights","Mixed sleep","Good most nights","Consistently deep"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>9. Energy This Week</div>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Energy this week</div>
             <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Exhausted often","Low most days","Mixed energy","Steady most days","High and stable"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>10. Physical Recovery</div>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Physical recovery</div>
             <ScaleGroup field="physicalRecovery" value={check.physicalRecovery} setCheck={setCheck} labels={["Sore most of week","Soreness lingered","Average recovery","Recovered well","Consistently fresh"]} />
           </div>
 
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>11. Weekly Disruption</div>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Weekly disruption</div>
             <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Illness, travel, sick kids, heavy workload — won't affect your score, just helps interpret it</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
               {["None","Some disruption","Major disruption"].map(opt => (
@@ -2480,7 +2543,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
           {validationMsg && (
-            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "8px", border: "1px solid #fad0c8" }}>
+            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "12px", border: "1px solid #fad0c8" }}>
               {validationMsg}
             </div>
           )}
@@ -3087,7 +3150,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
     : LIBRARY_ARTICLES.filter(a => a.category === activeCategory);
 
   return (
-    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
       <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
         <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.05em", flex: 1 }}>Recovery Library</div>
@@ -3141,7 +3204,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
 
 function ArticleReader({ article, onBack }) {
   return (
-    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
       <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
         <div style={{ flex: 1 }}>
@@ -3370,7 +3433,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     const ci = habitAvg !== null ? calcCapacityIndex(selected.vo2Score_pre, selected.gripScore_pre, habitAvg) : null;
     const tier = ci !== null ? getCapacityTier(ci) : null;
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "600px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: G, cursor: "pointer", marginBottom: "1rem", fontWeight: "bold" }}>← All Members</button>
@@ -3507,7 +3570,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     );
 
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -3746,7 +3809,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       : "";
 
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -4130,7 +4193,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         setPodDraft(d => ({ ...d, name: pick.name, emoji: pick.emoji }));
       };
       return (
-        <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+        <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
           {hdr}
           <div style={{ maxWidth: "520px", margin: "0 auto", padding: "1.5rem" }}>
             <button onClick={() => { setEditingPod(null); setPodDraft(null); }}
@@ -4253,7 +4316,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
 
     // Pods list view
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
@@ -4348,7 +4411,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: "Georgia, serif" }}>
+    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
       {hdr}
       <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
         {/* Gym summary */}
@@ -4366,7 +4429,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         </div>
 
         <input placeholder="🔍 Search members..." value={search} onChange={e => setSearch(e.target.value)}
-          style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "1rem", boxSizing: "border-box", marginBottom: "1rem" }} />
+          style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box", marginBottom: "1rem" }} />
 
         {/* ── Export panel ── */}
         <div style={{ background: CARD, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
