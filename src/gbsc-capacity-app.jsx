@@ -1423,14 +1423,28 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             };
             const msg = isFirstWeek ? firstWeekMessages[currentRole.role] : upgradeMessages[currentRole.role];
             if (!msg) return null;
+            // Match the declared week color system exactly
+            const roleColors = {
+              Stabilizer: { color: "#8A94A6", bg: "#F4F6F8", textSupport: "#5F6B7A" },
+              Builder:    { color: "#2FBF71", bg: "#F3FBF6", textSupport: "#2F6B4A" },
+              Performer:  { color: "#2C4A6E", bg: "#F0F4F8", textSupport: "#1E3348" },
+              Reset:      { color: "#e05030", bg: "#fff4f0", textSupport: "#a03020" },
+            };
+            const rc = roleColors[currentRole.role] || roleColors.Reset;
             return (
-              <div style={{ background: `linear-gradient(135deg, ${currentRole.color}22, ${currentRole.color}10)`, border: `1.5px solid ${currentRole.color}55`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", ...fadeUp(300) }}>
-                <div style={{ marginBottom: "0.7rem", display: "flex", justifyContent: "center" }}>{currentRole.icon ? <GBSCIcon name={currentRole.icon} size={40} color={currentRole.color} strokeWidth={2}/> : <span style={{fontSize:"2rem"}}>{currentRole.emoji}</span>}</div>
-                <div style={{ fontWeight: "bold", color: currentRole.color, fontSize: "1.1rem", marginBottom: "0.3rem" }}>
+              <div onClick={() => setView("declaredWeek")}
+                style={{ background: rc.bg, border: `1.5px solid ${rc.color}44`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", cursor: "pointer", ...fadeUp(300) }}>
+                <div style={{ marginBottom: "0.7rem", display: "flex", justifyContent: "center" }}>
+                  {currentRole.icon ? <GBSCIcon name={currentRole.icon} size={40} color={rc.color} strokeWidth={2}/> : <span style={{fontSize:"2rem"}}>{currentRole.emoji}</span>}
+                </div>
+                <div style={{ fontWeight: "bold", color: rc.color, fontSize: "1.1rem", marginBottom: "0.3rem" }}>
                   {msg.headline}
                 </div>
-                <div style={{ fontSize: "0.85rem", color: "#555", lineHeight: 1.6 }}>
+                <div style={{ fontSize: "0.85rem", color: rc.textSupport, lineHeight: 1.6, marginBottom: "0.7rem" }}>
                   {msg.body}
+                </div>
+                <div style={{ fontSize: "0.72rem", color: rc.color, fontWeight: "bold", opacity: 0.85 }}>
+                  See this week's action plan →
                 </div>
               </div>
             );
