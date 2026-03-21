@@ -520,8 +520,8 @@ export default function GBSCApp() {
           }
 
           @keyframes glowPulse {
-            0%,100% { filter: drop-shadow(0 0 0px rgba(93,200,66,0)); }
-            50%      { filter: drop-shadow(0 0 40px rgba(93,200,66,0.4)) drop-shadow(0 0 80px rgba(93,200,66,0.15)); }
+            0%,100% { filter: drop-shadow(0 0 10px rgba(93,200,66,0.55)) drop-shadow(0 0 30px rgba(93,200,66,0.25)); }
+            50%      { filter: drop-shadow(0 0 28px rgba(93,200,66,1.0)) drop-shadow(0 0 65px rgba(93,200,66,0.55)) drop-shadow(0 0 110px rgba(93,200,66,0.25)); }
           }
 
           @keyframes lineExpand {
@@ -543,12 +543,16 @@ export default function GBSCApp() {
         {/* Centered column — logo + rule + tagline all share same width so they align */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "min(110px, 28vw)" }}>
 
-          {/* Icon mark */}
+          {/* Icon mark — single element owns both animations, will-change prevents flicker */}
           <div style={{
             animation: "iconRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both, glowPulse 3.5s ease-in-out 2.4s infinite",
             marginBottom: "2.6rem", width: "100%",
+            willChange: "transform, filter",
+            filter: "drop-shadow(0 0 10px rgba(93,200,66,0.55)) drop-shadow(0 0 30px rgba(93,200,66,0.25))",
           }}>
-            <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{ width: "100%", display: "block", transform: "translateX(-7.1%)" }} />
+            <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{
+              width: "100%", display: "block", transform: "translateX(-7.1%)",
+            }} />
           </div>
 
           {/* Hair-line rule */}
