@@ -427,11 +427,14 @@ export default function GBSCApp() {
   useEffect(() => { init(); }, []);
 
   async function init() {
-    const MIN_SPLASH_MS = 4200; // minimum time logo is visible
+    const MIN_SPLASH_MS = 6000; // minimum time logo is visible — extended so tagline has time to land
     const startTime = Date.now();
 
     // Load pods
     loadPods().then(p => setPods(p));
+
+    // Load all members in parallel so community stats are correct on first render
+    loadMembers();
 
     let nextView = "register";
     try {
@@ -1363,7 +1366,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     // ── Community scoreboard ─────────────────────────────────────────────────
     // Compute from already-loaded members state (refreshed on each check-in save)
     function getCommunityStats() {
-      const all = members.length > 0 ? members : [currentMember];
+      // Use members from state; ensure currentMember is always included even if
+      // loadMembers hasn't resolved yet (avoids showing count=1 on first render).
+      const baseList = members.length > 0 ? members : [];
+      const all = baseList.some(m => m.id === currentMember?.id)
+        ? baseList
+        : [...baseList, currentMember].filter(Boolean);
 
       // VO2 and Grip averages include ALL enrolled members, not just those with check-ins
       const allWithScores = all.filter(m => m.vo2Score_pre != null && m.gripScore_pre != null);
