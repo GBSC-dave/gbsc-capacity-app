@@ -548,7 +548,7 @@ export default function GBSCApp() {
             animation: "iconRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both, glowPulse 3.5s ease-in-out 2.4s infinite",
             marginBottom: "2.6rem", width: "100%",
           }}>
-            <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{ width: "100%", display: "block" }} />
+            <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{ width: "100%", display: "block", transform: "translateX(-7.1%)" }} />
           </div>
 
           {/* Hair-line rule */}
