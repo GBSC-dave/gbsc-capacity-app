@@ -294,7 +294,7 @@ function getDeclaredWeek(allChecks) {
       buttonLabel: "Start My Week",
     },
     Performer: {
-      color: "#FF5A3C", bg: "#FFF4F2", accent: "#FFB3A7", textSupport: "#9C3E2E", iconName: "performer",
+      color: "#2C4A6E", bg: "#F0F4F8", accent: "#A8BECE", textSupport: "#1E3348", iconName: "performer",
       subtext: "Perform at a high level — and recover well.",
       targets: [
         { label: "Training",       value: "3 workouts (4 if aligned)" },
@@ -770,6 +770,26 @@ function GBSCIcon({ name, size = 28, color = "currentColor", strokeWidth = 2.5 }
   return icons[name] || null;
 }
 
+// ─── Accordion Section Component ─────────────────────────────────────────────
+function AccordionSection({ label, open, onToggle, accentColor, textColor, children }) {
+  return (
+    <div style={{ borderRadius: "12px", overflow: "hidden", marginBottom: "0.6rem", border: `1px solid ${accentColor}33` }}>
+      <button onClick={onToggle}
+        style={{ width: "100%", background: open ? `${accentColor}12` : "#fff", border: "none", padding: "0.85rem 1.1rem",
+          display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+        <span style={{ fontSize: "0.82rem", fontWeight: "bold", color: textColor }}>{label}</span>
+        <span style={{ color: accentColor, fontSize: "1.1rem", transition: "transform 0.2s", display: "inline-block",
+          transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+      </button>
+      {open && (
+        <div style={{ padding: "0.85rem 1.1rem 1rem", background: "#fff", borderTop: `1px solid ${accentColor}22` }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── MEMBER PORTAL ────────────────────────────────────────────────────────────
 function MemberPortal({ view, setView, members, currentMember, setCurrentMember, saveMember, pods, setPods, onRegistered, onCoachAccess }) {
   const [form, setForm] = useState({ name: "", email: "", age: "", sex: "male", weight: "", grip: "", vo2: "" });
@@ -779,9 +799,21 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
   const [validationMsg, setValidationMsg] = useState("");
   const [declaredWeek, setDeclaredWeek] = useState(null);
+  const [tightOpen, setTightOpen]   = useState(false);
+  const [moreOpen, setMoreOpen]     = useState(false);
+  const [whyOpen, setWhyOpen]       = useState(false);
+  const [focusOpen, setFocusOpen]   = useState(false);
 
-  // Scroll to top on every view transition so the header is always visible
-  useEffect(() => { window.scrollTo({ top: 0, behavior: "instant" }); }, [view]);
+  // Scroll to top and reset accordion state on every view transition
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+    if (view !== "declaredWeek") {
+      setTightOpen(false);
+      setMoreOpen(false);
+      setWhyOpen(false);
+      setFocusOpen(false);
+    }
+  }, [view]);
 
   useEffect(() => {
     if (lastCheckScore === null) return;
@@ -1092,28 +1124,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const isFirstWeeks = dw.weekCount <= 2;
 
     // Accordion state for the 4 expandable sections
-    const [tightOpen, setTightOpen]   = React.useState(false);
-    const [moreOpen, setMoreOpen]     = React.useState(false);
-    const [whyOpen, setWhyOpen]       = React.useState(false);
-    const [focusOpen, setFocusOpen]   = React.useState(false);
-
-    const AccordionSection = ({ label, open, onToggle, children }) => (
-      <div style={{ borderRadius: "12px", overflow: "hidden", marginBottom: "0.6rem", border: `1px solid ${dw.color}33` }}>
-        <button onClick={onToggle}
-          style={{ width: "100%", background: open ? `${dw.color}12` : "#fff", border: "none", padding: "0.85rem 1.1rem",
-            display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-          <span style={{ fontSize: "0.82rem", fontWeight: "bold", color: dw.textSupport }}>{label}</span>
-          <span style={{ color: dw.color, fontSize: "1.1rem", transition: "transform 0.2s", display: "inline-block",
-            transform: open ? "rotate(180deg)" : "none" }}>▾</span>
-        </button>
-        {open && (
-          <div style={{ padding: "0.85rem 1.1rem 1rem", background: "#fff", borderTop: `1px solid ${dw.color}22` }}>
-            {children}
-          </div>
-        )}
-      </div>
-    );
-
     return (
       <div style={{ minHeight: "100vh", background: dw.bg, fontFamily: "Georgia, serif", display: "flex", flexDirection: "column" }}>
         {/* Header */}
@@ -1168,7 +1178,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           </button>
 
           {/* ── Expandable sections (below the fold) ── */}
-          <AccordionSection label="If the week gets tight" open={tightOpen} onToggle={() => setTightOpen(o => !o)}>
+          <AccordionSection label="If the week gets tight" open={tightOpen} onToggle={() => setTightOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
             <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginBottom: "0.7rem", lineHeight: 1.5 }}>
               If life shifts, here's how to stay in the game:
             </div>
@@ -1183,7 +1193,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           </AccordionSection>
 
-          <AccordionSection label="If you have more to give" open={moreOpen} onToggle={() => setMoreOpen(o => !o)}>
+          <AccordionSection label="If you have more to give" open={moreOpen} onToggle={() => setMoreOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
             <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginBottom: "0.7rem", lineHeight: 1.5 }}>
               Your prescribed week is the right target. If the week opens up:
             </div>
@@ -1195,7 +1205,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             ))}
           </AccordionSection>
 
-          <AccordionSection label="Why this week" open={whyOpen} onToggle={() => setWhyOpen(o => !o)}>
+          <AccordionSection label="Why this week" open={whyOpen} onToggle={() => setWhyOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
             <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.65 }}>
               {dw.whyLine}
             </div>
@@ -1204,7 +1214,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           </AccordionSection>
 
-          <AccordionSection label="This week's focus" open={focusOpen} onToggle={() => setFocusOpen(o => !o)}>
+          <AccordionSection label="This week's focus" open={focusOpen} onToggle={() => setFocusOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
             <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>PRIORITY THIS WEEK</div>
             <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: dw.color }}>{dw.focusSignal}</div>
             <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginTop: "0.4rem", lineHeight: 1.5 }}>
