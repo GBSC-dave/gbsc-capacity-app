@@ -1068,14 +1068,26 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   }
 
   const hdr = (
-    <div style={{ background: DARK, padding: "0.85rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
-      <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{ height: "30px", objectFit: "contain" }} />
-      <div style={{ flex: 1 }} />
-      <button onClick={() => setView("library")}
-        style={{ background: "none", border: `1px solid ${G}55`, color: G, borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold", display:"flex", alignItems:"center", gap:"0.35rem" }}>
-        <GBSCIcon name="book" size={16} color={G} strokeWidth={0}/>Library
-      </button>
-      <button onClick={onCoachAccess} style={{ background: "none", border: "1px solid #555", color: "#aaa", borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.75rem", cursor: "pointer" }}>Coach</button>
+    <div style={{ background: DARK, padding: "0.75rem 1.2rem", display: "flex", alignItems: "center" }}>
+      {/* Left third — Library */}
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+        <button onClick={() => setView("library")}
+          style={{ background: "none", border: `1px solid ${G}55`, color: G, borderRadius: "6px", padding: "0.3rem 0.8rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "bold", display:"flex", alignItems:"center", gap:"0.35rem" }}>
+          <GBSCIcon name="book" size={15} color={G} strokeWidth={0}/>Library
+        </button>
+      </div>
+      {/* Center — Logo mark, optically centered to G circle */}
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <img src={LOGO_ICON_TRANSPARENT} alt="GBSC"
+          style={{ height: "36px", width: "auto", objectFit: "contain", transform: "translateX(-7.1%)" }} />
+      </div>
+      {/* Right third — Coach */}
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        <button onClick={onCoachAccess}
+          style={{ background: "none", border: "1px solid #555", color: "#aaa", borderRadius: "6px", padding: "0.3rem 0.8rem", fontSize: "0.75rem", cursor: "pointer" }}>
+          Coach
+        </button>
+      </div>
     </div>
   );
 
