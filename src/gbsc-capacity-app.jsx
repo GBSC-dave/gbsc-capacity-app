@@ -253,49 +253,107 @@ function getDeclaredWeek(allChecks) {
       color: "#8A94A6", bg: "#F4F6F8", accent: "#C7CED6", textSupport: "#5F6B7A", iconName: "stabilizer",
       subtext: "Hold the line.",
       targets: [
-        { label: "Training", value: "2 workouts" },
-        { label: "Engine",   value: "60 min aerobic work" },
-        { label: "Nutrition",value: "Protein in 2+ meals most days" },
-        { label: "Recovery", value: "3–4 nights of 7+ hours sleep · 1–2 recovery actions" },
+        { label: "Training",  value: "2 workouts" },
+        { label: "Engine",    value: "60 min total aerobic work" },
+        { label: "Nutrition", value: "Protein in 2+ meals most days" },
+        { label: "Recovery",  value: "3–4 nights of 7+ hours · 1–2 recovery actions" },
+      ],
+      tightTargets: [
+        { label: "Training",  value: "1 workout" },
+        { label: "Movement",  value: "30 min total movement" },
+        { label: "Nutrition", value: "Protein once daily" },
+        { label: "Recovery",  value: "Prioritize sleep when possible" },
+      ],
+      moreTargets: [
+        { label: "Option A", value: "Add 1 extra walk" },
+        { label: "Option B", value: "Or add 1 short session" },
       ],
       winLine: "Win the week by staying consistent.",
-      footerLine: "Stay in motion. That's the win.",
-      buttonLabel: "Got It — Show My Results",
+      buttonLabel: "Start My Week",
     },
     Builder: {
       color: "#2FBF71", bg: "#F3FBF6", accent: "#A7E3C2", textSupport: "#2F6B4A", iconName: "builder",
       subtext: "This week, we build.",
       targets: [
-        { label: "Training", value: "3 workouts" },
-        { label: "Engine",   value: "75–120 min aerobic work" },
-        { label: "Nutrition",value: "Protein in most meals" },
-        { label: "Recovery", value: "4+ nights of 7+ hours sleep · 2–3 recovery actions" },
+        { label: "Training",  value: "3 workouts (4 if time allows)" },
+        { label: "Engine",    value: "90 min baseline — build toward 120" },
+        { label: "Nutrition", value: "Protein in most meals" },
+        { label: "Recovery",  value: "4+ nights of 7+ hours · 2–3 recovery actions" },
+      ],
+      tightTargets: [
+        { label: "Training",  value: "2 workouts" },
+        { label: "Engine",    value: "45–60 min aerobic work" },
+        { label: "Nutrition", value: "Protein in 2 meals" },
+        { label: "Recovery",  value: "3 nights of 7+ hours sleep" },
+      ],
+      moreTargets: [
+        { label: "Option A", value: "Add a 4th workout" },
+        { label: "Option B", value: "Or extend aerobic work" },
       ],
       winLine: "Win the week by moving something forward.",
-      footerLine: "Small progress compounds.",
-      buttonLabel: "Let's Build — Show My Results",
+      buttonLabel: "Start My Week",
     },
     Performer: {
       color: "#FF5A3C", bg: "#FFF4F2", accent: "#FFB3A7", textSupport: "#9C3E2E", iconName: "performer",
       subtext: "Perform at a high level — and recover well.",
       targets: [
-        { label: "Training",       value: "3–4 workouts" },
-        { label: "Engine",         value: "90–150+ min aerobic work" },
+        { label: "Training",       value: "3 workouts (4 if aligned)" },
+        { label: "Engine",         value: "90 min baseline — build toward 150+" },
         { label: "Nutrition",      value: "High-quality fueling" },
-        { label: "Recovery",       value: "5+ nights of 7+ hours sleep · 3+ recovery actions" },
-        { label: "Optional Push",  value: "Choose one session this week to push intensity" },
+        { label: "Recovery",       value: "5+ nights of 7+ hours · 3+ recovery actions" },
+        { label: "Optional Push",  value: "Choose 1 session this week to push intensity" },
+      ],
+      tightTargets: [
+        { label: "Training",  value: "Scale back to Builder targets — 3 workouts" },
+        { label: "Engine",    value: "90 min aerobic" },
+        { label: "Recovery",  value: "Keep recovery high" },
+      ],
+      moreTargets: [
+        { label: "Option A", value: "Push intensity in 1–2 sessions" },
+        { label: "Option B", value: "Or extend duration slightly" },
       ],
       winLine: "Win the week by performing well and recovering well.",
-      footerLine: "Push — then recover well.",
-      buttonLabel: "Go Perform — Show My Results",
+      buttonLabel: "Start My Week",
     },
   };
+
+  // ── Why this week (dynamic, for accordion) ─────────────────────────────────
+  const whyLines = {
+    Stabilizer: hasMajorDisruption
+      ? "Life is heavy right now. Protecting your habits during demanding weeks is how you avoid starting over."
+      : recoverySignal < 2.5
+      ? "Recovery signals were lower this week. Holding steady is the smart play — not a step back."
+      : "Your check-in signals suggest a lighter week. Staying consistent here protects long-term progress.",
+    Builder: consistencyTrend === "up"
+      ? "Your recent trend is moving in the right direction. This is a good week to build on that momentum."
+      : "Your signals look solid. Controlled progress this week compounds into real capacity over time.",
+    Performer: recoverySignal >= 4
+      ? "Your recovery signals are strong and consistency is high. Your body is ready for a higher-output week."
+      : "Signals across the board support a bigger week. Train hard — and match it with recovery.",
+  };
+
+  // ── This week's focus (pulled from weakest driver signal) ─────────────────
+  const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3, "Yes": 3 }[latest.protein ?? latest.proteinFloor] ?? 0;
+  const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3 }[latest.zone2] ?? 0;
+  const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3 }[latest.sleepOpportunity] ?? 0;
+  const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift ?? latest.regulation] ?? 0;
+  const focusOptions = [
+    { key: "sleep",    score: sleep / 5,      label: "Sleep consistency" },
+    { key: "aerobic",  score: zone2Val / 3,   label: "Aerobic volume" },
+    { key: "protein",  score: protein / 3,    label: "Protein consistency" },
+    { key: "recovery", score: recovery / 5,   label: "Recovery quality" },
+    { key: "reg",      score: reg / 2,        label: "Recovery actions" },
+    { key: "sleepOpp", score: sleepOpp / 3,   label: "Sleep opportunity" },
+  ].sort((a, b) => a.score - b.score);
+  const focusSignal = focusOptions[0].label;
 
   const cfg = ROLE_CONFIG[role];
   return {
     role,
     weekCount,
     reasonLine: reasonLines[role],
+    whyLine: whyLines[role],
+    focusSignal,
     ...cfg,
   };
 }
@@ -1032,6 +1090,30 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "declaredWeek" && currentMember && declaredWeek) {
     const dw = declaredWeek;
     const isFirstWeeks = dw.weekCount <= 2;
+
+    // Accordion state for the 4 expandable sections
+    const [tightOpen, setTightOpen]   = React.useState(false);
+    const [moreOpen, setMoreOpen]     = React.useState(false);
+    const [whyOpen, setWhyOpen]       = React.useState(false);
+    const [focusOpen, setFocusOpen]   = React.useState(false);
+
+    const AccordionSection = ({ label, open, onToggle, children }) => (
+      <div style={{ borderRadius: "12px", overflow: "hidden", marginBottom: "0.6rem", border: `1px solid ${dw.color}33` }}>
+        <button onClick={onToggle}
+          style={{ width: "100%", background: open ? `${dw.color}12` : "#fff", border: "none", padding: "0.85rem 1.1rem",
+            display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+          <span style={{ fontSize: "0.82rem", fontWeight: "bold", color: dw.textSupport }}>{label}</span>
+          <span style={{ color: dw.color, fontSize: "1.1rem", transition: "transform 0.2s", display: "inline-block",
+            transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+        </button>
+        {open && (
+          <div style={{ padding: "0.85rem 1.1rem 1rem", background: "#fff", borderTop: `1px solid ${dw.color}22` }}>
+            {children}
+          </div>
+        )}
+      </div>
+    );
+
     return (
       <div style={{ minHeight: "100vh", background: dw.bg, fontFamily: "Georgia, serif", display: "flex", flexDirection: "column" }}>
         {/* Header */}
@@ -1040,10 +1122,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.03em", flex: 1 }}>GBSC Capacity</div>
         </div>
 
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", gap: "0" }}>
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", flex: 1 }}>
 
-          {/* ── Role reveal ── */}
-          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+          {/* ── Role reveal (above the fold) ── */}
+          <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
             <div style={{ display: "inline-block", background: dw.color, color: "#fff", borderRadius: "999px", padding: "0.3rem 1.1rem", fontSize: "0.72rem", fontWeight: "bold", letterSpacing: "0.08em", marginBottom: "1.2rem" }}>
               YOUR WEEK IS SET
             </div>
@@ -1052,57 +1134,88 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 <GBSCIcon name={dw.iconName} size={52} color={dw.color} strokeWidth={2}/>
               </div>
             )}
-            <div style={{ fontSize: "2.4rem", fontWeight: "bold", color: dw.color, letterSpacing: "-0.01em", lineHeight: 1.1, marginBottom: "0.5rem" }}>
+            <div style={{ fontSize: "2.4rem", fontWeight: "bold", color: dw.color, letterSpacing: "-0.01em", lineHeight: 1.1, marginBottom: "0.4rem" }}>
               {dw.role} Week
             </div>
-            <div style={{ fontSize: "1.1rem", color: dw.textSupport, fontStyle: "italic", marginBottom: "1.2rem" }}>
+            <div style={{ fontSize: "1.1rem", color: dw.textSupport, fontStyle: "italic", marginBottom: "1rem" }}>
               {dw.subtext}
             </div>
-            <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6, marginBottom: "0.5rem" }}>
+            <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6 }}>
               {dw.reasonLine}
-            </div>
-            <div style={{ fontSize: "0.72rem", color: dw.accent === "#C7CED6" ? "#8A94A6" : dw.textSupport, opacity: 0.8 }}>
-              {isFirstWeeks ? "Based on your check-in today." : "Based on your recent trends."}
             </div>
           </div>
 
-          {/* ── What to do ── */}
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem", boxShadow: `0 2px 12px ${dw.color}18` }}>
-            <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginBottom: "0.9rem", fontWeight: "bold" }}>WHAT TO DO THIS WEEK</div>
+          {/* ── What to do (above the fold) ── */}
+          <div style={{ background: "#fff", borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.1rem", boxShadow: `0 2px 12px ${dw.color}18` }}>
+            <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.06em", marginBottom: "0.9rem", fontWeight: "bold" }}>WHAT TO DO THIS WEEK</div>
             {dw.targets.map(({ label, value }) => (
-              <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.7rem", alignItems: "flex-start" }}>
-                <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.1rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+              <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.65rem", alignItems: "flex-start" }}>
+                <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
                 <div style={{ fontSize: "0.88rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
               </div>
             ))}
           </div>
 
-          {/* ── Win condition ── */}
-          <div style={{ background: `${dw.color}18`, border: `1.5px solid ${dw.color}44`, borderRadius: "12px", padding: "1rem 1.2rem", marginBottom: "1.4rem", textAlign: "center" }}>
+          {/* ── Win condition (above the fold) ── */}
+          <div style={{ background: `${dw.color}18`, border: `1.5px solid ${dw.color}44`, borderRadius: "12px", padding: "0.9rem 1.2rem", marginBottom: "1.4rem", textAlign: "center" }}>
             <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6, fontStyle: "italic" }}>{dw.winLine}</div>
           </div>
 
-          {/* ── Fail-safe ── */}
-          <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
-            <div style={{ fontSize: "0.78rem", color: dw.textSupport, opacity: 0.75 }}>
-              If the week shifts, reduce the load — stay in motion.
-            </div>
-          </div>
-
-          {/* ── CTA button ── */}
+          {/* ── CTA (above the fold) ── */}
           <button onClick={() => setView("checkFeedback")}
-            style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.8rem" }}>
+            style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.6rem" }}>
             {dw.buttonLabel} →
           </button>
+
+          {/* ── Expandable sections (below the fold) ── */}
+          <AccordionSection label="If the week gets tight" open={tightOpen} onToggle={() => setTightOpen(o => !o)}>
+            <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginBottom: "0.7rem", lineHeight: 1.5 }}>
+              If life shifts, here's how to stay in the game:
+            </div>
+            {dw.tightTargets.map(({ label, value }) => (
+              <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.5rem", alignItems: "flex-start" }}>
+                <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+                <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
+              </div>
+            ))}
+            <div style={{ fontSize: "0.75rem", color: dw.textSupport, marginTop: "0.7rem", fontStyle: "italic", opacity: 0.85 }}>
+              Staying in motion beats stopping completely.
+            </div>
+          </AccordionSection>
+
+          <AccordionSection label="If you have more to give" open={moreOpen} onToggle={() => setMoreOpen(o => !o)}>
+            <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginBottom: "0.7rem", lineHeight: 1.5 }}>
+              Your prescribed week is the right target. If the week opens up:
+            </div>
+            {dw.moreTargets.map(({ label, value }) => (
+              <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.5rem", alignItems: "flex-start" }}>
+                <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+                <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
+              </div>
+            ))}
+          </AccordionSection>
+
+          <AccordionSection label="Why this week" open={whyOpen} onToggle={() => setWhyOpen(o => !o)}>
+            <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.65 }}>
+              {dw.whyLine}
+            </div>
+            <div style={{ fontSize: "0.72rem", color: dw.textSupport, marginTop: "0.6rem", opacity: 0.8 }}>
+              {isFirstWeeks ? "Based on your check-in today." : "Based on your recent trends."}
+            </div>
+          </AccordionSection>
+
+          <AccordionSection label="This week's focus" open={focusOpen} onToggle={() => setFocusOpen(o => !o)}>
+            <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>PRIORITY THIS WEEK</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: dw.color }}>{dw.focusSignal}</div>
+            <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginTop: "0.4rem", lineHeight: 1.5 }}>
+              Of all your habit signals, this is the one area that will move the needle most this week.
+            </div>
+          </AccordionSection>
+
           <button onClick={() => setView("profile")}
-            style={{ width: "100%", background: "none", border: "none", color: dw.textSupport, cursor: "pointer", fontSize: "0.85rem" }}>
+            style={{ width: "100%", background: "none", border: "none", color: dw.textSupport, cursor: "pointer", fontSize: "0.85rem", marginTop: "0.6rem", paddingBottom: "2rem" }}>
             Back to My Profile
           </button>
-
-          {/* ── Footer line ── */}
-          <div style={{ textAlign: "center", marginTop: "1.5rem" }}>
-            <div style={{ fontSize: "0.8rem", color: dw.textSupport, opacity: 0.6, fontStyle: "italic" }}>{dw.footerLine}</div>
-          </div>
 
         </div>
       </div>
