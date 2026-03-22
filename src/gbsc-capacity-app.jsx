@@ -1593,10 +1593,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             if (!msg) return null;
             // Match the declared week color system exactly
             const roleColors = {
-              Stabilizer: { color: "#8A94A6", bg: "#F4F6F8", textSupport: "#5F6B7A" },
-              Builder:    { color: "#2FBF71", bg: "#F3FBF6", textSupport: "#2F6B4A" },
-              Performer:  { color: "#2C4A6E", bg: "#F0F4F8", textSupport: "#1E3348" },
-              Reset:      { color: "#e05030", bg: "#fff4f0", textSupport: "#a03020" },
+              Stabilizer: { color: "#8A94A6", bg: "linear-gradient(180deg, #fafbfc 0%, #e8ecf0 100%)", textSupport: "#5F6B7A" },
+              Builder:    { color: "#2FBF71", bg: "linear-gradient(180deg, #f8fefb 0%, #e0f5ea 100%)", textSupport: "#2F6B4A" },
+              Performer:  { color: "#2C4A6E", bg: "linear-gradient(180deg, #f5f8fb 0%, #dde6f0 100%)", textSupport: "#1E3348" },
+              Reset:      { color: "#e05030", bg: "linear-gradient(180deg, #fff8f6 0%, #fde0d8 100%)", textSupport: "#a03020" },
             };
             const rc = roleColors[currentRole.role] || roleColors.Reset;
             return (
