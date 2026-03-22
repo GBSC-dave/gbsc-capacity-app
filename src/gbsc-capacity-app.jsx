@@ -1516,6 +1516,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {/* Role milestone card — shows after baseline, first check-in, or when role improves */}
           {(() => {
             // Use baseline score if no weekly checks yet — gives immediate identity after setup
+            const isBaseline  = checks.length === 0 && !!baseline;
+            const isFirstWeek = checks.length === 1;
             const scoreSource = checks.length > 0 ? checks[checks.length - 1] : (baseline || null);
             if (!scoreSource) return null;
             const latest = scoreSource;
@@ -1525,8 +1527,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const prevRole    = prev ? getCapacityRole(prev.score) : null;
             if (!currentRole) return null;
             // Show after baseline, on first weekly check-in, or when role improves
-            const isBaseline  = checks.length === 0 && !!baseline;
-            const isFirstWeek = checks.length === 1;
             const roleImproved = prevRole && (roleOrder[currentRole.role] ?? 0) > (roleOrder[prevRole.role] ?? 0);
             if (!isBaseline && !isFirstWeek && !roleImproved) return null;
             const firstWeekMessages = {
