@@ -520,8 +520,8 @@ export default function GBSCApp() {
           }
 
           @keyframes glowFade {
-            0%,100% { opacity: 0.55; transform: scale(1); }
-            50%      { opacity: 1.0;  transform: scale(1.18); }
+            0%,100% { opacity: 0.5; }
+            50%      { opacity: 1.0; }
           }
 
           @keyframes lineExpand {
@@ -540,33 +540,31 @@ export default function GBSCApp() {
           }
         `}</style>
 
+        {/* Glow — fixed to viewport center, completely independent of logo animation */}
+        <div style={{
+          position: "absolute",
+          top: "50%", left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "280px", height: "280px",
+          background: "radial-gradient(ellipse at center, rgba(93,200,66,0.22) 0%, rgba(93,200,66,0.08) 50%, transparent 72%)",
+          animation: "glowFade 3.5s ease-in-out 2.4s infinite",
+          willChange: "opacity",
+          pointerEvents: "none",
+        }} />
+
         {/* Centered column — logo + rule + tagline all share same width so they align */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "min(110px, 28vw)" }}>
 
-          {/* Icon mark — position:relative so glow layer can sit behind it */}
+          {/* Icon mark */}
           <div style={{
-            position: "relative",
             marginBottom: "2.6rem", width: "100%",
             animation: "iconRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both",
             willChange: "transform, opacity",
+            position: "relative", zIndex: 1,
           }}>
-            {/* Glow layer — radial gradient div behind the logo, animates opacity only.
-                Opacity is GPU-trivial, no compositing tears unlike filter:drop-shadow */}
-            <div style={{
-              position: "absolute",
-              top: "50%", left: "calc(50% - 7.1%)",
-              transform: "translate(-50%, -50%)",
-              width: "180%", height: "180%",
-              background: "radial-gradient(ellipse at center, rgba(93,200,66,0.55) 0%, rgba(93,200,66,0.2) 40%, transparent 70%)",
-              borderRadius: "50%",
-              animation: "glowFade 3.5s ease-in-out 2.4s infinite",
-              willChange: "opacity, transform",
-              pointerEvents: "none",
-            }} />
             <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{
               width: "100%", display: "block",
               transform: "translateX(-7.1%)",
-              position: "relative", zIndex: 1,
             }} />
           </div>
 
