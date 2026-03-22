@@ -180,10 +180,12 @@ function getGripScore(grip, bw, age, sex) {
 // ─── Declared Week Engine ─────────────────────────────────────────────────────
 function getDeclaredWeek(allChecks) {
   const nonBaseline = (allChecks || []).filter(c => c && !c.isBaseline);
-  const latest = nonBaseline[nonBaseline.length - 1];
+  // Fall back to baseline check when no weekly checks exist yet
+  const baseline = (allChecks || []).find(c => c && c.isBaseline);
+  const latest = nonBaseline[nonBaseline.length - 1] || (baseline ? baseline : null);
   if (!latest) return null;
 
-  const weekCount = nonBaseline.length;
+  const weekCount = nonBaseline.length; // 0 when on baseline — first-week messaging applies
   const score = latest.score;
 
   // Pull signals from latest check-in
@@ -1072,8 +1074,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     await saveMember(member);
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
-    // Pass member to onRegistered so parent sets currentMember atomically with view transition
-    onRegistered(null, member);
+    // Compute declared week from baseline — getDeclaredWeek now falls back to baseline score
+    // This sends new member straight to their full-screen identity/week screen
+    const dw = getDeclaredWeek(member.weeklyChecks);
+    setDeclaredWeek(dw);
+    onRegistered(dw, member);
   }
 
   async function handleSubmitCheck() {
