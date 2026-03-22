@@ -84,6 +84,8 @@ const G = "#5DC842";
 const DARK = "#2D2D2D";
 const CARD = "#fdfcfb";
 const PAGE_BG = "#f9f7f4";
+const DARK_BG  = "linear-gradient(180deg, #363636 0%, #222222 100%)";
+const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #f0ede8 100%)";
 const SERIF = "'Georgia', serif";
 const SANS  = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -506,7 +508,7 @@ export default function GBSCApp() {
   if (view === "loading") {
     return (
       <div style={{
-        minHeight: "100vh", background: DARK,
+        minHeight: "100vh", background: DARK_BG,
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         opacity: splashFading ? 0 : 1,
         transition: splashFading ? "opacity 1.2s ease" : "none",
@@ -619,7 +621,7 @@ export default function GBSCApp() {
   // ── COACH PIN ─────────────────────────────────────────────────────────────
   if (view === "coachPin") {
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <img src={LOGO_HORIZ} alt="GBSC" style={{ width: "min(280px, 80vw)", marginBottom: "2rem" }} />
         <div style={{ background: DARK, borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "320px" }}>
           <div style={{ color: "#fff", fontWeight: "bold", fontSize: "1.1rem", marginBottom: "1.2rem", textAlign: "center" }}>🔒 Coach Access</div>
@@ -1121,7 +1123,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "onboard") {
     // Step 1: Profile info
     if (onboardStep === 1) return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
@@ -1156,7 +1158,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     // Step 2: Baseline check-in
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
@@ -1476,7 +1478,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
 
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         <style>{`
           @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
           @keyframes gbscTierSlide {
@@ -2070,7 +2072,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const checkedInThisWeek  = lastCheck && !isEligibleForCheckin(lastCheck.date);
 
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -2469,7 +2471,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   if (view === "editProfile" && editForm) {
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setView("profile")} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>← Back to Profile</button>
@@ -2504,7 +2506,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const lastCheckGate = existingWeeksGate.length > 0 ? existingWeeksGate[existingWeeksGate.length - 1] : null;
     if (lastCheckGate && lastCheckGate.date && !isEligibleForCheckin(lastCheckGate.date)) {
         return (
-          <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+          <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
             {hdr}
             <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", textAlign: "center" }}>
               <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>✅</div>
@@ -2528,7 +2530,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }
     const weekNum = (currentMember.weeklyChecks?.filter(c => c && !c.isBaseline).length || 0) + 1;
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
@@ -3251,7 +3253,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
     : LIBRARY_ARTICLES.filter(a => a.category === activeCategory);
 
   return (
-    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
       <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
         <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.05em", flex: 1 }}>Recovery Library</div>
@@ -3305,7 +3307,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
 
 function ArticleReader({ article, onBack }) {
   return (
-    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
       <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
         <div style={{ flex: 1 }}>
@@ -3534,7 +3536,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     const ci = habitAvg !== null ? calcCapacityIndex(selected.vo2Score_pre, selected.gripScore_pre, habitAvg) : null;
     const tier = ci !== null ? getCapacityTier(ci) : null;
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "600px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: G, cursor: "pointer", marginBottom: "1rem", fontWeight: "bold" }}>← All Members</button>
@@ -3671,7 +3673,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     );
 
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -3910,7 +3912,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       : "";
 
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -4294,7 +4296,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         setPodDraft(d => ({ ...d, name: pick.name, emoji: pick.emoji }));
       };
       return (
-        <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+        <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
           {hdr}
           <div style={{ maxWidth: "520px", margin: "0 auto", padding: "1.5rem" }}>
             <button onClick={() => { setEditingPod(null); setPodDraft(null); }}
@@ -4417,7 +4419,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
 
     // Pods list view
     return (
-      <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
@@ -4512,7 +4514,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: PAGE_BG, fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
       {hdr}
       <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
         {/* Gym summary */}
