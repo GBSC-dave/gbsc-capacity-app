@@ -84,8 +84,8 @@ const G = "#5DC842";
 const DARK = "#2D2D2D";
 const CARD = "#fdfcfb";
 const PAGE_BG = "#f9f7f4";
-const DARK_BG  = "linear-gradient(180deg, #363636 0%, #222222 100%)";
-const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #f0ede8 100%)";
+const DARK_BG  = "linear-gradient(180deg, #363636 0%, #222222 100%) fixed";
+const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #f0ede8 100%) fixed";
 const SERIF = "'Georgia', serif";
 const SANS  = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
