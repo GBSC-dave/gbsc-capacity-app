@@ -515,8 +515,8 @@ export default function GBSCApp() {
           @keyframes spin { to { transform: rotate(360deg); } }
 
           @keyframes logoRise {
-            0%   { opacity: 0; transform: translateY(32px) scale(0.9); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
+            0%   { opacity: 0; transform: translateX(-7.1%) translateY(32px) scale(0.9); }
+            100% { opacity: 1; transform: translateX(-7.1%) translateY(0) scale(1); }
           }
 
           @keyframes glowRise {
@@ -569,7 +569,6 @@ export default function GBSCApp() {
             {/* Logo image — rises on same timing as glow, sits above it */}
             <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{
               width: "100%", display: "block",
-              transform: "translateX(-7.1%)",
               opacity: 0,
               animation: "logoRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards",
               willChange: "transform, opacity",
