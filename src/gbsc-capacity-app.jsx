@@ -514,14 +514,19 @@ export default function GBSCApp() {
         <style>{`
           @keyframes spin { to { transform: rotate(360deg); } }
 
-          @keyframes iconRise {
+          @keyframes logoRise {
             0%   { opacity: 0; transform: translateY(32px) scale(0.9); }
             100% { opacity: 1; transform: translateY(0) scale(1); }
           }
 
-          @keyframes glowFade {
-            0%,100% { opacity: 0.5; }
-            50%      { opacity: 1.0; }
+          @keyframes glowRise {
+            0%   { opacity: 0;    transform: translate(-50%, calc(-50% + 32px)) scale(0.9); }
+            100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
+          }
+
+          @keyframes glowPulse {
+            0%,100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
+            50%      { opacity: 1.0;  transform: translate(-50%, -50%) scale(1.15); }
           }
 
           @keyframes lineExpand {
@@ -540,31 +545,38 @@ export default function GBSCApp() {
           }
         `}</style>
 
-        {/* Glow — fixed to viewport center, completely independent of logo animation */}
-        <div style={{
-          position: "absolute",
-          top: "50%", left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "280px", height: "280px",
-          background: "radial-gradient(ellipse at center, rgba(93,200,66,0.22) 0%, rgba(93,200,66,0.08) 50%, transparent 72%)",
-          animation: "glowFade 3.5s ease-in-out 2.4s infinite",
-          willChange: "opacity",
-          pointerEvents: "none",
-        }} />
-
         {/* Centered column — logo + rule + tagline all share same width so they align */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "min(110px, 28vw)" }}>
 
-          {/* Icon mark */}
+          {/* Logo wrapper — glow is a sibling inside here so it rises with the logo
+              and never bleeds down over the tagline */}
           <div style={{
             marginBottom: "2.6rem", width: "100%",
-            animation: "iconRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both",
-            willChange: "transform, opacity",
-            position: "relative", zIndex: 1,
+            position: "relative",
           }}>
+            {/* Glow layer — starts hidden, rises with logo, then pulses.
+                Positioned relative to the logo center (offset -7.1% to match optical center) */}
+            <div style={{
+              position: "absolute",
+              top: "50%", left: "calc(50% - 3.55%)",
+              width: "280px", height: "280px",
+              marginLeft: "-140px", marginTop: "-140px",
+              background: "radial-gradient(ellipse at center, rgba(93,200,66,0.55) 0%, rgba(93,200,66,0.22) 40%, rgba(93,200,66,0.08) 65%, transparent 80%)",
+              borderRadius: "50%",
+              opacity: 0,
+              animation: "glowRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards, glowPulse 3.5s ease-in-out 1.9s infinite",
+              willChange: "opacity, transform",
+              pointerEvents: "none",
+              zIndex: 0,
+            }} />
+            {/* Logo image — rises on same timing as glow, sits above it */}
             <img src={LOGO_ICON_TRANSPARENT} alt="GBSC" style={{
               width: "100%", display: "block",
               transform: "translateX(-7.1%)",
+              opacity: 0,
+              animation: "logoRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards",
+              willChange: "transform, opacity",
+              position: "relative", zIndex: 1,
             }} />
           </div>
 
