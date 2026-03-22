@@ -671,7 +671,7 @@ export default function GBSCApp() {
         saveMember={saveMember}
         pods={pods}
         setPods={setPods}
-        onRegistered={(dw) => { setView("member"); setMemberView(dw ? "declaredWeek" : "checkFeedback"); }}
+        onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView(dw ? "declaredWeek" : "checkFeedback"); }}
         onCoachAccess={() => setView("coachPin")}
       />
     );
@@ -689,7 +689,7 @@ export default function GBSCApp() {
         saveMember={saveMember}
         pods={pods}
         setPods={setPods}
-        onRegistered={(dw) => { setView("member"); setMemberView(dw ? "declaredWeek" : "checkFeedback"); }}
+        onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView(dw ? "declaredWeek" : "checkFeedback"); }}
         onCoachAccess={() => setView("coachPin")}
       />
     );
@@ -1070,12 +1070,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       enrolledDate: localDateStr()
     };
     await saveMember(member);
-    setCurrentMember(member);
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
-    // After baseline: go straight to checkFeedback which shows the identity role card first.
-    // getDeclaredWeek needs weekly checks to work, so we don't use it here.
-    onRegistered(null);
+    // Pass member to onRegistered so parent sets currentMember atomically with view transition
+    onRegistered(null, member);
   }
 
   async function handleSubmitCheck() {
