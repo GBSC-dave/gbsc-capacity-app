@@ -520,13 +520,13 @@ export default function GBSCApp() {
           }
 
           @keyframes glowRise {
-            0%   { opacity: 0;    transform: translate(-50%, calc(-50% + 32px)) scale(0.9); }
-            100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
+            0%   { opacity: 0; }
+            100% { opacity: 0.7; }
           }
 
           @keyframes glowPulse {
-            0%,100% { opacity: 0.55; transform: translate(-50%, -50%) scale(1); }
-            50%      { opacity: 1.0;  transform: translate(-50%, -50%) scale(1.15); }
+            0%,100% { opacity: 0.7; }
+            50%      { opacity: 1.0; }
           }
 
           @keyframes lineExpand {
@@ -558,14 +558,11 @@ export default function GBSCApp() {
                 Positioned relative to the logo center (offset -7.1% to match optical center) */}
             <div style={{
               position: "absolute",
-              top: "50%", left: "calc(50% - 3.55%)",
-              width: "280px", height: "280px",
-              marginLeft: "-140px", marginTop: "-140px",
-              background: "radial-gradient(ellipse at center, rgba(93,200,66,0.55) 0%, rgba(93,200,66,0.22) 40%, rgba(93,200,66,0.08) 65%, transparent 80%)",
-              borderRadius: "50%",
+              inset: "-80px",
+              background: "radial-gradient(ellipse 60% 60% at 57.1% 50%, rgba(93,200,66,0.28) 0%, rgba(93,200,66,0.08) 55%, transparent 80%)",
               opacity: 0,
               animation: "glowRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards, glowPulse 3.5s ease-in-out 1.9s infinite",
-              willChange: "opacity, transform",
+              willChange: "opacity",
               pointerEvents: "none",
               zIndex: 0,
             }} />
