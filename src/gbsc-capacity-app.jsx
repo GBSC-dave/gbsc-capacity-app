@@ -2501,11 +2501,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}> → Library</span>
           </button>
 
-          {/* Secondary actions */}
-          {checks.length > 0 && (
+          {/* Secondary actions — show for baseline-only AND weekly check-in members */}
+          {(checks.length > 0 || baseline) && (
             <button onClick={() => setView("checkFeedback")}
               style={{ width: "100%", background: "none", border: `2px solid ${G}`, color: G, borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.7rem" }}>
-              View My Last Results
+              {checks.length > 0 ? "View My Last Results" : "View My Score & Role →"}
             </button>
           )}
           <button onClick={startEdit}
