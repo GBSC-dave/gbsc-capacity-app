@@ -1568,7 +1568,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
-          {/* Tier card */
+          {/* Tier card */}
 
           {/* Week progress bar */}
           {weekNum > 0 && (
@@ -1645,7 +1645,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
-}
           {tier && (
             <div style={{ background: CARD, borderRadius: "16px", padding: "1.5rem", marginBottom: "1.5rem", ...fadeUp(450) }}>
               {/* Tappable header row */}
