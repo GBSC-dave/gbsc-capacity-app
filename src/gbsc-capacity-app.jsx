@@ -234,29 +234,29 @@ function getDeclaredWeek(allChecks) {
   const isStabilizer = stabilizerSignals >= 2 || score < 55 || hasMajorDisruption;
 
   let role;
-  if (isStabilizer) role = "Stabilizer";
-  else if (isPerformer) role = "Performer";
+  if (isStabilizer) role = "Anchor";
+  else if (isPerformer) role = "Expansion";
   else role = "Builder";
 
   // ── Reason lines ───────────────────────────────────────────────────────────
   // Week 1-2: score-based, honest about thin data
   // Week 3+: can reference trends
   const reasonLines = {
-    Stabilizer: weekCount < 3
+    Anchor: weekCount < 3
       ? (hasMajorDisruption ? "Looks like a heavy week — keeping things simple." : recoverySignal < 2.5 ? "Recovery signals suggest holding steady this week." : "Based on your check-in today, this is a consistency week.")
       : (hasMajorDisruption ? "Disruption in your recent pattern — protecting consistency." : recoveryTrend === "down" ? "Recovery has dipped recently — we're holding steady." : "Life looked heavier recently — keep this week simple."),
     Builder: weekCount < 3
       ? "Solid signals from your check-in — time to build with control."
       : (consistencyTrend === "up" ? "Your recent trend supports a stronger week." : "Consistency and recovery look good — time to build."),
-    Performer: weekCount < 3
+    Expansion: weekCount < 3
       ? "Strong signals across the board — you're ready for a higher-output week."
       : "Consistency and recovery are both strong — perform with control.",
   };
 
   const ROLE_CONFIG = {
-    Stabilizer: {
+    Anchor: {
       color: "#8A94A6", bg: "linear-gradient(180deg, #f8f9fa 0%, #e4e8ed 100%) fixed", accent: "#C7CED6", textSupport: "#5F6B7A", iconName: "stabilizer",
-      subtext: "Hold the line.",
+      subtext: "Hit your minimums.",
       targets: [
         { label: "Training",  value: "2 workouts" },
         { label: "Engine",    value: "60 min total aerobic work" },
@@ -273,12 +273,12 @@ function getDeclaredWeek(allChecks) {
         { label: "Option A", value: "Add 1 extra walk" },
         { label: "Option B", value: "Or add 1 short session" },
       ],
-      winLine: "Win the week by staying consistent.",
+      winLine: "Anchor Week: Hit your minimums.",
       buttonLabel: "Start My Week",
     },
     Builder: {
       color: "#2FBF71", bg: "linear-gradient(180deg, #f5fdf8 0%, #d8f0e4 100%) fixed", accent: "#A7E3C2", textSupport: "#2F6B4A", iconName: "builder",
-      subtext: "This week, we build.",
+      subtext: "Add one layer.",
       targets: [
         { label: "Training",  value: "3 workouts (4 if time allows)" },
         { label: "Engine",    value: "90 min baseline — build toward 120" },
@@ -295,12 +295,12 @@ function getDeclaredWeek(allChecks) {
         { label: "Option A", value: "Add a 4th workout" },
         { label: "Option B", value: "Or extend aerobic work" },
       ],
-      winLine: "Win the week by moving something forward.",
+      winLine: "Build Week: Add one layer.",
       buttonLabel: "Start My Week",
     },
-    Performer: {
+    Expansion: {
       color: "#2C4A6E", bg: "linear-gradient(180deg, #f2f6fa 0%, #d8e4ef 100%) fixed", accent: "#A8BECE", textSupport: "#1E3348", iconName: "performer",
-      subtext: "Perform at a high level — and recover well.",
+      subtext: "Take it further.",
       targets: [
         { label: "Training",       value: "3 workouts (4 if aligned)" },
         { label: "Engine",         value: "90 min baseline — build toward 150+" },
@@ -317,14 +317,14 @@ function getDeclaredWeek(allChecks) {
         { label: "Option A", value: "Push intensity in 1–2 sessions" },
         { label: "Option B", value: "Or extend duration slightly" },
       ],
-      winLine: "Win the week by performing well and recovering well.",
+      winLine: "Expansion Week: Take it further.",
       buttonLabel: "Start My Week",
     },
   };
 
   // ── Why this week (dynamic, for accordion) ─────────────────────────────────
   const whyLines = {
-    Stabilizer: hasMajorDisruption
+    Anchor: hasMajorDisruption
       ? "Life is heavy right now. Protecting your habits during demanding weeks is how you avoid starting over."
       : recoverySignal < 2.5
       ? "Recovery signals were lower this week. Holding steady is the smart play — not a step back."
@@ -332,15 +332,15 @@ function getDeclaredWeek(allChecks) {
     Builder: consistencyTrend === "up"
       ? "Your recent trend is moving in the right direction. This is a good week to build on that momentum."
       : "Your signals look solid. Controlled progress this week compounds into real capacity over time.",
-    Performer: recoverySignal >= 4
+    Expansion: recoverySignal >= 4
       ? "Your recovery signals are strong and consistency is high. Your body is ready for a higher-output week."
       : "Signals across the board support a bigger week. Train hard — and match it with recovery.",
   };
 
   // ── This week's focus (pulled from weakest driver signal) ─────────────────
   const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3, "Yes": 3 }[latest.protein ?? latest.proteinFloor] ?? 0;
-  const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3 }[latest.zone2] ?? 0;
-  const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3 }[latest.sleepOpportunity] ?? 0;
+  const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 }[latest.zone2] ?? 0;
+  const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 }[latest.sleepOpportunity] ?? 0;
   const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift ?? latest.regulation] ?? 0;
   const focusOptions = [
     { key: "sleep",    score: sleep / 5,      label: "Sleep consistency" },
@@ -366,9 +366,9 @@ function getDeclaredWeek(allChecks) {
 // ─── Capacity Role (based on latest weekly habit score) ──────────────────────
 function getCapacityRole(latestScore) {
   if (latestScore === null || latestScore === undefined) return null;
-  if (latestScore >= 85) return { role: "Performer", color: "#1a7a00", emoji: "🔥", icon: "performer",  desc: "Performs at a high level without burning out." };
+  if (latestScore >= 85) return { role: "Expansion", color: "#1a7a00", emoji: "🔥", icon: "performer",  desc: "Performs at a high level without burning out." };
   if (latestScore >= 70) return { role: "Builder",   color: G,         emoji: "📈", icon: "builder",    desc: "Builds capacity week to week." };
-  if (latestScore >= 55) return { role: "Stabilizer",color: "#e09020", emoji: "🛡️", icon: "stabilizer", desc: "Stays consistent when life gets busy." };
+  if (latestScore >= 55) return { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer", desc: "Stays consistent when life gets busy." };
   return { role: "Reset", color: "#e05030", emoji: "🔄", icon: null, desc: "Reestablish the basics and bounce back." };
 }
 
@@ -401,12 +401,12 @@ function calcWeeklyScore(check) {
   let score = 0;
   const workoutMap = { "0": 0, "1": 6, "2": 11, "3": 15, "4+": 18 };
   score += workoutMap[check.workouts] || 0;
-  score += check.zone2 === "90+" ? 26 : check.zone2 === "60-90" ? 18 : check.zone2 === "30-60" ? 11 : check.zone2 === "0-30" ? 4 : 0;
+  score += (check.zone2 === "90+ min" || check.zone2 === "90+") ? 26 : (check.zone2 === "60–90 min" || check.zone2 === "60-90") ? 18 : (check.zone2 === "30–60 min" || check.zone2 === "30-60") ? 11 : (check.zone2 === "0–30 min" || check.zone2 === "0-30") ? 4 : 0;
   score += check.strengthRPE === "Yes" ? 12 : 0;
   score += check.dailyMovement === "High" ? 12 : check.dailyMovement === "Moderate" ? 7 : 0;
   score += check.protein === "Yes (most days)" ? 14 : check.protein === "Most days" ? 10 : check.protein === "Some days" ? 5 : 0;
   score += check.downshift === "3+ times" ? 8 : check.downshift === "1-2 times" ? 4 : 0;
-  score += check.sleepOpportunity === "5+ nights" ? 10 : check.sleepOpportunity === "3-4 nights" ? 7 : check.sleepOpportunity === "1-2 nights" ? 3 : 0;
+  score += check.sleepOpportunity === "5+ nights" ? 10 : (check.sleepOpportunity === "3–4 nights" || check.sleepOpportunity === "3-4 nights") ? 7 : (check.sleepOpportunity === "1–2 nights" || check.sleepOpportunity === "1-2 nights") ? 3 : 0;
   // Consistency Multiplier: cap at 65 if fewer than 2 workouts
   const workoutsNum = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[check.workouts] ?? 0;
   if (workoutsNum < 2) score = Math.min(score, 65);
@@ -669,7 +669,7 @@ export default function GBSCApp() {
         saveMember={saveMember}
         pods={pods}
         setPods={setPods}
-        onRegistered={() => setView("member")}
+        onRegistered={(dw) => { setView("member"); setMemberView(dw ? "declaredWeek" : "profile"); }}
         onCoachAccess={() => setView("coachPin")}
       />
     );
@@ -687,7 +687,7 @@ export default function GBSCApp() {
         saveMember={saveMember}
         pods={pods}
         setPods={setPods}
-        onRegistered={() => setView("member")}
+        onRegistered={(dw) => { setView("member"); setMemberView(dw ? "declaredWeek" : "profile"); }}
         onCoachAccess={() => setView("coachPin")}
       />
     );
@@ -735,17 +735,40 @@ function ScaleGroup({ value, onChange, field, setCheck, labels }) {
   };
   const selectedLabel = resolvedValue && labels ? labels[parseInt(resolvedValue) - 1] : null;
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-      {labels.map((label, i) => {
-        const n = String(i + 1);
-        const isSelected = n === resolvedValue;
-        return (
-          <button key={n} onClick={() => handleClick(i + 1)}
-            style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `1.5px solid ${isSelected ? G : "#e0e0e0"}`, borderRadius: "12px", background: isSelected ? G : "#fff", color: isSelected ? "#fff" : DARK, cursor: "pointer", fontSize: "0.88rem", fontWeight: isSelected ? "600" : "normal", display: "flex", alignItems: "center", transition: "all 0.15s ease" }}>
-            {label}
-          </button>
-        );
-      })}
+    <div>
+      {/* 1–5 numbered buttons in a row */}
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.4rem" }}>
+        {[1,2,3,4,5].map(n => {
+          const isSelected = String(n) === resolvedValue;
+          return (
+            <button key={n} onClick={() => handleClick(n)}
+              style={{
+                flex: 1, height: "40px",
+                border: `1.5px solid ${isSelected ? G : "#e0e0e0"}`,
+                borderRadius: "10px",
+                background: isSelected ? G : "#fff",
+                color: isSelected ? "#fff" : "#888",
+                cursor: "pointer",
+                fontSize: "1rem",
+                fontWeight: isSelected ? "bold" : "normal",
+                transition: "all 0.15s ease",
+              }}>
+              {n}
+            </button>
+          );
+        })}
+      </div>
+      {/* Endpoint labels: 1 = left label, 5 = right label */}
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.7rem", color: "#aaa", marginBottom: "0.2rem" }}>
+        <span>{labels[0]}</span>
+        <span>{labels[4]}</span>
+      </div>
+      {/* Selected label feedback */}
+      {selectedLabel && (
+        <div style={{ fontSize: "0.78rem", color: G, fontWeight: "600", marginTop: "0.15rem" }}>
+          {resolvedValue} — {selectedLabel}
+        </div>
+      )}
     </div>
   );
 }
@@ -1048,10 +1071,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setCurrentMember(member);
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
-    onRegistered();
     const dw = getDeclaredWeek(member.weeklyChecks);
     setDeclaredWeek(dw);
-    setView("declaredWeek");
+    onRegistered(dw);
   }
 
   async function handleSubmitCheck() {
@@ -1120,7 +1142,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     </div>
   );
 
-  if (view === "onboard") {
+  if (view === "onboard" && currentMember) {
     // Step 1: Profile info
     if (onboardStep === 1) return (
       <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
@@ -1293,7 +1315,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {/* ── What to do (above the fold) ── */}
           <div style={{ background: "#fff", borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.1rem", boxShadow: `0 2px 12px ${dw.color}18` }}>
             <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.06em", marginBottom: "0.9rem", fontWeight: "bold" }}>WHAT TO DO THIS WEEK</div>
-            {dw.targets.map(({ label, value }) => (
+            {(dw.targets || []).map(({ label, value }) => (
               <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.65rem", alignItems: "flex-start" }}>
                 <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
                 <div style={{ fontSize: "0.88rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
@@ -1317,7 +1339,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginBottom: "0.7rem", lineHeight: 1.5 }}>
               If life shifts, here's how to stay in the game:
             </div>
-            {dw.tightTargets.map(({ label, value }) => (
+            {(dw.tightTargets || []).map(({ label, value }) => (
               <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.5rem", alignItems: "flex-start" }}>
                 <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
                 <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
@@ -1337,7 +1359,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginBottom: "0.7rem", lineHeight: 1.5 }}>
               Your prescribed week is the right target. If the week opens up:
             </div>
-            {dw.moreTargets.map(({ label, value }) => (
+            {(dw.moreTargets || []).map(({ label, value }) => (
               <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.5rem", alignItems: "flex-start" }}>
                 <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
                 <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
@@ -1565,37 +1587,40 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
-          {/* Role milestone card — first check-in, or when role improves */}
+          {/* Role milestone card — shows after baseline, first check-in, or when role improves */}
           {(() => {
-            if (checks.length < 1) return null;
-            const latest = checks[checks.length - 1];
+            // Use baseline score if no weekly checks yet — gives immediate identity after setup
+            const scoreSource = checks.length > 0 ? checks[checks.length - 1] : (baseline || null);
+            if (!scoreSource) return null;
+            const latest = scoreSource;
             const prev   = checks.length >= 2 ? checks[checks.length - 2] : null;
-            const roleOrder = { "Reset": 0, "Stabilizer": 1, "Builder": 2, "Performer": 3 };
+            const roleOrder = { "Reset": 0, "Anchor": 1, "Builder": 2, "Expansion": 3 };
             const currentRole = getCapacityRole(latest.score);
             const prevRole    = prev ? getCapacityRole(prev.score) : null;
             if (!currentRole) return null;
-            // Show on first check-in, or when role improves
+            // Show after baseline, on first weekly check-in, or when role improves
+            const isBaseline  = checks.length === 0 && !!baseline;
             const isFirstWeek = checks.length === 1;
             const roleImproved = prevRole && (roleOrder[currentRole.role] ?? 0) > (roleOrder[prevRole.role] ?? 0);
-            if (!isFirstWeek && !roleImproved) return null;
+            if (!isBaseline && !isFirstWeek && !roleImproved) return null;
             const firstWeekMessages = {
               "Reset":      { headline: "Your starting role: Reset", body: "Start simple. Small actions compound. Your next check-in is the first step." },
-              "Stabilizer": { headline: "Your starting role: Stabilizer", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
+              "Anchor": { headline: "Your starting role: Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
               "Builder":    { headline: "Your starting role: Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
-              "Performer":  { headline: "Your starting role: Performer", body: "You can push, recover, and sustain. That's rare. Protect it." },
+              "Expansion":  { headline: "Your starting role: Expansion", body: "You can push, recover, and sustain. That's rare. Protect it." },
             };
             const upgradeMessages = {
-              "Stabilizer": { headline: "You've become a Stabilizer", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
+              "Anchor": { headline: "You've become an Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
               "Builder":    { headline: "You're now a Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
-              "Performer":  { headline: "You've reached Performer", body: "You can push, recover, and sustain. This is rare." },
+              "Expansion":  { headline: "You've reached Expansion", body: "You can push, recover, and sustain. This is rare." },
             };
             const msg = isFirstWeek ? firstWeekMessages[currentRole.role] : upgradeMessages[currentRole.role];
             if (!msg) return null;
             // Match the declared week color system exactly
             const roleColors = {
-              Stabilizer: { color: "#8A94A6", bg: "#F4F6F8", textSupport: "#5F6B7A" },
+              Anchor:     { color: "#8A94A6", bg: "#F4F6F8", textSupport: "#5F6B7A" },
               Builder:    { color: "#2FBF71", bg: "#F3FBF6", textSupport: "#2F6B4A" },
-              Performer:  { color: "#2C4A6E", bg: "#F0F4F8", textSupport: "#1E3348" },
+              Expansion:  { color: "#2C4A6E", bg: "#F0F4F8", textSupport: "#1E3348" },
               Reset:      { color: "#e05030", bg: "#fff4f0", textSupport: "#a03020" },
             };
             const rc = roleColors[currentRole.role] || roleColors.Reset;
@@ -1698,9 +1723,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   <div style={{ marginTop: "1rem", paddingTop: "0.8rem", borderTop: "1px solid #f0f0f0" }}>
                     <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.04em", marginBottom: "0.5rem" }}>Capacity Roles</div>
                     {[
-                      { role: "Stabilizer", desc: "Stays consistent when life gets busy.", color: "#e09020" },
+                      { role: "Anchor", desc: "Stays consistent when life gets busy.", color: "#e09020" },
                       { role: "Builder",    desc: "Builds capacity week to week.",         color: G },
-                      { role: "Performer",  desc: "Performs at a high level without burning out.", color: "#1a7a00" },
+                      { role: "Expansion",  desc: "Performs at a high level without burning out.", color: "#1a7a00" },
                     ].map(({ role, desc, color }) => {
                       const currentR = getCapacityRole(checks[checks.length-1]?.score);
                       const isActive = currentR?.role === role;
@@ -1757,9 +1782,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 }[latest.protein] ?? (latest.proteinFloor ? { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 }[latest.proteinFloor] || 0 : 0);
             const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift] ?? (latest.regulation ? { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0 : 0);
             const strength = latest.strengthRPE === "Yes";
-            const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3 }[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0);
+            const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 }[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0);
             const movement = { "Low": 0, "Moderate": 1, "High": 2 }[latest.dailyMovement] ?? null;
-            const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3 }[latest.sleepOpportunity] ?? null;
+            const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 }[latest.sleepOpportunity] ?? null;
             const areas = [
               { key: "sleep",    pct: sleep / 5 },
               { key: "energy",   pct: energy / 5 },
@@ -1958,7 +1983,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 });
                 const podPct = podTotal > 0 ? Math.round((podCheckedIn / podTotal) * 100) : null;
                 const stats = [
-                  pctConsistent !== null && { label: "Stayed Consistent", val: `${pctConsistent}%`, iconName: "trophy",   sw: 0, desc: "Stabilizer or above this week" },
+                  pctConsistent !== null && { label: "Stayed Consistent", val: `${pctConsistent}%`, iconName: "trophy",   sw: 0, desc: "Anchor or above this week" },
                   { label: "Min Effective Weeks", val: mewTotal,    iconName: "check",   sw: 0, desc: "All-time across gym" },
                   { label: "Builder+ Weeks",      val: builderTotal, iconName: "builder", sw: 2, desc: "Score 70+ all time" },
                   podPct !== null && { label: "Pod Engagement", val: `${podPct}%`, iconName: "star", sw: 0, desc: "Pods checked in this week" },
@@ -2031,9 +2056,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     ?? (latest.proteinFloor ? { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 }[latest.proteinFloor] || 0 : 0);
       const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift]
                     ?? (latest.regulation ? { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0 : 0);
-      const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3 }[latest.zone2]
+      const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 }[latest.zone2]
                     ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0);
-      const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3 }[latest.sleepOpportunity] ?? null;
+      const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 }[latest.sleepOpportunity] ?? null;
       const areas = [
         { key: "sleep",    pct: sleep / 5 },
         { key: "energy",   pct: energy / 5 },
@@ -2321,11 +2346,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const latest = [...checks].reverse()[0];
             if (!latest) return null;
             const workoutMap  = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
-            const zone2Map    = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3 };
+            const zone2Map    = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 };
             const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 };
             const downshiftMap = { "None": 0, "1-2 times": 1, "3+ times": 2 };
             const movementMap = { "Low": 0, "Moderate": 1, "High": 2 };
-            const sleepOppMap = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3 };
+            const sleepOppMap = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 };
             const rows = [
               { label: "Training",  value: workoutMap[latest.workouts] ?? 0, max: 4, display: `${latest.workouts} workouts` },
               { label: "Zone 2",    value: zone2Map[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0), max: 3, display: latest.zone2 || latest.aerobic90 || "—" },
@@ -2410,9 +2435,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             if (latest.physicalRecovery >= 4 && latest.energyLevel >= 4) earned.push({ emoji: "⚡", icon: "bounce", title: "Recovery Builder", desc: "Strong recovery and energy this week." });
             if (streak >= 2)              earned.push({ emoji: "🔥", icon: "flame",    title: "Momentum",           desc: `${streak} weeks in a row above 55.` });
             if (latest.strengthRPE === "Yes" && nonBaseline.filter(c => c.strengthRPE === "Yes").length >= 3) earned.push({ emoji: "💪", icon: "dumbbell", title: "Strength Streak", desc: "Challenging strength session 3+ weeks." });
-            if ((latest.zone2 === "90+" || latest.aerobic90 === "Yes") && nonBaseline.filter(c => c.zone2 === "90+" || c.aerobic90 === "Yes").length >= 2) earned.push({ emoji: "🫁", icon: "lungs", title: "Aerobic Engine", desc: "90+ min Zone 2 in 2+ weeks." });
+            if ((latest.zone2 === "90+" || latest.zone2 === "90+ min" || latest.aerobic90 === "Yes") && nonBaseline.filter(c => c.zone2 === "90+" || c.zone2 === "90+ min" || c.aerobic90 === "Yes").length >= 2) earned.push({ emoji: "🫁", icon: "lungs", title: "Aerobic Engine", desc: "90+ min Zone 2 in 2+ weeks." });
             if (nonBaseline.some(c => c.score >= 55) && nonBaseline.some(c => c.score < 55) && latest.score >= 55) earned.push({ emoji: "↗️", icon: "bounce2", title: "Bounce Back", desc: "Recovered from a tough week." });
-            if (highCount >= 1)           earned.push({ emoji: "🏆", icon: "trophy",  title: "High Performer",     desc: "Scored 85+ in at least one week." });
+            if (highCount >= 1)           earned.push({ emoji: "🏆", icon: "trophy",  title: "High Expansion",     desc: "Scored 85+ in at least one week." });
             if (nonBaseline.length >= 1 && nonBaseline.every(c => c.score >= 55)) earned.push({ emoji: "🔰", icon: "check",    title: "No Zero Weeks",     desc: "Every week above the minimum so far." });
             if (streak >= 1 && nonBaseline.some(c => c.score < 55)) earned.push({ emoji: "🏃", icon: "check",    title: "Stayed in Motion",  desc: "Kept going even after a reset week." });
             if (nonBaseline.length >= 3 && nonBaseline.slice(-3).every(c => c.score >= 55)) earned.push({ emoji: "📚", icon: "bounce2",  title: "Stacked Weeks",     desc: "3+ consecutive weeks above minimum." });
@@ -2469,7 +2494,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     );
   }
 
-  if (view === "editProfile" && editForm) {
+  if (view === "editProfile" && currentMember && editForm) {
     return (
       <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
@@ -2662,8 +2687,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   // ── LIBRARY ──────────────────────────────────────────────────────────────
   if (view === "library") {
+    const hasChecks = (currentMember?.weeklyChecks || []).filter(c => c && !c.isBaseline).length > 0;
     return <RecoveryLibrary
-      onBack={() => { setLibraryArticleId(null); setView("checkFeedback"); }}
+      onBack={() => { setLibraryArticleId(null); setView(hasChecks ? "checkFeedback" : "profile"); }}
       initialArticleId={libraryArticleId}
     />;
   }
@@ -3077,7 +3103,8 @@ const DRIVER_ARTICLE_MAP = {
 
 // ─── POD CARD (member-facing) ─────────────────────────────────────────────────
 function PodCard({ myPod, members, currentMember, pods, setPods }) {
-  const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
@@ -3112,8 +3139,9 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
   return (
     <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", border: allIn ? `1.5px solid ${G}` : `1.5px solid ${G}22` }}>
 
-      {/* ── Header row: emoji + name + rename ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "0.9rem" }}>
+      {/* ── Header row: tap to collapse/expand ── */}
+      <div onClick={() => !renaming && setOpen(o => !o)}
+        style={{ display: "flex", alignItems: "center", gap: "0.7rem", cursor: renaming ? "default" : "pointer", marginBottom: open ? "0.9rem" : 0 }}>
         <span style={{ fontSize: "1.5rem", flexShrink: 0 }}>{myPod.emoji}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
           {renaming ? (
@@ -3122,11 +3150,11 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
                 onChange={e => setNameInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") handleRename(); if (e.key === "Escape") setRenaming(false); }}
                 style={{ flex: 1, padding: "0.3rem 0.6rem", border: `1.5px solid ${G}`, borderRadius: "6px", fontSize: "0.9rem", minWidth: 0 }} />
-              <button onClick={handleRename} disabled={saving}
+              <button onClick={e => { e.stopPropagation(); handleRename(); }} disabled={saving}
                 style={{ background: G, color: "#fff", border: "none", borderRadius: "6px", padding: "0.3rem 0.7rem", fontSize: "0.8rem", fontWeight: "bold", cursor: "pointer" }}>
                 {saving ? "…" : "✓"}
               </button>
-              <button onClick={() => setRenaming(false)}
+              <button onClick={e => { e.stopPropagation(); setRenaming(false); }}
                 style={{ background: "none", border: "1px solid #ddd", borderRadius: "6px", padding: "0.3rem 0.6rem", fontSize: "0.8rem", cursor: "pointer", color: "#888" }}>
                 ✕
               </button>
@@ -3140,14 +3168,16 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
             </div>
           )}
           <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>
-            Your support pod
-            {isCaptain && <span style={{ color: "#f0a500", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.25rem" }}> · <GBSCIcon name="star" size={12} color="#f0a500" strokeWidth={0}/> You're the captain</span>}
+            Your support pod {!open && checkedCount > 0 && <span style={{ color: G, fontWeight: "bold" }}>· {checkedCount}/{totalCount} checked in</span>}
+            {isCaptain && <span style={{ color: "#f0a500", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.25rem" }}> · <GBSCIcon name="star" size={12} color="#f0a500" strokeWidth={0}/> Captain</span>}
           </div>
         </div>
+        {/* Chevron */}
+        <span style={{ color: "#bbb", fontSize: "1rem", transition: "transform 0.2s", display: "inline-block", transform: open ? "rotate(180deg)" : "none", flexShrink: 0 }}>▾</span>
       </div>
 
-      {/* ── Weekly progress block — always visible ── */}
-      <div style={{ background: allIn ? `${G}0f` : "#f7f7f7", borderRadius: "12px", padding: "0.9rem 1rem" }}>
+      {/* ── Body — collapsible ── */}
+      {open && <div style={{ background: allIn ? `${G}0f` : "#f7f7f7", borderRadius: "12px", padding: "0.9rem 1rem" }}>
         {/* Header line */}
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.6rem" }}>
           <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em" }}>
@@ -3199,14 +3229,14 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
         )}
       </div>
 
-      {/* ── Expand toggle for extra detail ── */}
-      <button onClick={() => setExpanded(e => !e)}
+      {/* ── Detail toggle ── */}
+      <button onClick={() => setDetailOpen(d => !d)}
         style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: "0.75rem", marginTop: "0.6rem", padding: 0, display: "flex", alignItems: "center", gap: "0.3rem" }}>
-        {expanded ? "▴ less" : "▾ program progress"}
+        {detailOpen ? "▴ less" : "▾ program progress"}
       </button>
 
-      {/* ── Expanded: overall program week count ── */}
-      {expanded && (
+      {/* ── Detail: overall program week count ── */}
+      {detailOpen && (
         <div style={{ marginTop: "0.8rem", borderTop: "1px solid #e8e8e8", paddingTop: "0.8rem" }}>
           <div style={{ fontSize: "0.7rem", color: "#888", fontWeight: "bold", letterSpacing: "0.07em", marginBottom: "0.5rem" }}>WEEKS COMPLETED</div>
           {allPodMembers.map(m => {
@@ -3232,6 +3262,7 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
           })}
         </div>
       )}
+      </div>}
     </div>
   );
 }
@@ -3387,7 +3418,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       const newPod = { ...podDraft, id: "pod_" + Date.now() };
       updatedPods = [...pods, newPod];
     } else {
-      updatedPods = pods.map(p => p.id === podDraft.id ? podDraft : p);
+      updatedPods = (pods || []).map(p => p.id === podDraft.id ? podDraft : p);
     }
     await savePods(updatedPods);
     setPods(updatedPods);
@@ -3405,7 +3436,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
 
   function startNewPod() {
     // Pick a name not already used
-    const usedNames = pods.map(p => p.name);
+    const usedNames = (pods || []).map(p => p.name);
     const available = POD_NAMES.filter(n => !usedNames.includes(n.name));
     const pick = available.length > 0
       ? available[Math.floor(Math.random() * available.length)]
@@ -3500,7 +3531,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
   // Gym-wide averages
   const withCI = members.filter(m => (m.weeklyChecks || []).filter(c => c && !c.isBaseline).length > 0);
   const avgCI = withCI.length ? Math.round(withCI.reduce((s, m) => {
-    const nonBase = m.weeklyChecks.filter(c => c && !c.isBaseline);
+    const nonBase = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
     const habit = Math.round(nonBase.reduce((a,c) => a+c.score,0)/nonBase.length);
     return s + calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, habit);
   }, 0) / withCI.length) : null;
@@ -3650,7 +3681,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       .sort((a, b) => a.rec - b.rec);
 
     // ── Pod engagement: pods with < 50% checked in this week
-    const podEngagement = pods.map(pod => {
+    const podEngagement = (pods || []).map(pod => {
       const podMembers = members.filter(m => pod.memberIds.includes(m.id));
       const checkedIn = podMembers.filter(m => {
         const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
@@ -4218,9 +4249,9 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
               if (!checks.length) return;
               const latest = checks[checks.length - 1];
               const role = getCapacityRole(latest.score);
-              if (role?.role === "Performer") performers++;
+              if (role?.role === "Expansion") performers++;
               else if (role?.role === "Builder") builders++;
-              else if (role?.role === "Stabilizer") stabilizers++;
+              else if (role?.role === "Anchor") stabilizers++;
               else resets++;
             });
             const total = performers + builders + stabilizers + resets;
@@ -4288,7 +4319,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         setPodDraft(d => ({ ...d, captainId: d.captainId === memberId ? null : memberId }));
       };
       const shuffleName = () => {
-        const usedNames = pods.filter(p => p.id !== podDraft.id).map(p => p.name);
+        const usedNames = (pods || []).filter(p => p.id !== podDraft.id).map(p => p.name);
         const available = POD_NAMES.filter(n => !usedNames.includes(n.name) && n.name !== podDraft.name);
         const pick = available.length > 0
           ? available[Math.floor(Math.random() * available.length)]
@@ -4449,7 +4480,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
             </div>
           )}
 
-          {pods.map(pod => {
+          {(pods || []).map(pod => {
             const podMemberObjs = members.filter(m => pod.memberIds.includes(m.id));
             return (
               <div key={pod.id} style={{ background: CARD, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "0.9rem", border: "1.5px solid transparent" }}>
