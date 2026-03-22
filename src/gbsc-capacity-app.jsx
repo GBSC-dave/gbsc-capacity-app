@@ -364,12 +364,14 @@ function getDeclaredWeek(allChecks) {
 }
 
 // ─── Capacity Role (based on latest weekly habit score) ──────────────────────
-function getCapacityRole(latestScore) {
+function getCapacityRole(latestScore, floorToAnchor = false) {
   if (latestScore === null || latestScore === undefined) return null;
   if (latestScore >= 85) return { role: "Expansion", color: "#1a7a00", emoji: "🔥", icon: "performer",  desc: "Performs at a high level without burning out." };
   if (latestScore >= 70) return { role: "Builder",   color: G,         emoji: "📈", icon: "builder",    desc: "Builds capacity week to week." };
   if (latestScore >= 55) return { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer", desc: "Stays consistent when life gets busy." };
-  return { role: "Reset", color: "#e05030", emoji: "🔄", icon: null, desc: "Reestablish the basics and bounce back." };
+  // Reset only appears mid-program — never as a first impression
+  if (floorToAnchor) return { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer", desc: "Stays consistent when life gets busy." };
+  return { role: "Reset", color: "#C8C4BC", emoji: "🔄", icon: null, desc: "Take a breath. This week is about getting back on track." };
 }
 
 // ─── Week Status (based on latest weekly habit score) ─────────────────────────
@@ -377,7 +379,7 @@ function getWeekStatus(latestScore) {
   if (latestScore === null || latestScore === undefined) return null;
   if (latestScore >= 85) return { status: "Full Capacity Week", emoji: "🔥", icon: "flame",   color: "#1a7a00", msg: "You're building momentum." };
   if (latestScore >= 55) return { status: "Minimum Effective Week", emoji: "✅", icon: "check",   color: G,         msg: "You stayed consistent during a busy week." };
-  return                        { status: "Reset Week",             emoji: "🔁", icon: "refresh", color: "#e05030", msg: "Start simple and re-establish your baseline." };
+  return                        { status: "Reset Week",             emoji: "🔁", icon: "refresh", color: "#C8C4BC", msg: "One step at a time. Anchor habits are your path back." };
 }
 
 function calcCapacityIndex(vo2Score, gripScore, habitScore) {
@@ -1188,9 +1190,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const answered = fields.filter(f => check[f] !== "" && check[f] != null).length;
             const pct = Math.round((answered / fields.length) * 100);
             return (
-              <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-                <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.4rem" }}>This week's habits</div>
-                <div style={{ color: "#666", fontSize: "0.88rem", lineHeight: 1.6, marginBottom: "0.8rem" }}>Your answers set your starting point. First instinct is fine — takes about 45 seconds.</div>
+              <div style={{ position: "sticky", top: 0, zIndex: 10, background: LIGHT_BG, paddingTop: "1rem", paddingBottom: "0.8rem", marginBottom: "0.5rem" }}>
+                <div style={{ textAlign: "center", marginBottom: "0.6rem" }}>
+                  <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>This week's habits</div>
+                  <div style={{ color: "#666", fontSize: "0.88rem" }}>First instinct is fine — ~45 seconds.</div>
+                </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
                   <div style={{ flex: 1, background: "#eee", borderRadius: "999px", height: "5px" }}>
                     <div style={{ background: G, borderRadius: "999px", height: "5px", width: `${pct}%`, transition: "width 0.3s ease" }} />
@@ -1199,11 +1203,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     {answered === fields.length ? "✓ All done!" : `${answered} of ${fields.length}`}
                   </div>
                 </div>
+                <div style={{ borderBottom: "1px solid #e8e8e8", marginTop: "0.8rem" }} />
               </div>
             );
           })()}
-
-          <div style={{ borderBottom: "1px solid #e8e8e8", marginBottom: "1.2rem" }} />
           {[
             { label: "Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
             { label: "Challenging strength session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
@@ -1520,7 +1523,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const latest = scoreSource;
             const prev   = checks.length >= 2 ? checks[checks.length - 2] : null;
             const roleOrder = { "Reset": 0, "Anchor": 1, "Builder": 2, "Expansion": 3 };
-            const currentRole = getCapacityRole(latest.score);
+            const currentRole = getCapacityRole(latest.score, isBaseline);
             const prevRole    = prev ? getCapacityRole(prev.score) : null;
             if (!currentRole) return null;
             // Show after baseline, on first weekly check-in, or when role improves
@@ -1529,7 +1532,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const roleImproved = prevRole && (roleOrder[currentRole.role] ?? 0) > (roleOrder[prevRole.role] ?? 0);
             if (!isBaseline && !isFirstWeek && !roleImproved) return null;
             const firstWeekMessages = {
-              "Reset":      { headline: "Your starting role: Reset", body: "Start simple. Small actions compound. Your next check-in is the first step." },
+              "Reset":      { headline: "Reset week.", body: "Something got in the way — that's part of the program. This week, come back to Anchor targets. Show up, keep it simple, and let consistency do the work." },
               "Anchor": { headline: "Your starting role: Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
               "Builder":    { headline: "Your starting role: Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
               "Expansion":  { headline: "Your starting role: Expansion", body: "You can push, recover, and sustain. That's rare. Protect it." },
@@ -1546,7 +1549,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               Anchor:     { color: "#8A94A6", bg: "#F4F6F8", textSupport: "#5F6B7A" },
               Builder:    { color: "#2FBF71", bg: "#F3FBF6", textSupport: "#2F6B4A" },
               Expansion:  { color: "#2C4A6E", bg: "#F0F4F8", textSupport: "#1E3348" },
-              Reset:      { color: "#e05030", bg: "#fff4f0", textSupport: "#a03020" },
+              Reset:      { color: "#C8C4BC", bg: "#FAFAF8", textSupport: "#7A7570" },
             };
             const rc = roleColors[currentRole.role] || roleColors.Reset;
             return (
@@ -2379,8 +2382,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                       </span>
                     )}
                     {bottomPct < 50 && (
-                      <span style={{ fontSize: "0.72rem", background: "#fff4ee", color: "#c05820", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
-                        <GBSCIcon name="arrow_down" size={12} color="#c05820" strokeWidth={0}/>Main limiter: {bottomDriver.label}
+                      <span style={{ fontSize: "0.72rem", background: "#f0f0ee", color: "#888580", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
+                        <GBSCIcon name="arrow_down" size={12} color="#888580" strokeWidth={0}/>Main limiter: {bottomDriver.label}
                       </span>
                     )}
                   </div>
@@ -2564,22 +2567,21 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const answered = fields.filter(f => check[f] !== "" && check[f] != null).length;
             const pct = Math.round((answered / fields.length) * 100);
             return (
-              <div style={{ marginBottom: "1.5rem" }}>
+              <div style={{ position: "sticky", top: 0, zIndex: 10, background: LIGHT_BG, paddingTop: "1rem", paddingBottom: "0.8rem" }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.3rem" }}>
                   <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: DARK }}>Week {weekNum} Check-In</div>
                   <div style={{ fontSize: "0.8rem", color: answered === fields.length ? G : "#888", fontWeight: answered === fields.length ? "bold" : "normal" }}>
                     {answered === fields.length ? "✓ All done!" : `${answered} of ${fields.length}`}
                   </div>
                 </div>
-                <div style={{ background: "#eee", borderRadius: "999px", height: "5px", marginBottom: "0.5rem" }}>
+                <div style={{ background: "#eee", borderRadius: "999px", height: "5px", marginBottom: "0.3rem" }}>
                   <div style={{ background: G, borderRadius: "999px", height: "5px", width: `${pct}%`, transition: "width 0.3s ease" }} />
                 </div>
-                <div style={{ color: "#666", fontSize: "0.85rem" }}>~45 seconds · First instinct is fine</div>
+                <div style={{ color: "#666", fontSize: "0.85rem", marginBottom: "0.5rem" }}>~45 seconds · First instinct is fine</div>
+                <div style={{ borderBottom: "1px solid #e8e8e8" }} />
               </div>
             );
           })()}
-
-          <div style={{ borderBottom: "1px solid #e8e8e8", marginBottom: "1.2rem" }} />
           {[
             { label: "Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
             { label: "Challenging strength session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
@@ -3164,8 +3166,8 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
               <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem" }}>{myPod.name}</div>
               <button onClick={e => { e.stopPropagation(); setNameInput(myPod.name); setRenaming(true); }}
-                style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", fontSize: "0.75rem", padding: 0, lineHeight: 1 }}
-                title="Rename pod">✏️</button>
+                style={{ background: "none", border: "none", color: "#ccc", cursor: "pointer", padding: 0, lineHeight: 1, display: "flex", alignItems: "center" }}
+                title="Rename pod"><GBSCIcon name="pencil" size={14} color={G} strokeWidth={0}/></button>
             </div>
           )}
           <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>
@@ -4217,7 +4219,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                   <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", flexWrap: "wrap" }}>
                     <span style={{ fontSize: "0.72rem", background: "#1a7a0015", color: "#1a7a00", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>🔥 Full Capacity: {fullCapWeeks}</span>
                     <span style={{ fontSize: "0.72rem", background: `${G}15`, color: "#2a7a14", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>✅ Min Effective: {mewWeeks}</span>
-                    <span style={{ fontSize: "0.72rem", background: "#e0503015", color: "#e05030", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>🔁 Reset: {resetWeeks}</span>
+                    <span style={{ fontSize: "0.72rem", background: "#C8C4BC22", color: "#7A7570", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>🔁 Reset: {resetWeeks}</span>
                   </div>
                 </div>
                 {/* All-time totals */}
@@ -4261,7 +4263,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
               { label: "Performer", count: performers, color: "#1a7a00", emoji: "🔥" },
               { label: "Builder",   count: builders,   color: G,         emoji: "📈" },
               { label: "Stabilizer",count: stabilizers,color: "#e09020", emoji: "🛡️" },
-              { label: "Reset",     count: resets,     color: "#e05030", emoji: "🔁" },
+              { label: "Reset",     count: resets,     color: "#C8C4BC", emoji: "🔁" },
             ];
             return (
               <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
