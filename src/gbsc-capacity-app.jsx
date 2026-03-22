@@ -1404,6 +1404,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const allChecks = currentMember.weeklyChecks || [];
     const baseline = allChecks.find(c => c && c.isBaseline);
     const checks = allChecks.filter(c => c && !c.isBaseline);
+    // Single source of truth for role — matches the "Your Week Is Set" screen
+    const cfDw = getDeclaredWeek(allChecks);
     // For baseline-only state, use the baseline habit score so CI is visible right away
     const habitAvg = checks.length
       ? Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length)
@@ -1528,7 +1530,14 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const latest = scoreSource;
             const prev   = checks.length >= 2 ? checks[checks.length - 2] : null;
             const roleOrder = { "Reset": 0, "Anchor": 1, "Builder": 2, "Expansion": 3 };
-            const currentRole = getCapacityRole(latest.score, isBaseline);
+            // Use cfDw.role as source of truth so role card matches "Your Week Is Set" screen
+            const CF_ROLE_LOOKUP = {
+              "Anchor":    { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer" },
+              "Builder":   { role: "Builder",   color: G,         emoji: "📈", icon: "builder"    },
+              "Expansion": { role: "Expansion", color: "#1a7a00", emoji: "🔥", icon: "performer"  },
+              "Reset":     { role: "Reset",     color: "#C8C4BC", emoji: "🔄", icon: null         },
+            };
+            const currentRole = cfDw ? (CF_ROLE_LOOKUP[cfDw.role] || null) : getCapacityRole(latest.score, isBaseline);
             const prevRole    = prev ? getCapacityRole(prev.score) : null;
             if (!currentRole) return null;
             // Show after baseline, on first weekly check-in, or when role improves
@@ -2035,10 +2044,18 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const tier = ci !== null ? getCapacityTier(ci) : null;
     const latest = checks[checks.length - 1] || null;
     const ws     = latest ? getWeekStatus(latest.score) : null;
-    const role   = latest ? getCapacityRole(latest.score) : null;
 
-    // Declared week — computed once for both banner and navigation
+    // Declared week — computed once, single source of truth for role
     const dw = getDeclaredWeek(allChecks);
+    // Role lookup table — maps dw.role directly to the same object shape getCapacityRole returns
+    // This guarantees the profile role card always matches the "Your Week Is Set" screen
+    const ROLE_LOOKUP = {
+      "Anchor":    { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer", desc: "Stays consistent when life gets busy." },
+      "Builder":   { role: "Builder",   color: G,         emoji: "📈", icon: "builder",    desc: "Builds capacity week to week." },
+      "Expansion": { role: "Expansion", color: "#1a7a00", emoji: "🔥", icon: "performer",  desc: "Performs at a high level without burning out." },
+      "Reset":     { role: "Reset",     color: "#C8C4BC", emoji: "🔄", icon: null,         desc: "Take a breath. This week is about getting back on track." },
+    };
+    const role = dw ? (ROLE_LOOKUP[dw.role] || null) : (latest ? getCapacityRole(latest.score) : null);
 
     // Tier progress data
     const tierOrder = [
