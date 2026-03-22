@@ -1142,7 +1142,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     </div>
   );
 
-  if (view === "onboard" && currentMember) {
+  if (view === "onboard") {
     // Step 1: Profile info
     if (onboardStep === 1) return (
       <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
