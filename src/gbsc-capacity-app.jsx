@@ -669,7 +669,7 @@ export default function GBSCApp() {
         saveMember={saveMember}
         pods={pods}
         setPods={setPods}
-        onRegistered={(dw) => { setView("member"); setMemberView(dw ? "declaredWeek" : "profile"); }}
+        onRegistered={(dw) => { setView("member"); setMemberView(dw ? "declaredWeek" : "checkFeedback"); }}
         onCoachAccess={() => setView("coachPin")}
       />
     );
@@ -687,7 +687,7 @@ export default function GBSCApp() {
         saveMember={saveMember}
         pods={pods}
         setPods={setPods}
-        onRegistered={(dw) => { setView("member"); setMemberView(dw ? "declaredWeek" : "profile"); }}
+        onRegistered={(dw) => { setView("member"); setMemberView(dw ? "declaredWeek" : "checkFeedback"); }}
         onCoachAccess={() => setView("coachPin")}
       />
     );
@@ -1071,9 +1071,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setCurrentMember(member);
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
-    const dw = getDeclaredWeek(member.weeklyChecks);
-    setDeclaredWeek(dw);
-    onRegistered(dw);
+    // After baseline: go straight to checkFeedback which shows the identity role card first.
+    // getDeclaredWeek needs weekly checks to work, so we don't use it here.
+    onRegistered(null);
   }
 
   async function handleSubmitCheck() {
@@ -1512,6 +1512,64 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
+          {/* Role milestone card — shows after baseline, first check-in, or when role improves */}
+          {(() => {
+            // Use baseline score if no weekly checks yet — gives immediate identity after setup
+            const scoreSource = checks.length > 0 ? checks[checks.length - 1] : (baseline || null);
+            if (!scoreSource) return null;
+            const latest = scoreSource;
+            const prev   = checks.length >= 2 ? checks[checks.length - 2] : null;
+            const roleOrder = { "Reset": 0, "Anchor": 1, "Builder": 2, "Expansion": 3 };
+            const currentRole = getCapacityRole(latest.score);
+            const prevRole    = prev ? getCapacityRole(prev.score) : null;
+            if (!currentRole) return null;
+            // Show after baseline, on first weekly check-in, or when role improves
+            const isBaseline  = checks.length === 0 && !!baseline;
+            const isFirstWeek = checks.length === 1;
+            const roleImproved = prevRole && (roleOrder[currentRole.role] ?? 0) > (roleOrder[prevRole.role] ?? 0);
+            if (!isBaseline && !isFirstWeek && !roleImproved) return null;
+            const firstWeekMessages = {
+              "Reset":      { headline: "Your starting role: Reset", body: "Start simple. Small actions compound. Your next check-in is the first step." },
+              "Anchor": { headline: "Your starting role: Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
+              "Builder":    { headline: "Your starting role: Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
+              "Expansion":  { headline: "Your starting role: Expansion", body: "You can push, recover, and sustain. That's rare. Protect it." },
+            };
+            const upgradeMessages = {
+              "Anchor": { headline: "You've become an Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
+              "Builder":    { headline: "You're now a Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
+              "Expansion":  { headline: "You've reached Expansion", body: "You can push, recover, and sustain. This is rare." },
+            };
+            const msg = isFirstWeek ? firstWeekMessages[currentRole.role] : upgradeMessages[currentRole.role];
+            if (!msg) return null;
+            // Match the declared week color system exactly
+            const roleColors = {
+              Anchor:     { color: "#8A94A6", bg: "#F4F6F8", textSupport: "#5F6B7A" },
+              Builder:    { color: "#2FBF71", bg: "#F3FBF6", textSupport: "#2F6B4A" },
+              Expansion:  { color: "#2C4A6E", bg: "#F0F4F8", textSupport: "#1E3348" },
+              Reset:      { color: "#e05030", bg: "#fff4f0", textSupport: "#a03020" },
+            };
+            const rc = roleColors[currentRole.role] || roleColors.Reset;
+            return (
+              <div onClick={() => { const dw = getDeclaredWeek(currentMember.weeklyChecks || []); if (dw) { setDeclaredWeek(dw); setView("declaredWeek"); } }}
+                style={{ background: rc.bg, border: `1.5px solid ${rc.color}44`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", cursor: "pointer", ...fadeUp(300) }}>
+                <div style={{ marginBottom: "0.7rem", display: "flex", justifyContent: "center" }}>
+                  {currentRole.icon ? <GBSCIcon name={currentRole.icon} size={40} color={rc.color} strokeWidth={2}/> : <span style={{fontSize:"2rem"}}>{currentRole.emoji}</span>}
+                </div>
+                <div style={{ fontWeight: "bold", color: rc.color, fontSize: "1.1rem", marginBottom: "0.3rem" }}>
+                  {msg.headline}
+                </div>
+                <div style={{ fontSize: "0.85rem", color: rc.textSupport, lineHeight: 1.6, marginBottom: "0.7rem" }}>
+                  {msg.body}
+                </div>
+                <div style={{ fontSize: "0.72rem", color: rc.color, fontWeight: "bold", opacity: 0.85 }}>
+                  See this week's action plan →
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Tier card */
+
           {/* Week progress bar */}
           {weekNum > 0 && (
             <div style={{ marginBottom: "1.5rem", ...fadeUp(0) }}>
@@ -1587,63 +1645,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
 
-          {/* Role milestone card — shows after baseline, first check-in, or when role improves */}
-          {(() => {
-            // Use baseline score if no weekly checks yet — gives immediate identity after setup
-            const scoreSource = checks.length > 0 ? checks[checks.length - 1] : (baseline || null);
-            if (!scoreSource) return null;
-            const latest = scoreSource;
-            const prev   = checks.length >= 2 ? checks[checks.length - 2] : null;
-            const roleOrder = { "Reset": 0, "Anchor": 1, "Builder": 2, "Expansion": 3 };
-            const currentRole = getCapacityRole(latest.score);
-            const prevRole    = prev ? getCapacityRole(prev.score) : null;
-            if (!currentRole) return null;
-            // Show after baseline, on first weekly check-in, or when role improves
-            const isBaseline  = checks.length === 0 && !!baseline;
-            const isFirstWeek = checks.length === 1;
-            const roleImproved = prevRole && (roleOrder[currentRole.role] ?? 0) > (roleOrder[prevRole.role] ?? 0);
-            if (!isBaseline && !isFirstWeek && !roleImproved) return null;
-            const firstWeekMessages = {
-              "Reset":      { headline: "Your starting role: Reset", body: "Start simple. Small actions compound. Your next check-in is the first step." },
-              "Anchor": { headline: "Your starting role: Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
-              "Builder":    { headline: "Your starting role: Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
-              "Expansion":  { headline: "Your starting role: Expansion", body: "You can push, recover, and sustain. That's rare. Protect it." },
-            };
-            const upgradeMessages = {
-              "Anchor": { headline: "You've become an Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
-              "Builder":    { headline: "You're now a Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
-              "Expansion":  { headline: "You've reached Expansion", body: "You can push, recover, and sustain. This is rare." },
-            };
-            const msg = isFirstWeek ? firstWeekMessages[currentRole.role] : upgradeMessages[currentRole.role];
-            if (!msg) return null;
-            // Match the declared week color system exactly
-            const roleColors = {
-              Anchor:     { color: "#8A94A6", bg: "#F4F6F8", textSupport: "#5F6B7A" },
-              Builder:    { color: "#2FBF71", bg: "#F3FBF6", textSupport: "#2F6B4A" },
-              Expansion:  { color: "#2C4A6E", bg: "#F0F4F8", textSupport: "#1E3348" },
-              Reset:      { color: "#e05030", bg: "#fff4f0", textSupport: "#a03020" },
-            };
-            const rc = roleColors[currentRole.role] || roleColors.Reset;
-            return (
-              <div onClick={() => { const dw = getDeclaredWeek(currentMember.weeklyChecks || []); if (dw) { setDeclaredWeek(dw); setView("declaredWeek"); } }}
-                style={{ background: rc.bg, border: `1.5px solid ${rc.color}44`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", cursor: "pointer", ...fadeUp(300) }}>
-                <div style={{ marginBottom: "0.7rem", display: "flex", justifyContent: "center" }}>
-                  {currentRole.icon ? <GBSCIcon name={currentRole.icon} size={40} color={rc.color} strokeWidth={2}/> : <span style={{fontSize:"2rem"}}>{currentRole.emoji}</span>}
-                </div>
-                <div style={{ fontWeight: "bold", color: rc.color, fontSize: "1.1rem", marginBottom: "0.3rem" }}>
-                  {msg.headline}
-                </div>
-                <div style={{ fontSize: "0.85rem", color: rc.textSupport, lineHeight: 1.6, marginBottom: "0.7rem" }}>
-                  {msg.body}
-                </div>
-                <div style={{ fontSize: "0.72rem", color: rc.color, fontWeight: "bold", opacity: 0.85 }}>
-                  See this week's action plan →
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Tier card */}
+}
           {tier && (
             <div style={{ background: CARD, borderRadius: "16px", padding: "1.5rem", marginBottom: "1.5rem", ...fadeUp(450) }}>
               {/* Tappable header row */}
