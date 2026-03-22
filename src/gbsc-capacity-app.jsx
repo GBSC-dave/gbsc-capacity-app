@@ -559,7 +559,7 @@ export default function GBSCApp() {
             <div style={{
               position: "absolute",
               inset: "-80px",
-              background: "radial-gradient(ellipse 60% 60% at 57.1% 50%, rgba(93,200,66,0.28) 0%, rgba(93,200,66,0.08) 55%, transparent 80%)",
+              background: "radial-gradient(ellipse 60% 60% at 52.9% 50%, rgba(93,200,66,0.28) 0%, rgba(93,200,66,0.08) 55%, transparent 80%)",
               opacity: 0,
               animation: "glowRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards, glowPulse 3.5s ease-in-out 1.9s infinite",
               willChange: "opacity",
