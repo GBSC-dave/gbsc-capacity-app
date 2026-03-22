@@ -3227,41 +3227,40 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
             Pod locked in — everyone showed up this week!
           </div>
         )}
-      </div>
 
-      {/* ── Detail toggle ── */}
-      <button onClick={() => setDetailOpen(d => !d)}
-        style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: "0.75rem", marginTop: "0.6rem", padding: 0, display: "flex", alignItems: "center", gap: "0.3rem" }}>
-        {detailOpen ? "▴ less" : "▾ program progress"}
-      </button>
+        {/* ── Detail toggle ── */}
+        <button onClick={() => setDetailOpen(d => !d)}
+          style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: "0.75rem", marginTop: "0.6rem", padding: 0, display: "flex", alignItems: "center", gap: "0.3rem" }}>
+          {detailOpen ? "▴ less" : "▾ program progress"}
+        </button>
 
-      {/* ── Detail: overall program week count ── */}
-      {detailOpen && (
-        <div style={{ marginTop: "0.8rem", borderTop: "1px solid #e8e8e8", paddingTop: "0.8rem" }}>
-          <div style={{ fontSize: "0.7rem", color: "#888", fontWeight: "bold", letterSpacing: "0.07em", marginBottom: "0.5rem" }}>WEEKS COMPLETED</div>
-          {allPodMembers.map(m => {
-            const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
-            const isMe = m.id === currentMember.id;
-            const isCap = myPod.captainId === m.id;
-            const pct = Math.round((checks.length / 8) * 100);
-            return (
-              <div key={m.id} style={{ marginBottom: "0.55rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: "0.2rem" }}>
-                  <span style={{ fontWeight: isMe ? "bold" : "normal", color: DARK }}>
-                    {m.name}
-                    {isMe && <span style={{ color: "#aaa", fontWeight: "normal", marginLeft: "0.3rem" }}>you</span>}
-                    {isCap && <span style={{ color: "#f0a500", marginLeft: "0.3rem" }}>⭐</span>}
-                  </span>
-                  <span style={{ color: "#888" }}>Week {checks.length}/8</span>
+        {/* ── Detail: overall program week count ── */}
+        {detailOpen && (
+          <div style={{ marginTop: "0.8rem", borderTop: "1px solid #e8e8e8", paddingTop: "0.8rem" }}>
+            <div style={{ fontSize: "0.7rem", color: "#888", fontWeight: "bold", letterSpacing: "0.07em", marginBottom: "0.5rem" }}>WEEKS COMPLETED</div>
+            {allPodMembers.map(m => {
+              const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+              const isMe = m.id === currentMember.id;
+              const isCap = myPod.captainId === m.id;
+              const pct = Math.round((checks.length / 8) * 100);
+              return (
+                <div key={m.id} style={{ marginBottom: "0.55rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", marginBottom: "0.2rem" }}>
+                    <span style={{ fontWeight: isMe ? "bold" : "normal", color: DARK }}>
+                      {m.name}
+                      {isMe && <span style={{ color: "#aaa", fontWeight: "normal", marginLeft: "0.3rem" }}>you</span>}
+                      {isCap && <span style={{ color: "#f0a500", marginLeft: "0.3rem" }}>⭐</span>}
+                    </span>
+                    <span style={{ color: "#888" }}>Week {checks.length}/8</span>
+                  </div>
+                  <div style={{ background: "#e8e8e8", borderRadius: "999px", height: "5px" }}>
+                    <div style={{ background: G, width: `${pct}%`, height: "100%", borderRadius: "999px", transition: "width 0.4s ease" }} />
+                  </div>
                 </div>
-                <div style={{ background: "#e8e8e8", borderRadius: "999px", height: "5px" }}>
-                  <div style={{ background: G, width: `${pct}%`, height: "100%", borderRadius: "999px", transition: "width 0.4s ease" }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
       </div>}
     </div>
   );
