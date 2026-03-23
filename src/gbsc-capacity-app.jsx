@@ -373,7 +373,7 @@ function getCapacityRole(latestScore, floorToAnchor = false) {
   if (latestScore >= 55) return { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer", desc: "Stays consistent when life gets busy." };
   // Reset only appears mid-program — never as a first impression
   if (floorToAnchor) return { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer", desc: "Stays consistent when life gets busy." };
-  return { role: "Reset", color: "#C8C4BC", emoji: "🔄", icon: null, desc: "Take a breath. This week is about getting back on track." };
+  return { role: "Reset", color: "#C8C4BC", emoji: "🔄", icon: "reset", desc: "Take a breath. This week is about getting back on track." };
 }
 
 // ─── Week Status (based on latest weekly habit score) ─────────────────────────
@@ -382,6 +382,45 @@ function getWeekStatus(latestScore) {
   if (latestScore >= 85) return { status: "Full Capacity Week", emoji: "🔥", icon: "flame",   color: "#1a7a00", msg: "You're building momentum." };
   if (latestScore >= 55) return { status: "Minimum Effective Week", emoji: "✅", icon: "check",   color: G,         msg: "You stayed consistent during a busy week." };
   return                        { status: "Reset Week",             emoji: "🔁", icon: "refresh", color: "#C8C4BC", msg: "One step at a time. Anchor habits are your path back." };
+}
+
+// ─── Win the Week Loop helpers ───────────────────────────────────────────────
+
+// Returns the most recent non-baseline check if it was submitted this week
+function getCurrentWeekCheck(member) {
+  const checks = (member?.weeklyChecks || []).filter(c => c && !c.isBaseline);
+  if (!checks.length) return null;
+  const latest = checks[checks.length - 1];
+  // Consider it "this week's check" if it was submitted since last Monday
+  return !isEligibleForCheckin(latest.date) ? latest : null;
+}
+
+// Returns true if today is Wednesday or later in the current week
+function isMidweekWindow() {
+  const day = new Date().getDay(); // 0=Sun,1=Mon,...,6=Sat
+  return day >= 3; // Wednesday through Saturday
+}
+
+// Returns true if today is Sunday
+function isEndOfWeekWindow() {
+  return new Date().getDay() === 0;
+}
+
+// Calculates consistency streak — consecutive weeks with won or stayed_in
+function calcStreak(member) {
+  const checks = (member?.weeklyChecks || [])
+    .filter(c => c && !c.isBaseline)
+    .sort((a, b) => (a.week || 0) - (b.week || 0));
+  let streak = 0;
+  for (let i = checks.length - 1; i >= 0; i--) {
+    const result = checks[i].weekResult;
+    if (result === "won" || result === "stayed_in") streak++;
+    else if (result === "reset") break;
+    // null means reflection not yet done — don't break, just don't count
+    else if (result === null && i === checks.length - 1) continue;
+    else break;
+  }
+  return streak;
 }
 
 function calcCapacityIndex(vo2Score, gripScore, habitScore) {
@@ -422,7 +461,7 @@ const COACH_PIN = "12345";
 
 export default function GBSCApp() {
   const [view, setView] = useState("loading"); // loading | member | register | coach | coachPin
-  const [memberView, setMemberView] = useState("profile"); // checkin | profile | checkFeedback
+  const [memberView, setMemberView] = useState("profile"); // checkin | profile | checkFeedback | midweekCheckin | endOfWeek
   const [members, setMembers] = useState([]);
   const [currentMember, setCurrentMember] = useState(null);
   const [pinInput, setPinInput] = useState("");
@@ -521,8 +560,8 @@ export default function GBSCApp() {
           @keyframes spin { to { transform: rotate(360deg); } }
 
           @keyframes logoRise {
-            0%   { opacity: 0; transform: translateX(-7.1%) translateY(32px) scale(0.9); }
-            100% { opacity: 1; transform: translateX(-7.1%) translateY(0) scale(1); }
+            0%   { opacity: 0; transform: translateX(-12.1%) translateY(32px) scale(0.9); }
+            100% { opacity: 1; transform: translateX(-12.1%) translateY(0) scale(1); }
           }
 
           @keyframes glowRise {
@@ -628,7 +667,7 @@ export default function GBSCApp() {
       <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <img src={LOGO_HORIZ} alt="GBSC" style={{ width: "min(280px, 80vw)", marginBottom: "2rem" }} />
         <div style={{ background: DARK, borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "320px" }}>
-          <div style={{ color: "#fff", fontWeight: "bold", fontSize: "1.1rem", marginBottom: "1.2rem", textAlign: "center" }}>🔒 Coach Access</div>
+          <div style={{ color: "#fff", fontWeight: "bold", fontSize: "1.1rem", marginBottom: "1.2rem", textAlign: "center", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.4rem" }}><GBSCIcon name="lock" size={18} color="#fff" strokeWidth={0}/>Coach Access</div>
           <input
             type="password"
             placeholder="Enter PIN"
@@ -903,6 +942,76 @@ function GBSCIcon({ name, size = 28, color = "currentColor", strokeWidth = 2.5 }
     book: <svg viewBox="-35.2 6.0 55.2 42.8" width={size} height={size}>
       <path d="M-31.25,11.75L-31.0,40.25L-6.75,44.75L16.0,40.0L15.75,11.5L4.5,10.0L-7.25,14.0L-19.75,10.0Z M-29.0,13.5L-28.0,37.0L-8.5,41.5L12.75,37.0L14.0,13.75L13.75,38.25L-7.75,42.5L-29.25,38.0Z M11.0,12.25L10.75,35.0L2.0,35.75L-6.5,38.25L-6.5,16.5L2.0,12.75Z M-25.75,12.0L-17.25,12.75L-9.0,16.0L-8.75,38.75L-17.0,35.75L-26.0,34.75Z" fill={color}/>
     </svg>,
+
+    reset: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <path d="M60 100a40 40 0 0 1 65-30"/>
+      <path d="M125 50v20h-20"/>
+      <path d="M140 100a40 40 0 0 1-65 30"/>
+      <path d="M75 150v-20h20"/>
+    </svg>,
+    lock: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <rect x="60" y="90" width="80" height="70" rx="12" fill="none"/>
+      <path d="M75 90v-20a25 25 0 0 1 50 0v20"/>
+    </svg>,
+    warning: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <path d="M100 50L150 140L50 140Z"/>
+      <path d="M100 85v30"/>
+      <circle cx="100" cy="125" r="4" fill={color} stroke="none"/>
+    </svg>,
+    bell: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <path d="M70 130c0-25 10-45 30-50v-5a10 10 0 0 1 20 0v5c20 5 30 25 30 50"/>
+      <path d="M60 130h80"/>
+    </svg>,
+    trending_down: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <path d="M50 70L110 110L150 140"/>
+      <path d="M135 140H150V125"/>
+    </svg>,
+    trash: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <path d="M60 70H140"/>
+      <path d="M85 70V60H115V70"/>
+      <rect x="70" y="70" width="60" height="80" rx="10" fill="none"/>
+      <path d="M90 90V130M110 90V130"/>
+    </svg>,
+    calendar: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <rect x="50" y="60" width="100" height="90" rx="12" fill="none"/>
+      <path d="M80 50V70M120 50V70"/>
+      <path d="M50 85H150"/>
+      <path d="M80 105H90M110 105H120M80 125H90M110 125H120"/>
+    </svg>,
+    shuffle: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <path d="M50 130L100 90L150 50"/>
+      <path d="M135 50H150V65"/>
+      <path d="M50 70L100 110L150 150"/>
+      <path d="M135 150H150V135"/>
+    </svg>,
+    download: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <path d="M100 60V120"/>
+      <path d="M80 100L100 120L120 100"/>
+      <path d="M60 140H140"/>
+    </svg>,
+    shield: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <path d="M100 50L140 70V110C140 135 120 150 100 160C80 150 60 135 60 110V70L100 50Z"/>
+      <path d="M80 105L95 120L120 90"/>
+    </svg>,
+    runner: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <circle cx="110" cy="60" r="10" fill="none"/>
+      <path d="M110 70L100 100L120 110"/>
+      <path d="M100 100L75 90M100 100L125 85"/>
+      <path d="M100 100L80 140M120 110L140 140"/>
+    </svg>,
+    book_open: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <path d="M60 70C80 60 100 70 100 70C100 70 120 60 140 70V140C120 130 100 140 100 140C100 140 80 130 60 140V70Z"/>
+      <path d="M100 70V140"/>
+      <path d="M75 95H90M75 115H90M110 95H125M110 115H125"/>
+    </svg>,
+    medal_gold: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <path d="M85 60H115V80L100 95L85 80V60Z"/>
+      <circle cx="100" cy="120" r="30" fill="none"/>
+    </svg>,
+    medal_ribbon: <svg viewBox="0 0 200 200" width={size} height={size} {...s}>
+      <circle cx="100" cy="90" r="30" fill="none"/>
+      <path d="M85 120L100 150L115 120"/>
+    </svg>,
   };
   return icons[name] || null;
 }
@@ -1109,7 +1218,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         date: localDateStr(),
         week: nextWeekNum,
         ...check,
-        score: weekScore
+        score: weekScore,
+        midweekStatus: null,
+        midweekDate: null,
+        weekResult: null,
+        weekResultDate: null,
       }]
     };
     await saveMember(updatedMember);
@@ -1121,8 +1234,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setView("declaredWeek");
   }
 
+
   const hdr = (
-    <div style={{ background: DARK, padding: "0.75rem 1.2rem", display: "flex", alignItems: "center" }}>
+    <div style={{ background: DARK, padding: "0.75rem 1.2rem", display: "flex", alignItems: "center", position: "sticky", top: 0, zIndex: 20 }}>
       {/* Left third — Library, quieter secondary chrome */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
         <button onClick={() => setView("library")}
@@ -1290,7 +1404,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     return (
       <div style={{ minHeight: "100vh", background: dw.bg, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {/* Header */}
-        <div style={{ background: dw.color, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
+        <div style={{ background: dw.color, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem", position: "sticky", top: 0, zIndex: 20 }}>
           <img src={LOGO_ICON} alt="GBSC" style={{ height: "36px", borderRadius: "4px" }} />
           <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.03em", flex: 1 }}>GBSC Capacity</div>
         </div>
@@ -1584,6 +1698,44 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           })()}
 
           {/* Tier card */}
+
+          {/* ── Mid-week check banner — Wednesday through Saturday ── */}
+          {(() => {
+            const thisWeekCheck = getCurrentWeekCheck(currentMember);
+            if (!thisWeekCheck) return null;
+            if (thisWeekCheck.midweekStatus !== null) return null;
+            if (!isMidweekWindow()) return null;
+            return (
+              <div style={{ background: `linear-gradient(135deg, ${DARK}, #1a3a0a)`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer", ...fadeUp(0) }}
+                onClick={() => setView("midweekCheckin")}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: G, letterSpacing: "0.08em", marginBottom: "0.2rem" }}>MID-WEEK CHECK</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>Are you on track to win your week?</div>
+                  <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>
+                </div>
+                <GBSCIcon name="check" size={28} color={G} strokeWidth={0}/>
+              </div>
+            );
+          })()}
+
+          {/* ── End-of-week reflection banner — Sunday ── */}
+          {(() => {
+            const thisWeekCheck = getCurrentWeekCheck(currentMember);
+            if (!thisWeekCheck) return null;
+            if (thisWeekCheck.weekResult !== null) return null;
+            if (!isEndOfWeekWindow()) return null;
+            return (
+              <div style={{ background: `linear-gradient(135deg, #1a2a4a, #0e1a2e)`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer", ...fadeUp(0) }}
+                onClick={() => setView("weekReflection")}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#8ab4f8", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>END OF WEEK</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>Did you win your week?</div>
+                  <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to reflect</div>
+                </div>
+                <GBSCIcon name="trophy" size={28} color="#8ab4f8" strokeWidth={0}/>
+              </div>
+            );
+          })()}
 
           {/* Week progress bar */}
           {weekNum > 0 && (
@@ -2033,6 +2185,326 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     );
   }
 
+  // ── MID-WEEK CHECK-IN ─────────────────────────────────────────────────────
+  if (view === "midweekCheckin" && currentMember) {
+    const allChecks = currentMember.weeklyChecks || [];
+    const thisWeek  = getCurrentWeekCheck(currentMember);
+    if (!thisWeek) { setView("profile"); return null; }
+
+    const already = thisWeek.midweekStatus;
+    const dw = declaredWeek || getDeclaredWeek(allChecks);
+    const accentColor = dw?.color || G;
+
+    async function handleMidweek(status) {
+      const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+        (c.week === thisWeek.week && !c.isBaseline)
+          ? { ...c, midweekStatus: status, midweekDate: localDateStr() }
+          : c
+      );
+      const updated = { ...currentMember, weeklyChecks: updatedChecks };
+      await saveMember(updated);
+      setCurrentMember(updated);
+      setView("midweekResult");
+    }
+
+    const responses = {
+      on_track:    { label: "On Track",     desc: "You're moving in the right direction." },
+      slightly_off:{ label: "Slightly Off", desc: "A small adjustment can still win the week." },
+      off_track:   { label: "Off Track",    desc: "Reset and simplify — you can still finish strong." },
+    };
+
+    return (
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+        {hdr}
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+            <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.12em", marginBottom: "0.8rem" }}>MID-WEEK CHECK</div>
+            <div style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, lineHeight: 1.2, marginBottom: "0.6rem" }}>
+              Are you on track<br/>to win your week?
+            </div>
+            {dw && (
+              <div style={{ fontSize: "0.82rem", color: "#888", marginTop: "0.4rem" }}>
+                Your goal: <span style={{ color: accentColor, fontWeight: "bold" }}>{dw.winLine}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Already done state */}
+          {already ? (
+            <div style={{ background: "#ffffff10", borderRadius: "16px", padding: "1.5rem", textAlign: "center" }}>
+              <GBSCIcon name="check" size={32} color={accentColor} strokeWidth={0}/>
+              <div style={{ color: "#fff", fontWeight: "bold", marginTop: "0.7rem", fontSize: "1rem" }}>
+                Already checked in
+              </div>
+              <div style={{ color: "#888", fontSize: "0.82rem", marginTop: "0.4rem" }}>
+                Status: <span style={{ color: accentColor }}>{responses[already]?.label}</span>
+              </div>
+              <button onClick={() => setView("profile")}
+                style={{ background: "none", border: "none", color: "#666", cursor: "pointer", marginTop: "1.2rem", fontSize: "0.82rem" }}>
+                ← Back to profile
+              </button>
+            </div>
+          ) : (
+            /* Response buttons */
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+              {Object.entries(responses).map(([key, { label, desc }]) => (
+                <button key={key} onClick={() => handleMidweek(key)}
+                  style={{
+                    background: "#ffffff08", border: `1.5px solid #ffffff18`,
+                    borderRadius: "14px", padding: "1.1rem 1.4rem",
+                    textAlign: "left", cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background="#ffffff14"; e.currentTarget.style.borderColor=accentColor+"88"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background="#ffffff08"; e.currentTarget.style.borderColor="#ffffff18"; }}
+                >
+                  <div style={{ fontWeight: "bold", color: "#fff", fontSize: "1rem", marginBottom: "0.2rem" }}>{label}</div>
+                  <div style={{ fontSize: "0.78rem", color: "#888" }}>{desc}</div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <button onClick={() => setView("profile")}
+            style={{ background: "none", border: "none", color: "#555", cursor: "pointer", marginTop: "2rem", fontSize: "0.82rem", textAlign: "center" }}>
+            ← Back to profile
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── MID-WEEK RESULT ────────────────────────────────────────────────────────
+  if (view === "midweekResult" && currentMember) {
+    const thisWeek = getCurrentWeekCheck(currentMember);
+    const status = thisWeek?.midweekStatus;
+    const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || []);
+    const accentColor = dw?.color || G;
+
+    const resultContent = {
+      on_track: {
+        headline: "Keep going.",
+        body: "You're on pace to win your week.",
+        icon: "bounce2",
+        color: G,
+      },
+      slightly_off: {
+        headline: "Small adjustment.",
+        body: null,
+        bullets: ["Engine work", "Sleep tonight", "Protein at your next meal"],
+        icon: "ripple",
+        color: "#e09020",
+      },
+      off_track: {
+        headline: "Reset.",
+        body: "Win the week like this:",
+        bullets: ["1 workout", "30 min movement", "Protein today"],
+        icon: "refresh",
+        color: "#C8C4BC",
+      },
+    };
+
+    const content = resultContent[status] || resultContent.on_track;
+
+    return (
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+        {hdr}
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+
+          <div style={{ marginBottom: "1.5rem" }}>
+            <GBSCIcon name={content.icon} size={52} color={content.color} strokeWidth={0}/>
+          </div>
+
+          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.8rem" }}>
+            {content.headline}
+          </div>
+
+          {content.body && (
+            <div style={{ fontSize: "0.95rem", color: "#aaa", marginBottom: content.bullets ? "1rem" : 0, lineHeight: 1.6 }}>
+              {content.body}
+            </div>
+          )}
+
+          {content.bullets && (
+            <div style={{ background: "#ffffff0a", borderRadius: "12px", padding: "1rem 1.4rem", marginBottom: "1rem", textAlign: "left", width: "100%" }}>
+              {content.bullets.map(b => (
+                <div key={b} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.35rem 0", borderBottom: "1px solid #ffffff0a" }}>
+                  <GBSCIcon name="check" size={14} color={content.color} strokeWidth={0}/>
+                  <span style={{ fontSize: "0.9rem", color: "#ddd" }}>{b}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button onClick={() => setView("profile")}
+            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginTop: "1.5rem" }}>
+            Back to My Week →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── END-OF-WEEK REFLECTION ────────────────────────────────────────────────
+  if (view === "weekReflection" && currentMember) {
+    const allChecks = currentMember.weeklyChecks || [];
+    const thisWeek  = getCurrentWeekCheck(currentMember);
+    if (!thisWeek) { setView("profile"); return null; }
+
+    const already = thisWeek.weekResult;
+    const dw = declaredWeek || getDeclaredWeek(allChecks);
+    const accentColor = dw?.color || G;
+
+    async function handleWeekResult(result) {
+      const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+        (c.week === thisWeek.week && !c.isBaseline)
+          ? { ...c, weekResult: result, weekResultDate: localDateStr() }
+          : c
+      );
+      const updated = { ...currentMember, weeklyChecks: updatedChecks };
+      await saveMember(updated);
+      setCurrentMember(updated);
+      setView("weekReflectionResult");
+    }
+
+    const responses = {
+      won:        { label: "Yes — I hit it",       desc: "You did what you set out to do." },
+      stayed_in:  { label: "Close — stayed in it", desc: "You showed up. That's what counts." },
+      reset:      { label: "No — reset next week", desc: "Next week starts fresh." },
+    };
+
+    return (
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+        {hdr}
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+
+          <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+            <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.12em", marginBottom: "0.8rem" }}>END OF WEEK</div>
+            <div style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, lineHeight: 1.2, marginBottom: "0.6rem" }}>
+              Did you win<br/>your week?
+            </div>
+            {dw && (
+              <div style={{ fontSize: "0.82rem", color: "#888", marginTop: "0.4rem" }}>
+                Goal was: <span style={{ color: accentColor, fontWeight: "bold" }}>{dw.winLine}</span>
+              </div>
+            )}
+          </div>
+
+          {already ? (
+            <div style={{ background: "#ffffff10", borderRadius: "16px", padding: "1.5rem", textAlign: "center" }}>
+              <GBSCIcon name="check" size={32} color={accentColor} strokeWidth={0}/>
+              <div style={{ color: "#fff", fontWeight: "bold", marginTop: "0.7rem", fontSize: "1rem" }}>
+                Already reflected
+              </div>
+              <div style={{ color: "#888", fontSize: "0.82rem", marginTop: "0.4rem" }}>
+                Result: <span style={{ color: accentColor }}>{responses[already]?.label}</span>
+              </div>
+              <button onClick={() => setView("profile")}
+                style={{ background: "none", border: "none", color: "#666", cursor: "pointer", marginTop: "1.2rem", fontSize: "0.82rem" }}>
+                ← Back to profile
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+              {Object.entries(responses).map(([key, { label, desc }]) => (
+                <button key={key} onClick={() => handleWeekResult(key)}
+                  style={{
+                    background: "#ffffff08", border: `1.5px solid #ffffff18`,
+                    borderRadius: "14px", padding: "1.1rem 1.4rem",
+                    textAlign: "left", cursor: "pointer",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background="#ffffff14"; e.currentTarget.style.borderColor=accentColor+"88"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background="#ffffff08"; e.currentTarget.style.borderColor="#ffffff18"; }}
+                >
+                  <div style={{ fontWeight: "bold", color: "#fff", fontSize: "1rem", marginBottom: "0.2rem" }}>{label}</div>
+                  <div style={{ fontSize: "0.78rem", color: "#888" }}>{desc}</div>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <button onClick={() => setView("profile")}
+            style={{ background: "none", border: "none", color: "#555", cursor: "pointer", marginTop: "2rem", fontSize: "0.82rem", textAlign: "center" }}>
+            ← Back to profile
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── END-OF-WEEK RESULT ─────────────────────────────────────────────────────
+  if (view === "weekReflectionResult" && currentMember) {
+    const thisWeek = getCurrentWeekCheck(currentMember);
+    const result = thisWeek?.weekResult;
+    const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || []);
+    const accentColor = dw?.color || G;
+    const streak = calcStreak(currentMember);
+
+    const resultContent = {
+      won: {
+        headline: "Strong week.",
+        body: "That's how capacity builds.",
+        icon: "flame",
+        color: G,
+      },
+      stayed_in: {
+        headline: "You stayed in it.",
+        body: "That counts. Keep building.",
+        icon: "bounce2",
+        color: "#e09020",
+      },
+      reset: {
+        headline: "Reset.",
+        body: "Next week starts fresh.",
+        icon: "refresh",
+        color: "#C8C4BC",
+      },
+    };
+
+    const content = resultContent[result] || resultContent.stayed_in;
+
+    return (
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+        {hdr}
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+
+          <div style={{ marginBottom: "1.5rem" }}>
+            <GBSCIcon name={content.icon} size={52} color={content.color} strokeWidth={0}/>
+          </div>
+
+          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.6rem" }}>
+            {content.headline}
+          </div>
+          <div style={{ fontSize: "0.95rem", color: "#aaa", marginBottom: "1.5rem", lineHeight: 1.6 }}>
+            {content.body}
+          </div>
+
+          {/* Streak display */}
+          {streak > 0 && (
+            <div style={{ background: "#ffffff0a", borderRadius: "12px", padding: "0.9rem 1.4rem", marginBottom: "1.5rem", width: "100%" }}>
+              <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#888", letterSpacing: "0.1em", marginBottom: "0.3rem" }}>CONSISTENCY</div>
+              <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: G }}>
+                {streak} week{streak !== 1 ? "s" : ""} in a row
+              </div>
+              <div style={{ fontSize: "0.75rem", color: "#666", marginTop: "0.2rem" }}>
+                {result === "reset" ? "Keep this streak next week." : streak >= 3 ? "That's real momentum." : "Keep it going."}
+              </div>
+            </div>
+          )}
+
+          <button onClick={() => setView("profile")}
+            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
+            Back to My Week →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+
   if (view === "profile" && currentMember) {
     const allChecks = currentMember.weeklyChecks || [];
     const baseline  = allChecks.find(c => c.isBaseline);
@@ -2125,6 +2597,70 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
+          {/* ── MID-WEEK BANNER ─────────────────────────────────────────────── */}
+          {(() => {
+            const thisWeek = getCurrentWeekCheck(currentMember);
+            if (!thisWeek) return null;
+            const alreadyDone = !!thisWeek.midweekStatus;
+            const showWindow = isMidweekWindow();
+            if (!showWindow && !alreadyDone) return null;
+            const statusColors = { on_track: G, slightly_off: "#e09020", off_track: "#C8C4BC" };
+            const statusLabels = { on_track: "On Track ✓", slightly_off: "Slightly Off", off_track: "At Risk" };
+            return (
+              <div
+                onClick={() => setView("midweekCheckin")}
+                style={{
+                  background: alreadyDone ? `${statusColors[thisWeek.midweekStatus] || G}15` : `${DARK}`,
+                  border: `1.5px solid ${alreadyDone ? (statusColors[thisWeek.midweekStatus] || G)+"44" : G+"33"}`,
+                  borderRadius: "12px", padding: "0.85rem 1.1rem",
+                  marginBottom: "1.2rem", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  ...fadeUp(0)
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#888", letterSpacing: "0.1em", marginBottom: "0.2rem" }}>THIS WEEK</div>
+                  <div style={{ fontSize: "0.88rem", fontWeight: "bold", color: alreadyDone ? (statusColors[thisWeek.midweekStatus] || G) : "#fff" }}>
+                    {alreadyDone ? `Status: ${statusLabels[thisWeek.midweekStatus]}` : "Mid-week check — how are you tracking?"}
+                  </div>
+                </div>
+                <div style={{ color: "#555", fontSize: "1rem", flexShrink: 0 }}>›</div>
+              </div>
+            );
+          })()}
+
+          {/* ── END-OF-WEEK BANNER ──────────────────────────────────────────── */}
+          {(() => {
+            const thisWeek = getCurrentWeekCheck(currentMember);
+            if (!thisWeek) return null;
+            const alreadyDone = !!thisWeek.weekResult;
+            const showWindow = isEndOfWeekWindow();
+            if (!showWindow && !alreadyDone) return null;
+            const resultColors = { won: G, stayed_in: "#e09020", reset: "#C8C4BC" };
+            const resultLabels = { won: "Won it ✓", stayed_in: "Stayed in it ✓", reset: "Reset next week" };
+            return (
+              <div
+                onClick={() => setView("weekReflection")}
+                style={{
+                  background: alreadyDone ? `${resultColors[thisWeek.weekResult] || G}15` : DARK,
+                  border: `1.5px solid ${alreadyDone ? (resultColors[thisWeek.weekResult] || G)+"44" : G+"33"}`,
+                  borderRadius: "12px", padding: "0.85rem 1.1rem",
+                  marginBottom: "1.2rem", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  ...fadeUp(0)
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#888", letterSpacing: "0.1em", marginBottom: "0.2rem" }}>END OF WEEK</div>
+                  <div style={{ fontSize: "0.88rem", fontWeight: "bold", color: alreadyDone ? (resultColors[thisWeek.weekResult] || G) : "#fff" }}>
+                    {alreadyDone ? `Result: ${resultLabels[thisWeek.weekResult]}` : "Did you win your week?"}
+                  </div>
+                </div>
+                <div style={{ color: "#555", fontSize: "1rem", flexShrink: 0 }}>›</div>
+              </div>
+            );
+          })()}
+
           {/* ── ZONE 1: YOUR WEEK ──────────────────────────────────────────── */}
 
           {/* Hero card — name, CI, tier — with declared week integrated at bottom */}
@@ -2170,6 +2706,74 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               </div>
             </div>
           )}
+
+          {/* ── Mid-week check banner on profile — Wednesday through Saturday ── */}
+          {(() => {
+            const thisWeekCheck = getCurrentWeekCheck(currentMember);
+            if (!thisWeekCheck || thisWeekCheck.midweekStatus !== null || !isMidweekWindow()) return null;
+            return (
+              <div style={{ background: `linear-gradient(135deg, ${DARK}, #1a3a0a)`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer" }}
+                onClick={() => setView("midweekCheckin")}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: G, letterSpacing: "0.08em", marginBottom: "0.2rem" }}>MID-WEEK CHECK</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>Are you on track to win your week?</div>
+                  <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>
+                </div>
+                <GBSCIcon name="check" size={28} color={G} strokeWidth={0}/>
+              </div>
+            );
+          })()}
+
+          {/* ── End-of-week reflection banner on profile — Sunday ── */}
+          {(() => {
+            const thisWeekCheck = getCurrentWeekCheck(currentMember);
+            if (!thisWeekCheck || thisWeekCheck.weekResult !== null || !isEndOfWeekWindow()) return null;
+            return (
+              <div style={{ background: `linear-gradient(135deg, #1a2a4a, #0e1a2e)`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer" }}
+                onClick={() => setView("weekReflection")}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#8ab4f8", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>END OF WEEK</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>Did you win your week?</div>
+                  <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to reflect</div>
+                </div>
+                <GBSCIcon name="trophy" size={28} color="#8ab4f8" strokeWidth={0}/>
+              </div>
+            );
+          })()}
+
+          {/* ── Consistency streak ─────────────────────────────────────── */}
+          {(() => {
+            const streak = calcStreak(currentMember);
+            const lastResult = checks.length ? checks[checks.length - 1].weekResult : null;
+            if (streak === 0 && !lastResult) return null;
+            const badgeMap = {
+              won:        { icon: "flame",   color: G,         label: "🔥 Full Capacity Week" },
+              stayed_in:  { icon: "check",   color: "#4a9e38", label: "Won the Week" },
+              reset:      { icon: "refresh", color: "#C8C4BC", label: "↻ Stayed in the Game" },
+            };
+            const badge = badgeMap[lastResult];
+            return (
+              <div style={{ background: CARD, border: "1.5px solid #e8e8e8", borderRadius: "16px", padding: "1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem", ...fadeUp(0) }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#aaa", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>CONSISTENCY</div>
+                  {streak > 0 ? (
+                    <div style={{ fontSize: "1.05rem", fontWeight: "bold", color: DARK }}>
+                      {streak} week{streak !== 1 ? "s" : ""} in a row
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: "0.9rem", color: "#888" }}>Start your streak this week</div>
+                  )}
+                  {badge && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "0.25rem" }}>
+                      <GBSCIcon name={badge.icon} size={12} color={badge.color} strokeWidth={0}/>
+                      <span style={{ fontSize: "0.72rem", color: badge.color, fontWeight: "bold" }}>{badge.label}</span>
+                    </div>
+                  )}
+                </div>
+                {streak >= 3 && <div style={{ fontSize: "1.8rem", lineHeight: 1 }}>🔥</div>}
+              </div>
+            );
+          })()}
 
           {/* Action button — the primary CTA for the week */}
           {completedProgram ? (
@@ -2462,11 +3066,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             if ((latest.zone2 === "90+" || latest.zone2 === "90+ min" || latest.aerobic90 === "Yes") && nonBaseline.filter(c => c.zone2 === "90+" || c.zone2 === "90+ min" || c.aerobic90 === "Yes").length >= 2) earned.push({ emoji: "🫁", icon: "lungs", title: "Aerobic Engine", desc: "90+ min Zone 2 in 2+ weeks." });
             if (nonBaseline.some(c => c.score >= 55) && nonBaseline.some(c => c.score < 55) && latest.score >= 55) earned.push({ emoji: "↗️", icon: "bounce2", title: "Bounce Back", desc: "Recovered from a tough week." });
             if (highCount >= 1)           earned.push({ emoji: "🏆", icon: "trophy",  title: "High Expansion",     desc: "Scored 85+ in at least one week." });
-            if (nonBaseline.length >= 1 && nonBaseline.every(c => c.score >= 55)) earned.push({ emoji: "🔰", icon: "check",    title: "No Zero Weeks",     desc: "Every week above the minimum so far." });
-            if (streak >= 1 && nonBaseline.some(c => c.score < 55)) earned.push({ emoji: "🏃", icon: "check",    title: "Stayed in Motion",  desc: "Kept going even after a reset week." });
-            if (nonBaseline.length >= 3 && nonBaseline.slice(-3).every(c => c.score >= 55)) earned.push({ emoji: "📚", icon: "bounce2",  title: "Stacked Weeks",     desc: "3+ consecutive weeks above minimum." });
-            if (nonBaseline.some(c => c.disruption === "Major disruption" && c.score >= 55)) earned.push({ emoji: "🔧", title: "Adapted Under Pressure", desc: "Stayed above minimum during major disruption." });
-            if (highCount >= 3)           earned.push({ emoji: "🥇", icon: "flame",   title: "Consistency Leader", desc: "Scored 85+ in 3 or more weeks." });
+            if (nonBaseline.length >= 1 && nonBaseline.every(c => c.score >= 55)) earned.push({ emoji: "🔰", icon: "shield",  title: "No Zero Weeks",     desc: "Every week above the minimum so far." });
+            if (streak >= 1 && nonBaseline.some(c => c.score < 55)) earned.push({ emoji: "🏃", icon: "runner",  title: "Stayed in Motion",  desc: "Kept going even after a reset week." });
+            if (nonBaseline.length >= 3 && nonBaseline.slice(-3).every(c => c.score >= 55)) earned.push({ emoji: "📚", icon: "book_open",title: "Stacked Weeks",     desc: "3+ consecutive weeks above minimum." });
+            if (nonBaseline.some(c => c.disruption === "Major disruption" && c.score >= 55)) earned.push({ emoji: "🔧", icon: "foundation", title: "Adapted Under Pressure", desc: "Stayed above minimum during major disruption." });
+            if (highCount >= 3)           earned.push({ emoji: "🥇", icon: "medal_gold", title: "Consistency Leader", desc: "Scored 85+ in 3 or more weeks." });
             if (!earned.length) return null;
             return (
               <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
@@ -2489,6 +3093,43 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Consistency streak module ─────────────────────────────── */}
+          {(() => {
+            const streak = calcStreak(currentMember);
+            const allNonBase = checks;
+            const lastResult = allNonBase.length ? allNonBase[allNonBase.length - 1].weekResult : null;
+            if (streak === 0 && !lastResult) return null;
+            const badgeMap = {
+              won:        { icon: "flame",    color: G,        label: "Full Capacity Week" },
+              stayed_in:  { icon: "check",    color: "#4a9e38",label: "Won the Week" },
+              reset:      { icon: "refresh",  color: "#C8C4BC",label: "Stayed in the Game" },
+            };
+            const badge = badgeMap[lastResult];
+            return (
+              <div style={{ background: CARD, border: "1.5px solid #e8e8e8", borderRadius: "16px", padding: "1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#aaa", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>CONSISTENCY</div>
+                  {streak > 0 ? (
+                    <div style={{ fontSize: "1.05rem", fontWeight: "bold", color: DARK }}>
+                      {streak} week{streak !== 1 ? "s" : ""} in a row
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: "0.9rem", color: "#888" }}>Start your streak this week</div>
+                  )}
+                  {badge && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "0.25rem" }}>
+                      <GBSCIcon name={badge.icon} size={12} color={badge.color} strokeWidth={0}/>
+                      <span style={{ fontSize: "0.72rem", color: badge.color, fontWeight: "bold" }}>{badge.label}</span>
+                    </div>
+                  )}
+                </div>
+                {streak >= 3 && (
+                  <div style={{ fontSize: "1.8rem", lineHeight: 1 }}>🔥</div>
                 )}
               </div>
             );
@@ -2532,7 +3173,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <F label="Grip Strength (lbs) — from dynamometer"><input type="number" value={editForm.grip} onChange={e => setEditForm(f => ({...f, grip: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <F label="VO₂ Estimate — from Polar test"><input type="number" value={editForm.vo2} onChange={e => setEditForm(f => ({...f, vo2: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <div style={{ background: "#fff8e6", border: "1px solid #f0c040", borderRadius: "10px", padding: "0.8rem 1rem", fontSize: "0.82rem", color: "#7a5c00", marginBottom: "1.2rem" }}>
-            ⚠️ Updating VO₂ or Grip will recalculate your Capacity Index scores.
+            ↻ Updating VO₂ or Grip will recalculate your Capacity Index scores.
           </div>
           {validationMsg && (
             <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "12px", border: "1px solid #fad0c8" }}>
@@ -2558,7 +3199,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
             {hdr}
             <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", textAlign: "center" }}>
-              <div style={{ fontSize: "2.5rem", marginBottom: "1rem" }}>✅</div>
+              <div style={{ marginBottom: "1rem" }}><GBSCIcon name="check" size={52} color="#4a9e38" strokeWidth={0}/></div>
               <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.5rem" }}>
                 Week {lastCheckGate.week} Complete!
               </div>
@@ -3607,6 +4248,34 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
               </div>
             )}
             {ci === null && <div style={{ color: "#aaa", marginTop: "0.5rem", fontSize: "0.9rem" }}>No check-ins yet</div>}
+            {/* Streak + midweek status */}
+            {(() => {
+              const streak = calcStreak(selected);
+              const latestCheck = checks.length ? checks[checks.length - 1] : null;
+              const midweekStatus = latestCheck?.midweekStatus;
+              const weekResult = latestCheck?.weekResult;
+              const midweekLabels = { on_track: { label: "On Track ✓", color: G }, slightly_off: { label: "Slightly Off", color: "#e09020" }, off_track: { label: "Off Track", color: "#e05030" } };
+              const resultLabels = { won: { label: "Won the Week 🔥", color: G }, stayed_in: { label: "Stayed in It ✅", color: "#4a9e38" }, reset: { label: "Reset ↻", color: "#C8C4BC" } };
+              return (
+                <div style={{ marginTop: "1rem", display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
+                  {streak > 0 && (
+                    <span style={{ fontSize: "0.75rem", background: `${G}22`, color: G, borderRadius: "999px", padding: "0.2rem 0.7rem", fontWeight: "bold" }}>
+                      🔥 {streak}w streak
+                    </span>
+                  )}
+                  {midweekStatus && midweekLabels[midweekStatus] && (
+                    <span style={{ fontSize: "0.75rem", background: midweekLabels[midweekStatus].color + "18", color: midweekLabels[midweekStatus].color, borderRadius: "999px", padding: "0.2rem 0.7rem", fontWeight: "bold" }}>
+                      Mid-week: {midweekLabels[midweekStatus].label}
+                    </span>
+                  )}
+                  {weekResult && resultLabels[weekResult] && (
+                    <span style={{ fontSize: "0.75rem", background: resultLabels[weekResult].color + "18", color: resultLabels[weekResult].color, borderRadius: "999px", padding: "0.2rem 0.7rem", fontWeight: "bold" }}>
+                      {resultLabels[weekResult].label}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.8rem", marginBottom: "1.5rem" }}>
             {[
@@ -3650,7 +4319,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.energyLevel}/5</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.physicalRecovery}/5</td>
                         <td style={{ padding: "0.5rem 0.7rem", color: c.disruption === "Major disruption" ? "#c07030" : c.disruption === "Some disruption" ? "#b09020" : "#aaa" }}>
-                          {c.disruption === "Major disruption" ? "🌊 Major" : c.disruption === "Some disruption" ? "〰️ Some" : "—"}
+                          {c.disruption === "Major disruption" ? <><GBSCIcon name="wave" size={12} color="#c05820" strokeWidth={0}/> Major</> : c.disruption === "Some disruption" ? "〰️ Some" : "—"}
                         </td>
                       </tr>
                     ))}
@@ -3664,7 +4333,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           <div style={{ marginTop: "2rem", paddingTop: "1.5rem", borderTop: "1px solid #eee" }}>
             <button onClick={() => deleteMember(selected)}
               style={{ width: "100%", background: "none", border: "2px solid #e74c3c", color: "#e74c3c", borderRadius: "12px", padding: "0.8rem", fontSize: "0.95rem", fontWeight: "bold", cursor: "pointer" }}>
-              🗑 Delete {selected.name}'s Profile
+              <><GBSCIcon name="trash" size={16} color="#e05030" strokeWidth={0}/> Delete {selected.name}'s Profile</>
             </button>
           </div>
         </div>
@@ -3675,6 +4344,31 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
   // ── INSIGHTS TAB ─────────────────────────────────────────────────────────
   if (coachTab === "insights") {
     const activeMembers = members.filter(m => (m.weeklyChecks || []).filter(c => c && !c.isBaseline).length >= 2);
+
+    // ── Win the Week Loop filters ─────────────────────────────────────────────
+    // Off Track: midweekStatus === "off_track" this week
+    const offTrack = members.filter(m => {
+      const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+      if (!checks.length) return false;
+      const last = checks[checks.length - 1];
+      return last.midweekStatus === "off_track" && !isEligibleForCheckin(last.date);
+    });
+
+    // At Risk: midweekStatus === "slightly_off" or "off_track" this week
+    const atRisk = members.filter(m => {
+      const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+      if (!checks.length) return false;
+      const last = checks[checks.length - 1];
+      return (last.midweekStatus === "slightly_off" || last.midweekStatus === "off_track")
+        && !isEligibleForCheckin(last.date);
+    });
+
+    // Streak Leaders: top 5 by consecutive won/stayed_in weeks
+    const streakLeaders = members
+      .map(m => ({ m, streak: calcStreak(m) }))
+      .filter(({ streak }) => streak > 0)
+      .sort((a, b) => b.streak - a.streak)
+      .slice(0, 5);
 
     // ── Trending down: last 2 non-baseline scores declining
     const trendingDown = activeMembers
@@ -3714,9 +4408,11 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       return { pod, podMembers, checkedIn, pct: podMembers.length ? Math.round((checkedIn.length / podMembers.length) * 100) : 0 };
     }).sort((a, b) => a.pct - b.pct);
 
-    const SectionHeader = ({ emoji, title, count, color, unit = "member" }) => (
+    const SectionHeader = ({ emoji, iconName, title, count, color, unit = "member" }) => (
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.9rem" }}>
-        <span style={{ fontSize: "1.2rem" }}>{emoji}</span>
+        {iconName
+          ? <GBSCIcon name={iconName} size={22} color={color} strokeWidth={0}/>
+          : <span style={{ fontSize: "1.2rem" }}>{emoji}</span>}
         <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>{title}</div>
         <div style={{ background: color + "22", border: `1px solid ${color}55`, borderRadius: "999px",
           padding: "0.15rem 0.6rem", fontSize: "0.72rem", fontWeight: "bold", color: color }}>
@@ -3730,9 +4426,110 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
+          {/* ── Off Track This Week ───────────────────────────────────────── */}
+          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+            <SectionHeader iconName="warning" title="Off Track This Week" count={offTrack.length} color="#e05030" unit="member"/>
+            {offTrack.length === 0 ? (
+              <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No members off track this week 🎉</div>
+            ) : (
+              offTrack.map(m => (
+                <div key={m.id} onClick={() => setSelected(m)}
+                  style={{ display: "flex", alignItems: "center", gap: "0.9rem", padding: "0.75rem 0.9rem",
+                    borderRadius: "10px", marginBottom: "0.4rem", cursor: "pointer",
+                    background: "#fff4f0", border: "1px solid #fad0c8", transition: "background 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#ffeee8"}
+                  onMouseLeave={e => e.currentTarget.style.background = "#fff4f0"}>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
+                    background: `hsl(${(m.name.charCodeAt(0) * 37) % 360}, 55%, 55%)`,
+                    color: "#fff", fontWeight: "bold", fontSize: "0.85rem",
+                    display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {m.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.9rem" }}>{m.name}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#e05030" }}>Mid-week: Off Track — needs intervention</div>
+                  </div>
+                  <span style={{ fontSize: "0.72rem", background: "#e0503015", color: "#e05030", borderRadius: "999px", padding: "0.2rem 0.6rem", fontWeight: "bold" }}>Off Track</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* ── At Risk This Week ─────────────────────────────────────────────── */}
+          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+            <SectionHeader iconName="bell" title="At Risk This Week" count={atRisk.length} color="#e09020" unit="member"/>
+            {atRisk.length === 0 ? (
+              <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No members at risk this week</div>
+            ) : (
+              atRisk.map(m => {
+                const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+                const last = checks[checks.length - 1];
+                const statusLabel = last.midweekStatus === "off_track" ? "Off Track" : "Slightly Off";
+                const statusColor = last.midweekStatus === "off_track" ? "#e05030" : "#e09020";
+                return (
+                  <div key={m.id} onClick={() => setSelected(m)}
+                    style={{ display: "flex", alignItems: "center", gap: "0.9rem", padding: "0.75rem 0.9rem",
+                      borderRadius: "10px", marginBottom: "0.4rem", cursor: "pointer",
+                      background: "#fffbf0", border: "1px solid #fde8b0", transition: "background 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#fff8e0"}
+                    onMouseLeave={e => e.currentTarget.style.background = "#fffbf0"}>
+                    <div style={{ width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
+                      background: `hsl(${(m.name.charCodeAt(0) * 37) % 360}, 55%, 55%)`,
+                      color: "#fff", fontWeight: "bold", fontSize: "0.85rem",
+                      display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {m.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.9rem" }}>{m.name}</div>
+                      <div style={{ fontSize: "0.75rem", color: statusColor }}>Mid-week check: {statusLabel}</div>
+                    </div>
+                    <span style={{ fontSize: "0.72rem", background: statusColor + "18", color: statusColor, borderRadius: "999px", padding: "0.2rem 0.6rem", fontWeight: "bold" }}>{statusLabel}</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* ── Streak Leaders ────────────────────────────────────────────────── */}
+          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+            <SectionHeader iconName="flame" title="Streak Leaders" count={streakLeaders.length} color={G} unit="member"/>
+            {streakLeaders.length === 0 ? (
+              <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No streaks yet — complete end-of-week reflections to build them</div>
+            ) : (
+              streakLeaders.map(({ m, streak }, idx) => (
+                <div key={m.id} onClick={() => setSelected(m)}
+                  style={{ display: "flex", alignItems: "center", gap: "0.9rem", padding: "0.75rem 0.9rem",
+                    borderRadius: "10px", marginBottom: "0.4rem", cursor: "pointer",
+                    background: idx === 0 ? `${G}08` : "#fff",
+                    border: `1px solid ${idx === 0 ? G + "33" : "#e8e8e8"}`,
+                    transition: "background 0.15s" }}
+                  onMouseEnter={e => e.currentTarget.style.background = `${G}10`}
+                  onMouseLeave={e => e.currentTarget.style.background = idx === 0 ? `${G}08` : "#fff"}>
+                  <div style={{ width: "24px", textAlign: "center", fontWeight: "bold", color: idx === 0 ? G : "#aaa", fontSize: "0.85rem", flexShrink: 0 }}>
+                    #{idx + 1}
+                  </div>
+                  <div style={{ width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
+                    background: `hsl(${(m.name.charCodeAt(0) * 37) % 360}, 55%, 55%)`,
+                    color: "#fff", fontWeight: "bold", fontSize: "0.85rem",
+                    display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {m.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.9rem" }}>{m.name}</div>
+                    <div style={{ fontSize: "0.75rem", color: "#888" }}>
+                      {streak} week{streak !== 1 ? "s" : ""} in a row
+                    </div>
+                  </div>
+                  {idx === 0 && <span style={{ fontSize: "1.2rem" }}>🔥</span>}
+                  <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: G }}>{streak}w</span>
+                </div>
+              ))
+            )}
+          </div>
+
           {/* ── Trending Down ──────────────────────────────────────────────── */}
           <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
-            <SectionHeader emoji="📉" title="Trending Down" count={trendingDown.length} color="#e07030" />
+            <SectionHeader iconName="trending_down" title="Trending Down" count={trendingDown.length} color="#e07030" />
             {trendingDown.length === 0 ? (
               <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No members trending down this week 🎉</div>
             ) : (
@@ -3770,7 +4567,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
 
           {/* ── Low Recovery ───────────────────────────────────────────────── */}
           <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
-            <SectionHeader emoji="🔴" title="Low Recovery Scores" count={lowRecovery.length} color="#c0303a" />
+            <SectionHeader iconName="wave" title="Low Recovery Scores" count={lowRecovery.length} color="#c0303a" />
             {lowRecovery.length === 0 ? (
               <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>Everyone's recovering well this week ✓</div>
             ) : (
@@ -3817,7 +4614,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
 
           {/* ── Pod Engagement ─────────────────────────────────────────────── */}
           <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
-            <SectionHeader emoji="🫛" title="Pod Engagement This Week" count={pods.length} color="#7a60c0" unit="pod" />
+            <SectionHeader iconName="star" title="Pod Engagement This Week" count={pods.length} color="#7a60c0" unit="pod" />
             {pods.length === 0 ? (
               <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No pods created yet</div>
             ) : (
@@ -4223,7 +5020,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
             return (
               <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
-                  <span style={{ fontSize: "1.2rem" }}>📅</span>
+                  <GBSCIcon name="check" size={20} color={G} strokeWidth={0}/>
                   <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Community Consistency</div>
                   <div style={{ fontSize: "0.72rem", color: "#888" }}>{totalLatestChecks} active member{totalLatestChecks !== 1 ? "s" : ""}</div>
                 </div>
@@ -4239,7 +5036,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                   <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", flexWrap: "wrap" }}>
                     <span style={{ fontSize: "0.72rem", background: "#1a7a0015", color: "#1a7a00", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>🔥 Full Capacity: {fullCapWeeks}</span>
                     <span style={{ fontSize: "0.72rem", background: `${G}15`, color: "#2a7a14", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>✅ Min Effective: {mewWeeks}</span>
-                    <span style={{ fontSize: "0.72rem", background: "#C8C4BC22", color: "#7A7570", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>🔁 Reset: {resetWeeks}</span>
+                    <span style={{ fontSize: "0.72rem", background: "#C8C4BC22", color: "#7A7570", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold" }}>↻ Reset: {resetWeeks}</span>
                   </div>
                 </div>
                 {/* All-time totals */}
@@ -4288,7 +5085,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
             return (
               <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
-                  <span style={{ fontSize: "1.2rem" }}>🎭</span>
+                  <GBSCIcon name="performer" size={20} color={G} strokeWidth={0}/>
                   <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Role Distribution</div>
                   <div style={{ fontSize: "0.72rem", color: "#888" }}>{total} member{total !== 1 ? "s" : ""} this week</div>
                 </div>
@@ -4372,7 +5169,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                 />
                 <button onClick={shuffleName}
                   style={{ background: DARK, color: "#fff", border: "none", borderRadius: "8px", padding: "0.6rem 0.9rem", cursor: "pointer", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
-                  🎲 Shuffle
+                  ⇌ Shuffle
                 </button>
               </div>
               <div style={{ fontSize: "0.75rem", color: "#888", marginBottom: "1.2rem" }}>
@@ -4492,7 +5289,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
 
           {pods.length === 0 && (
             <div style={{ textAlign: "center", padding: "3rem", color: "#aaa" }}>
-              <div style={{ fontSize: "2.5rem", marginBottom: "0.8rem" }}>🫛</div>
+              <div style={{ marginBottom: "0.8rem" }}><GBSCIcon name="star" size={44} color={G} strokeWidth={0}/></div>
               <div style={{ fontWeight: "bold", color: DARK, marginBottom: "0.5rem" }}>No pods yet</div>
               <div style={{ fontSize: "0.85rem", marginBottom: "1.2rem" }}>Group members into pods of 4–5 for peer support.</div>
               <button onClick={startNewPod}
@@ -4554,7 +5351,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                   })}
                   {pod.memberIds.filter(id => !members.find(m => m.id === id)).length > 0 && (
                     <div style={{ fontSize: "0.72rem", color: "#e07030", padding: "0.3rem 0" }}>
-                      ⚠ {pod.memberIds.filter(id => !members.find(m => m.id === id)).length} member(s) no longer exist
+                      ! {pod.memberIds.filter(id => !members.find(m => m.id === id)).length} member(s) no longer exist
                     </div>
                   )}
                 </div>
@@ -4652,7 +5449,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
             {!confirmWipeAll ? (
               <button onClick={() => setConfirmWipeAll(true)}
                 style={{ width: "100%", background: "none", border: "2px solid #e74c3c", color: "#e74c3c", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer" }}>
-                🗑 Wipe All Member Data
+                Wipe All Member Data
               </button>
             ) : (
               <div style={{ background: "#fff5f5", border: "2px solid #e74c3c", borderRadius: "12px", padding: "1.2rem", textAlign: "center" }}>
