@@ -1237,7 +1237,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
 
   const hdr = (
-    <div style={{ background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", padding: "0.5rem 1.2rem", display: "flex", alignItems: "center", position: "sticky", top: 0, zIndex: 20 }}>
+    <div style={{ background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", padding: "0.5rem 1.2rem", display: "flex", alignItems: "center" }}>
       {/* Left third — Library, quieter secondary chrome */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
         <button onClick={() => setView("library")}
@@ -1634,19 +1634,21 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           }
           .gbsc-tier-ladder { animation: gbscTierSlide 0.25s ease forwards; }
         `}</style>
-        {hdr}
-        <div style={{ display: "flex", justifyContent: "center", marginTop: "-1px" }}>
-          <div style={{
-            background: "rgba(45,45,45,0.82)",
-            backdropFilter: "blur(14px)",
-            WebkitBackdropFilter: "blur(14px)",
-            borderRadius: "0 0 10px 10px",
-            padding: "0.2rem 1rem 0.3rem",
-            fontSize: "0.6rem",
-            fontWeight: "bold",
-            letterSpacing: "0.12em",
-            color: G,
-          }}>MY RESULTS</div>
+        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+          {hdr}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: "-1px" }}>
+            <div style={{
+              background: "rgba(45,45,45,0.82)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              borderRadius: "0 0 10px 10px",
+              padding: "0.2rem 1rem 0.3rem",
+              fontSize: "0.6rem",
+              fontWeight: "bold",
+              letterSpacing: "0.12em",
+              color: G,
+            }}>MY RESULTS</div>
+          </div>
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -2610,19 +2612,21 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     return (
       <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
-        {hdr}
-        <div style={{ display: "flex", justifyContent: "center", marginTop: "-1px" }}>
-          <div style={{
-            background: "rgba(45,45,45,0.82)",
-            backdropFilter: "blur(14px)",
-            WebkitBackdropFilter: "blur(14px)",
-            borderRadius: "0 0 10px 10px",
-            padding: "0.2rem 1rem 0.3rem",
-            fontSize: "0.6rem",
-            fontWeight: "bold",
-            letterSpacing: "0.12em",
-            color: G,
-          }}>MY PROFILE</div>
+        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+          {hdr}
+          <div style={{ display: "flex", justifyContent: "center", marginTop: "-1px" }}>
+            <div style={{
+              background: "rgba(45,45,45,0.82)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
+              borderRadius: "0 0 10px 10px",
+              padding: "0.2rem 1rem 0.3rem",
+              fontSize: "0.6rem",
+              fontWeight: "bold",
+              letterSpacing: "0.12em",
+              color: G,
+            }}>MY PROFILE</div>
+          </div>
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
