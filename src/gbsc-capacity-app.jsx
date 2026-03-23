@@ -83,9 +83,10 @@ const POD_NAMES = [
 const G = "#5DC842";
 const DARK = "#2D2D2D";
 const CARD = "#fdfcfb";
+const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.05)";
 const PAGE_BG = "#f9f7f4";
 const DARK_BG  = "linear-gradient(180deg, #363636 0%, #222222 100%) fixed";
-const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #f0ede8 100%) fixed";
+const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #e8e6ee 100%) fixed";
 const SERIF = "'Georgia', serif";
 const SANS  = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -1236,7 +1237,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
 
   const hdr = (
-    <div style={{ background: DARK, padding: "0.75rem 1.2rem", display: "flex", alignItems: "center", position: "sticky", top: 0, zIndex: 20 }}>
+    <div style={{ background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", padding: "0.5rem 1.2rem", display: "flex", alignItems: "center", position: "sticky", top: 0, zIndex: 20 }}>
       {/* Left third — Library, quieter secondary chrome */}
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
         <button onClick={() => setView("library")}
@@ -1403,10 +1404,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     // Accordion state for the 4 expandable sections
     return (
       <div style={{ minHeight: "100vh", background: dw.bg, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
-        {/* Header */}
-        <div style={{ background: dw.color, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "0.7rem", position: "sticky", top: 0, zIndex: 20 }}>
-          <img src={LOGO_ICON} alt="GBSC" style={{ height: "36px", borderRadius: "4px" }} />
-          <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.03em", flex: 1 }}>GBSC Capacity</div>
+        {/* Header — centered logo, no nav buttons, focused moment */}
+        <div style={{ background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", padding: "0.5rem 1.2rem", display: "flex", alignItems: "center", justifyContent: "center", position: "sticky", top: 0, zIndex: 20 }}>
+          <img src={LOGO_ICON_TRANSPARENT} alt="GBSC"
+            style={{ height: "40px", width: "auto", objectFit: "contain",
+              transform: "translateX(-7.1%)",
+              filter: "drop-shadow(0 0 7px rgba(93,200,66,0.40)) drop-shadow(0 0 18px rgba(93,200,66,0.15))" }} />
         </div>
 
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", flex: 1 }}>
@@ -1632,6 +1635,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           .gbsc-tier-ladder { animation: gbscTierSlide 0.25s ease forwards; }
         `}</style>
         {hdr}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "-1px" }}>
+          <div style={{
+            background: "rgba(45,45,45,0.82)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            borderRadius: "0 0 10px 10px",
+            padding: "0.2rem 1rem 0.3rem",
+            fontSize: "0.6rem",
+            fontWeight: "bold",
+            letterSpacing: "0.12em",
+            color: G,
+          }}>MY RESULTS</div>
+        </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
           {/* Role milestone card — shows after baseline, first check-in, or when role improves */}
@@ -1789,8 +1805,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const diff = latest.score - prev.score;
             return (
               <div style={{
-                background: diff > 0 ? "#f0f9eb" : diff < 0 ? "#fff4ee" : "#f5f5f5",
-                border: `1px solid ${diff > 0 ? "#c8eab8" : diff < 0 ? "#fad8c0" : "#e8e8e8"}`,
+                background: diff > 0 ? "#f0f9eb" : diff < 0 ? "#f5f5f3" : "#f5f5f5",
+                border: `1px solid ${diff > 0 ? "#c8eab8" : diff < 0 ? "#dddbd8" : "#e8e8e8"}`,
                 borderRadius: "12px", padding: "0.65rem 1.2rem",
                 display: "flex", alignItems: "center", gap: "0.5rem",
                 marginBottom: "1.2rem", ...fadeUp(200)
@@ -1799,11 +1815,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   {diff > 0
                     ? <GBSCIcon name="bounce2" size={18} color="#3a8a20" strokeWidth={0}/>
                     : diff < 0
-                    ? <GBSCIcon name="bounce" size={18} color="#c05820" strokeWidth={0}/>
+                    ? <GBSCIcon name="bounce" size={18} color="#888580" strokeWidth={0}/>
                     : <GBSCIcon name="ripple" size={18} color="#666" strokeWidth={0}/>}
                 </span>
                 <span style={{ fontSize: "0.82rem", fontWeight: "bold",
-                  color: diff > 0 ? "#3a8a20" : diff < 0 ? "#c05820" : "#666" }}>
+                  color: diff > 0 ? "#3a8a20" : diff < 0 ? "#888580" : "#666" }}>
                   {diff > 0 ? `Up ${diff} point${diff !== 1 ? "s" : ""} from last week`
                    : diff < 0 ? `Down ${Math.abs(diff)} point${Math.abs(diff) !== 1 ? "s" : ""} from last week`
                    : "Score held steady from last week"}
@@ -1813,7 +1829,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           })()}
 
           {tier && (
-            <div style={{ background: CARD, borderRadius: "16px", padding: "1.5rem", marginBottom: "1.5rem", ...fadeUp(450) }}>
+            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.5rem", marginBottom: "1.5rem", ...fadeUp(450) }}>
               {/* Tappable header row */}
               <button
                 onClick={() => setTierExpanded(e => !e)}
@@ -1843,14 +1859,14 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               </div>
 
               {currentTierData.next ? (
-                <div style={{ background: CARD, borderRadius: "10px", padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
+                <div style={{ background: CARD, borderRadius: "10px", boxShadow: CARD_SHADOW, padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
                   <div>
                     <div style={{ fontSize: "0.72rem", color: "#aaa" }}>Points to next tier</div>
                     <div style={{ fontWeight: "bold", color: DARK }}><span style={{ fontSize: "1.3rem", color: G }}>{pointsToNext}</span> pts to <em>{currentTierData.next}</em></div>
                   </div>
                 </div>
               ) : (
-                <div style={{ background: CARD, borderRadius: "10px", padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
+                <div style={{ background: CARD, borderRadius: "10px", boxShadow: CARD_SHADOW, padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
                   <div style={{ fontWeight: "bold", color: "#1a7a00" }}>You've reached the top tier. Maintain the standard.</div>
                 </div>
               )}
@@ -2069,7 +2085,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* ── Community Scoreboard (collapsible) ──────────────────────── */}
           {community && (
-            <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1.5rem", overflow: "hidden", ...fadeUp(600) }}>
+            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1.5rem", overflow: "hidden", ...fadeUp(600) }}>
               <button onClick={() => setCommunityOpen(o => !o)}
                 style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                 <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>How the gym is doing</span>
@@ -2088,7 +2104,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     {community.ciChange > 0
                       ? <GBSCIcon name="bounce2" size={28} color="#3a8a20" strokeWidth={0}/>
                       : community.ciChange < 0
-                      ? <GBSCIcon name="bounce" size={28} color="#c05820" strokeWidth={0}/>
+                      ? <GBSCIcon name="bounce" size={28} color="#888580" strokeWidth={0}/>
                       : <GBSCIcon name="ripple" size={28} color="#888" strokeWidth={0}/>}
                   </div>
                   <div style={{ fontWeight: "bold", fontSize: "1rem", color: DARK }}>
@@ -2109,7 +2125,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   { label: "Avg VO₂ Score",       val: community.avgVO2  ?? "—", iconName: "lungs",    sw: 0,   desc: "Cardio engine" },
                   { label: "Avg Grip Score",       val: community.avgGrip,        iconName: "dumbbell", sw: 0,   desc: "Strength anchor" },
                 ].map(({ label, val, iconName, sw, desc }) => (
-                  <div key={label} style={{ background: CARD, borderRadius: "14px", padding: "1rem 0.7rem", textAlign: "center" }}>
+                  <div key={label} style={{ background: CARD, borderRadius: "14px", boxShadow: CARD_SHADOW, padding: "1rem 0.7rem", textAlign: "center" }}>
                     <div style={{ marginBottom: "0.2rem", display:"flex", justifyContent:"center" }}>
                       <GBSCIcon name={iconName} size={48} color={G} strokeWidth={sw}/>
                     </div>
@@ -2595,6 +2611,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     return (
       <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "-1px" }}>
+          <div style={{
+            background: "rgba(45,45,45,0.82)",
+            backdropFilter: "blur(14px)",
+            WebkitBackdropFilter: "blur(14px)",
+            borderRadius: "0 0 10px 10px",
+            padding: "0.2rem 1rem 0.3rem",
+            fontSize: "0.6rem",
+            fontWeight: "bold",
+            letterSpacing: "0.12em",
+            color: G,
+          }}>MY PROFILE</div>
+        </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
           {/* ── MID-WEEK BANNER ─────────────────────────────────────────────── */}
@@ -2693,7 +2722,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* Today's Focus */}
           {focusTipForProfile && (
-            <div style={{ background: CARD, border: `1.5px solid #e8e8e8`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.2rem" }}>
+            <div style={{ background: CARD, border: `1.5px solid #e8e8e8`, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.1rem 1.3rem", marginBottom: "1.2rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.7rem" }}>
                 <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em", background: `${G}15`, border: `1px solid ${G}30`, borderRadius: "6px", padding: "0.2rem 0.5rem" }}>Today's Focus</div>
                 <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#666", letterSpacing: "0.06em", background: "#f0f0f0", borderRadius: "6px", padding: "0.2rem 0.5rem" }}>{focusTipForProfile.label.toUpperCase()}</div>
@@ -2753,7 +2782,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             };
             const badge = badgeMap[lastResult];
             return (
-              <div style={{ background: CARD, border: "1.5px solid #e8e8e8", borderRadius: "16px", padding: "1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem", ...fadeUp(0) }}>
+              <div style={{ background: CARD, border: "1.5px solid #e8e8e8", borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem", ...fadeUp(0) }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#aaa", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>CONSISTENCY</div>
                   {streak > 0 ? (
@@ -2777,7 +2806,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* Action button — the primary CTA for the week */}
           {completedProgram ? (
-            <div style={{ background: CARD, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "1.2rem" }}>
+            <div style={{ background: CARD, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "1rem", textAlign: "center", marginBottom: "1.2rem" }}>
               <GBSCIcon name="trophy" size={28} color={G} strokeWidth={0}/>
               <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.4rem" }}>Program Complete</div>
               <div style={{ fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }}>You've finished all 8 weeks. Outstanding work.</div>
@@ -2799,7 +2828,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* This Week — status, role, and the three scores, all in one card */}
           {(ws || ci !== null) && (
-            <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
               <button onClick={() => setThisWeekOpen(o => !o)}
                 style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                 <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>This Week</span>
@@ -2841,7 +2870,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* Tier Progress */}
           {ci !== null && (
-            <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
               <button onClick={() => setTierProgressOpen(o => !o)}
                 style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                 <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Tier Progress</span>
@@ -2923,7 +2952,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* Check-In History */}
           {(baseline || checks.length > 0) && (
-            <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
               <button onClick={() => setHistoryOpen(o => !o)}
                 style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                 <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Check-In History</span>
@@ -2940,7 +2969,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   {checks.map((c, i) => {
                     const ws = getWeekStatus(c.score);
                     return (
-                      <div key={i} style={{ background: CARD, borderRadius: "12px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
+                      <div key={i} style={{ background: CARD, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                           <div>
                             <span style={{ color: "#666" }}>Week {c.week} — {c.date}</span>
@@ -2997,7 +3026,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const topPct       = Math.round((topDriver.value / topDriver.max) * 100);
             const bottomPct    = Math.round((bottomDriver.value / bottomDriver.max) * 100);
             return (
-              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+              <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
                 {(topPct >= 70 || bottomPct < 50) && (
                   <div style={{ padding: "0.7rem 1.3rem 0", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                     {topPct >= 70 && (
@@ -3073,7 +3102,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             if (highCount >= 3)           earned.push({ emoji: "🥇", icon: "medal_gold", title: "Consistency Leader", desc: "Scored 85+ in 3 or more weeks." });
             if (!earned.length) return null;
             return (
-              <div style={{ background: CARD, borderRadius: "16px", marginBottom: "1rem", overflow: "hidden" }}>
+              <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
                 <button onClick={() => setBadgesOpen(o => !o)}
                   style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
                   <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Capacity Badges <span style={{ fontWeight: "normal", color: "#aaa", fontSize: "0.8rem" }}>· {earned.length} earned</span></span>
@@ -3111,7 +3140,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             };
             const badge = badgeMap[lastResult];
             return (
-              <div style={{ background: CARD, border: "1.5px solid #e8e8e8", borderRadius: "16px", padding: "1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem" }}>
+              <div style={{ background: CARD, border: "1.5px solid #e8e8e8", borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem" }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#aaa", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>CONSISTENCY</div>
                   {streak > 0 ? (
@@ -3801,7 +3830,7 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
   const isCaptain = myPod.captainId === currentMember.id;
 
   return (
-    <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.5rem", border: allIn ? `1.5px solid ${G}` : `1.5px solid ${G}22` }}>
+    <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.5rem", border: allIn ? `1.5px solid ${G}` : `1.5px solid ${G}22` }}>
 
       {/* ── Header row: tap to collapse/expand ── */}
       <div onClick={() => !renaming && setOpen(o => !o)}
@@ -3975,7 +4004,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
         {filtered.map(article => (
           <div key={article.id}
             onClick={() => setSelectedArticle(article)}
-            style={{ background: CARD, borderRadius: "14px", padding: "1.1rem 1.3rem", marginBottom: "0.8rem", cursor: "pointer", border: "1.5px solid transparent", transition: "border 0.15s" }}
+            style={{ background: CARD, borderRadius: "14px", boxShadow: CARD_SHADOW, padding: "1.1rem 1.3rem", marginBottom: "0.8rem", cursor: "pointer", border: "1.5px solid transparent", transition: "border 0.15s" }}
             onMouseEnter={e => e.currentTarget.style.border = `1.5px solid ${G}`}
             onMouseLeave={e => e.currentTarget.style.border = "1.5px solid transparent"}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
@@ -4283,7 +4312,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
               { label: "Grip Pre (lbs)", val: selected.grip_pre, sub: `Score: ${selected.gripScore_pre}` },
               { label: "Habit Avg", val: habitAvg ?? "—", sub: "of 100" },
             ].map(({ label, val, sub }) => (
-              <div key={label} style={{ background: CARD, borderRadius: "12px", padding: "1rem", textAlign: "center" }}>
+              <div key={label} style={{ background: CARD, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "1rem", textAlign: "center" }}>
                 <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: G }}>{val}</div>
                 <div style={{ fontSize: "0.75rem", color: "#666" }}>{label}</div>
                 <div style={{ fontSize: "0.7rem", color: "#aaa" }}>{sub}</div>
@@ -4319,7 +4348,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.energyLevel}/5</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.physicalRecovery}/5</td>
                         <td style={{ padding: "0.5rem 0.7rem", color: c.disruption === "Major disruption" ? "#c07030" : c.disruption === "Some disruption" ? "#b09020" : "#aaa" }}>
-                          {c.disruption === "Major disruption" ? <><GBSCIcon name="wave" size={12} color="#c05820" strokeWidth={0}/> Major</> : c.disruption === "Some disruption" ? "〰️ Some" : "—"}
+                          {c.disruption === "Major disruption" ? <><GBSCIcon name="wave" size={12} color="#888580" strokeWidth={0}/> Major</> : c.disruption === "Some disruption" ? "〰️ Some" : "—"}
                         </td>
                       </tr>
                     ))}
@@ -4427,7 +4456,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
           {/* ── Off Track This Week ───────────────────────────────────────── */}
-          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
             <SectionHeader iconName="warning" title="Off Track This Week" count={offTrack.length} color="#e05030" unit="member"/>
             {offTrack.length === 0 ? (
               <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No members off track this week 🎉</div>
@@ -4456,7 +4485,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           </div>
 
           {/* ── At Risk This Week ─────────────────────────────────────────────── */}
-          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
             <SectionHeader iconName="bell" title="At Risk This Week" count={atRisk.length} color="#e09020" unit="member"/>
             {atRisk.length === 0 ? (
               <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No members at risk this week</div>
@@ -4491,7 +4520,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           </div>
 
           {/* ── Streak Leaders ────────────────────────────────────────────────── */}
-          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
             <SectionHeader iconName="flame" title="Streak Leaders" count={streakLeaders.length} color={G} unit="member"/>
             {streakLeaders.length === 0 ? (
               <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No streaks yet — complete end-of-week reflections to build them</div>
@@ -4528,7 +4557,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           </div>
 
           {/* ── Trending Down ──────────────────────────────────────────────── */}
-          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
             <SectionHeader iconName="trending_down" title="Trending Down" count={trendingDown.length} color="#e07030" />
             {trendingDown.length === 0 ? (
               <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No members trending down this week 🎉</div>
@@ -4537,7 +4566,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                 <div key={m.id} onClick={() => setSelected(m)}
                   style={{ display: "flex", alignItems: "center", gap: "0.9rem", padding: "0.75rem 0.9rem",
                     borderRadius: "10px", marginBottom: "0.4rem", cursor: "pointer", background: "#fff8f5",
-                    border: "1px solid #fad0b8", transition: "background 0.15s" }}
+                    border: "1px solid #dddbd8", transition: "background 0.15s" }}
                   onMouseEnter={e => e.currentTarget.style.background = "#ffeee4"}
                   onMouseLeave={e => e.currentTarget.style.background = "#fff8f5"}>
                   <div style={{ width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
@@ -4566,7 +4595,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           </div>
 
           {/* ── Low Recovery ───────────────────────────────────────────────── */}
-          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
             <SectionHeader iconName="wave" title="Low Recovery Scores" count={lowRecovery.length} color="#c0303a" />
             {lowRecovery.length === 0 ? (
               <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>Everyone's recovering well this week ✓</div>
@@ -4613,7 +4642,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           </div>
 
           {/* ── Pod Engagement ─────────────────────────────────────────────── */}
-          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
             <SectionHeader iconName="star" title="Pod Engagement This Week" count={pods.length} color="#7a60c0" unit="pod" />
             {pods.length === 0 ? (
               <div style={{ color: "#aaa", fontSize: "0.85rem", textAlign: "center", padding: "1rem 0" }}>No pods created yet</div>
@@ -4767,7 +4796,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
           {/* ── 1. Most Improved ─────────────────────────────────────────────── */}
-          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.9rem" }}>
               <span style={{ fontSize: "1.2rem" }}>🚀</span>
               <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Top 5 Most Improved</div>
@@ -4822,7 +4851,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           </div>
 
           {/* ── 2. Tier Distribution ─────────────────────────────────────────── */}
-          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.9rem" }}>
               <span style={{ fontSize: "1.2rem" }}>🏅</span>
               <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Capacity Tier Distribution</div>
@@ -4860,7 +4889,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           </div>
 
           {/* ── 3. Community CI Trend ────────────────────────────────────────── */}
-          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.9rem" }}>
               <span style={{ fontSize: "1.2rem" }}>📊</span>
               <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>GBSC Community Capacity Index</div>
@@ -4881,7 +4910,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                   {communityTrend.length >= 2 && (() => {
                     const delta = communityTrend[communityTrend.length-1].avg - communityTrend[0].avg;
                     return (
-                      <div style={{ background: delta >= 0 ? `${G}12` : "#fff4ee", border: `1px solid ${delta >= 0 ? G+"44" : "#fad0b8"}`, borderRadius: "10px", padding: "0.7rem 1rem", textAlign: "center" }}>
+                      <div style={{ background: delta >= 0 ? `${G}12` : "#f5f5f3", border: `1px solid ${delta >= 0 ? G+"44" : "#dddbd8"}`, borderRadius: "10px", padding: "0.7rem 1rem", textAlign: "center" }}>
                         <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: delta >= 0 ? G : "#e07030" }}>
                           {delta >= 0 ? "+" : ""}{delta}
                         </div>
@@ -4927,7 +4956,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           </div>
 
           {/* ── 4. Pod Captains ──────────────────────────────────────────────── */}
-          <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.9rem" }}>
               <span style={{ fontSize: "1.2rem" }}>⭐</span>
               <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Pod Captains</div>
@@ -5018,7 +5047,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
             const successfulThisWeek = fullCapWeeks + mewWeeks;
             const pctSuccess = totalLatestChecks ? Math.round((successfulThisWeek / totalLatestChecks) * 100) : 0;
             return (
-              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+              <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
                   <GBSCIcon name="check" size={20} color={G} strokeWidth={0}/>
                   <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Community Consistency</div>
@@ -5083,7 +5112,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
               { label: "Reset",     count: resets,     color: "#C8C4BC", emoji: "🔁" },
             ];
             return (
-              <div style={{ background: CARD, borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+              <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
                   <GBSCIcon name="performer" size={20} color={G} strokeWidth={0}/>
                   <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", flex: 1 }}>Role Distribution</div>
@@ -5153,7 +5182,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
               style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>
               ← Back to Pods
             </button>
-            <div style={{ background: CARD, borderRadius: "16px", padding: "1.5rem", marginBottom: "1.2rem" }}>
+            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.5rem", marginBottom: "1.2rem" }}>
               <div style={{ fontWeight: "bold", color: DARK, marginBottom: "1rem", fontSize: "1.05rem" }}>
                 {editingPod === "new" ? "Create New Pod" : "Edit Pod"}
               </div>
@@ -5302,7 +5331,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           {(pods || []).map(pod => {
             const podMemberObjs = members.filter(m => pod.memberIds.includes(m.id));
             return (
-              <div key={pod.id} style={{ background: CARD, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "0.9rem", border: "1.5px solid transparent" }}>
+              <div key={pod.id} style={{ background: CARD, borderRadius: "14px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.4rem", marginBottom: "0.9rem", border: "1.5px solid transparent" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", marginBottom: "0.8rem" }}>
                   <span style={{ fontSize: "1.6rem" }}>{pod.emoji}</span>
                   <div style={{ flex: 1 }}>
@@ -5385,7 +5414,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box", marginBottom: "1rem" }} />
 
         {/* ── Export panel ── */}
-        <div style={{ background: CARD, borderRadius: "14px", padding: "1.2rem 1.4rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+        <div style={{ background: CARD, borderRadius: "14px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.4rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: "160px" }}>
             <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.9rem" }}>📥 Export Challenge Data</div>
             <div style={{ fontSize: "0.75rem", color: "#888", marginTop: "0.2rem" }}>All members · all check-ins · all scores</div>
@@ -5415,7 +5444,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
           const mWS   = latestCheck ? getWeekStatus(latestCheck.score) : null;
           return (
             <div key={m.id} onClick={() => setSelected(m)}
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: CARD, borderRadius: "12px", padding: "1rem 1.2rem", marginBottom: "0.7rem", cursor: "pointer", border: "1.5px solid transparent", transition: "border 0.2s" }}
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: CARD, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "1rem 1.2rem", marginBottom: "0.7rem", cursor: "pointer", border: "1.5px solid transparent", transition: "border 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.border = `1.5px solid ${G}`}
               onMouseLeave={e => e.currentTarget.style.border = "1.5px solid transparent"}>
               <div>
