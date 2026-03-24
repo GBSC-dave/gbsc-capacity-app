@@ -85,8 +85,8 @@ const DARK = "#2D2D2D";
 const CARD = "#fdfcfb";
 const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.05)";
 const PAGE_BG = "#f9f7f4";
-const DARK_BG  = "linear-gradient(180deg, #363636 0%, #222222 100%) fixed";
-const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #e8e6ee 100%) fixed";
+const DARK_BG  = "linear-gradient(180deg, #363636 0%, #222222 100%)";
+const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #e8e6ee 100%)";
 const SERIF = "'Georgia', serif";
 const SANS  = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -258,7 +258,7 @@ function getDeclaredWeek(allChecks) {
 
   const ROLE_CONFIG = {
     Anchor: {
-      color: "#8A94A6", bg: "linear-gradient(180deg, #f8f9fa 0%, #e4e8ed 100%) fixed", accent: "#C7CED6", textSupport: "#5F6B7A", iconName: "stabilizer",
+      color: "#8A94A6", bg: "linear-gradient(180deg, #f8f9fa 0%, #e4e8ed 100%)", accent: "#C7CED6", textSupport: "#5F6B7A", iconName: "stabilizer",
       subtext: "Hit your minimums.",
       targets: [
         { label: "Training",  value: "2 workouts" },
@@ -280,7 +280,7 @@ function getDeclaredWeek(allChecks) {
       buttonLabel: "Start My Week",
     },
     Builder: {
-      color: "#2FBF71", bg: "linear-gradient(180deg, #f5fdf8 0%, #d8f0e4 100%) fixed", accent: "#A7E3C2", textSupport: "#2F6B4A", iconName: "builder",
+      color: "#2FBF71", bg: "linear-gradient(180deg, #f5fdf8 0%, #d8f0e4 100%)", accent: "#A7E3C2", textSupport: "#2F6B4A", iconName: "builder",
       subtext: "Add one layer.",
       targets: [
         { label: "Training",  value: "3 workouts (4 if time allows)" },
@@ -302,7 +302,7 @@ function getDeclaredWeek(allChecks) {
       buttonLabel: "Start My Week",
     },
     Expansion: {
-      color: "#2C4A6E", bg: "linear-gradient(180deg, #f2f6fa 0%, #d8e4ef 100%) fixed", accent: "#A8BECE", textSupport: "#1E3348", iconName: "performer",
+      color: "#2C4A6E", bg: "linear-gradient(180deg, #f2f6fa 0%, #d8e4ef 100%)", accent: "#A8BECE", textSupport: "#1E3348", iconName: "performer",
       subtext: "Take it further.",
       targets: [
         { label: "Training",       value: "3 workouts (4 if aligned)" },
@@ -449,7 +449,7 @@ function calcWeeklyScore(check) {
   score += check.strengthRPE === "Yes" ? 12 : 0;
   score += check.dailyMovement === "High" ? 12 : check.dailyMovement === "Moderate" ? 7 : 0;
   score += check.protein === "Yes (most days)" ? 14 : check.protein === "Most days" ? 10 : check.protein === "Some days" ? 5 : 0;
-  score += check.downshift === "3+ times" ? 8 : (check.downshift === "1–2 times" || check.downshift === "1-2 times") ? 4 : 0;
+  score += check.downshift === "3+ times" ? 8 : check.downshift === "1-2 times" ? 4 : 0;
   score += check.sleepOpportunity === "5+ nights" ? 10 : (check.sleepOpportunity === "3–4 nights" || check.sleepOpportunity === "3-4 nights") ? 7 : (check.sleepOpportunity === "1–2 nights" || check.sleepOpportunity === "1-2 nights") ? 3 : 0;
   // Consistency Multiplier: cap at 65 if fewer than 2 workouts
   const workoutsNum = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[check.workouts] ?? 0;
@@ -472,9 +472,18 @@ export default function GBSCApp() {
 
   useEffect(() => { init(); }, []);
 
+  // Keep body background fixed so gradient stays locked while content scrolls
+  // Switch between dark and light gradient based on active view
+  useEffect(() => {
+    const isDark = view === "loading" || view === "coachPin" || view === "coach";
+    document.body.style.background = isDark ? DARK_BG : LIGHT_BG;
+    document.body.style.backgroundAttachment = "fixed";
+    document.body.style.margin = "0";
+    document.body.style.minHeight = "100vh";
+  }, [view]);
+
   async function init() {
-    const hasSeenSplash = localStorage.getItem("gbsc_seen_splash");
-    const MIN_SPLASH_MS = hasSeenSplash ? 3000 : 6000; // 6s for first visit, 3s for returning
+    const MIN_SPLASH_MS = 6000; // minimum time logo is visible — extended so tagline has time to land
     const startTime = Date.now();
 
     // Load pods
@@ -524,7 +533,6 @@ export default function GBSCApp() {
     await new Promise(r => setTimeout(r, remaining));
     setSplashFading(true);
     await new Promise(r => setTimeout(r, 600));
-    localStorage.setItem("gbsc_seen_splash", "1");
     setView(nextView);
   }
 
@@ -554,7 +562,7 @@ export default function GBSCApp() {
   if (view === "loading") {
     return (
       <div style={{
-        minHeight: "100vh", background: DARK_BG,
+        minHeight: "100vh", background: "transparent",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         opacity: splashFading ? 0 : 1,
         transition: splashFading ? "opacity 1.2s ease" : "none",
@@ -667,7 +675,7 @@ export default function GBSCApp() {
   // ── COACH PIN ─────────────────────────────────────────────────────────────
   if (view === "coachPin") {
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <img src={LOGO_HORIZ} alt="GBSC" style={{ width: "min(280px, 80vw)", marginBottom: "2rem" }} />
         <div style={{ background: DARK, borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "320px" }}>
           <div style={{ color: "#fff", fontWeight: "bold", fontSize: "1.1rem", marginBottom: "1.2rem", textAlign: "center", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.4rem" }}><GBSCIcon name="lock" size={18} color="#fff" strokeWidth={0}/>Coach Access</div>
@@ -700,7 +708,6 @@ export default function GBSCApp() {
       loadMembers().then(() => setView("coach"));
     } else {
       setPinError(true);
-      setPinInput("");
     }
   }
 
@@ -1268,7 +1275,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "onboard") {
     // Step 1: Profile info
     if (onboardStep === 1) return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
@@ -1303,26 +1310,25 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     // Step 2: Baseline check-in
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
             const fields = ["workouts","zone2","strengthRPE","dailyMovement","protein","downshift","sleepOpportunity","sleepQuality","energyLevel","physicalRecovery","disruption"];
             const answered = fields.filter(f => check[f] !== "" && check[f] != null).length;
-            const requiredDone = check.workouts && check.strengthRPE && check.zone2;
             const pct = Math.round((answered / fields.length) * 100);
             return (
               <div style={{ position: "sticky", top: 0, zIndex: 10, background: LIGHT_BG, paddingTop: "1rem", paddingBottom: "0.8rem", marginBottom: "0.5rem" }}>
                 <div style={{ textAlign: "center", marginBottom: "0.6rem" }}>
-                  <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>Your Baseline Check-In</div>
-                  <div style={{ color: "#666", fontSize: "0.88rem" }}>First instinct is fine · Quick check-in</div>
+                  <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>This week's habits</div>
+                  <div style={{ color: "#666", fontSize: "0.88rem" }}>First instinct is fine — ~45 seconds.</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
                   <div style={{ flex: 1, background: "#eee", borderRadius: "999px", height: "5px" }}>
                     <div style={{ background: G, borderRadius: "999px", height: "5px", width: `${pct}%`, transition: "width 0.3s ease" }} />
                   </div>
-                  <div style={{ fontSize: "0.8rem", color: answered === fields.length ? G : requiredDone ? G : "#888", fontWeight: (answered === fields.length || requiredDone) ? "bold" : "normal", whiteSpace: "nowrap" }}>
-                    {answered === fields.length ? "✓ All done!" : requiredDone ? "✓ Ready to submit" : `${answered} of ${fields.length}`}
+                  <div style={{ fontSize: "0.8rem", color: answered === fields.length ? G : "#888", fontWeight: answered === fields.length ? "bold" : "normal", whiteSpace: "nowrap" }}>
+                    {answered === fields.length ? "✓ All done!" : `${answered} of ${fields.length}`}
                   </div>
                 </div>
                 <div style={{ borderBottom: "1px solid #e8e8e8", marginTop: "0.8rem" }} />
@@ -1331,12 +1337,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           })()}
           {[
             { label: "Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
-            { label: "Challenging strength session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session where you finished feeling genuinely challenged" },
+            { label: "Challenging strength session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
             { label: "Daily movement outside workouts", field: "dailyMovement", options: ["High","Moderate","Low"], hints: ["High (8k+ steps/day or very active job)", "Moderate (5–8k/day)", "Low (<5k/day)"] },
-            { label: "Steady-state cardio this week", field: "zone2", options: ["0–30 min","30–60 min","60–90 min","90+ min"], hint: "Jogging, cycling, rowing — breathing elevated but you could hold a conversation" },
-            { label: "Protein in 3+ meals per day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal (palm-sized portion of meat, fish, eggs, or Greek yogurt)" },
+            { label: "Zone 2 aerobic work this week", field: "zone2", options: ["0–30 min","30–60 min","60–90 min","90+ min"], hint: "Steady effort — breathing elevated but sustainable" },
+            { label: "Protein in 3+ meals per day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal" },
             { label: "Sleep opportunity", field: "sleepOpportunity", options: ["5+ nights","3–4 nights","1–2 nights","Rarely"], hint: "How many nights did you have 7+ hours available for sleep?" },
-            { label: "Intentional rest / decompression (10+ min)", field: "downshift", options: ["3+ times","1–2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
+            { label: "Intentional downshift (10+ min)", field: "downshift", options: ["3+ times","1–2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
           ].map((q, qi) => (
             <div key={q.field} style={{ paddingTop: "1.3rem", borderTop: qi === 0 ? "none" : "1px solid #efefef", marginBottom: "0.2rem" }}>
               <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>{q.label}</div>
@@ -1629,7 +1635,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
 
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <style>{`
           @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
           @keyframes gbscTierSlide {
@@ -1792,33 +1798,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
-          {/* Role callout — current week's identity */}
-          {cfDw?.role && (
-            <div style={{ background: CARD, borderRadius: "14px", boxShadow: CARD_SHADOW, padding: "0.9rem 1.2rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.9rem", cursor: "pointer", ...fadeUp(100) }}
-              onClick={() => { setDeclaredWeek(cfDw); setView("declaredWeek"); }}>
-              {cfDw.iconName && <GBSCIcon name={cfDw.iconName} size={28} color={cfDw.color} strokeWidth={2}/>}
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: cfDw.color, letterSpacing: "0.07em", marginBottom: "0.1rem" }}>THIS WEEK'S ROLE</div>
-                <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: DARK }}>{cfDw.role}</div>
-                <div style={{ fontSize: "0.75rem", color: "#888", marginTop: "0.1rem" }}>{cfDw.subtext}</div>
-              </div>
-              <span style={{ color: "#ccc", fontSize: "0.9rem" }}>›</span>
-            </div>
-          )}
-
           {/* Main score card */}
           <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #2a4a1a 100%)`, borderRadius: "20px", padding: "2rem 1.5rem", color: "#fff", textAlign: "center", marginBottom: "1.5rem", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", ...fadeUp(150) }}>
             <div style={{ fontSize: "0.78rem", color: "#aaa", marginBottom: "0.5rem", letterSpacing: "0.04em" }}>Habit score</div>
             <div style={{ fontSize: "5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", minWidth: "3ch", display: "inline-block" }}>{displayedScore}</div>
             <div style={{ fontSize: "0.85rem", color: "#888", marginTop: "0.3rem" }}>out of 100</div>
-            {latestScore !== null && (() => {
-              const ws = getWeekStatus(latestScore);
-              return ws ? (
-                <div style={{ display: "inline-block", background: "#ffffff14", borderRadius: "999px", padding: "0.25rem 0.9rem", fontSize: "0.75rem", fontWeight: "bold", color: ws.color, marginTop: "0.7rem", letterSpacing: "0.03em" }}>
-                  {ws.status}
-                </div>
-              ) : null;
-            })()}
             <div style={{ fontSize: "0.72rem", color: "#666", marginTop: "0.9rem", borderTop: "1px solid #ffffff18", paddingTop: "0.9rem" }}>
               Measures your weekly habits around training, recovery, and resilience.
             </div>
@@ -1846,17 +1830,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     ? <GBSCIcon name="bounce" size={18} color="#888580" strokeWidth={0}/>
                     : <GBSCIcon name="ripple" size={18} color="#666" strokeWidth={0}/>}
                 </span>
-                <div>
-                  <span style={{ fontSize: "0.82rem", fontWeight: "bold",
-                    color: diff > 0 ? "#3a8a20" : diff < 0 ? "#888580" : "#666" }}>
-                    {diff > 0 ? `Up ${diff} point${diff !== 1 ? "s" : ""} from last week`
-                     : diff < 0 ? `Down ${Math.abs(diff)} point${Math.abs(diff) !== 1 ? "s" : ""} from last week`
-                     : "Score held steady from last week"}
-                  </span>
-                  {Math.abs(diff) <= 5 && (
-                    <div style={{ fontSize: "0.72rem", color: "#999", marginTop: "0.15rem" }}>Small shifts week to week are normal.</div>
-                  )}
-                </div>
+                <span style={{ fontSize: "0.82rem", fontWeight: "bold",
+                  color: diff > 0 ? "#3a8a20" : diff < 0 ? "#888580" : "#666" }}>
+                  {diff > 0 ? `Up ${diff} point${diff !== 1 ? "s" : ""} from last week`
+                   : diff < 0 ? `Down ${Math.abs(diff)} point${Math.abs(diff) !== 1 ? "s" : ""} from last week`
+                   : "Score held steady from last week"}
+                </span>
               </div>
             );
           })()}
@@ -1871,9 +1850,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                   <div style={{ lineHeight: 1, display: "flex", alignItems: "center" }}><GBSCIcon name={tier.icon} size={44} color={tier.color} /></div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "0.7rem", color: "#aaa", letterSpacing: "0.05em" }}>Your Progress Tier</div>
+                    <div style={{ fontSize: "0.7rem", color: "#aaa", letterSpacing: "0.05em" }}>Capacity Identity</div>
                     <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: tier.color, fontFamily: SERIF }}>{tier.tier}</div>
-                    <div style={{ fontSize: "0.8rem", color: "#666" }}>Score: <strong style={{ color: DARK }}>{ci}</strong> · fitness + habits</div>
+                    <div style={{ fontSize: "0.8rem", color: "#666" }}>Capacity Index: <strong style={{ color: DARK }}>{ci}</strong></div>
                   </div>
                   <div style={{ fontSize: "1.4rem", color: "#666", transition: "transform 0.25s", transform: tierExpanded ? "rotate(180deg)" : "rotate(0deg)", flexShrink: 0 }}>▾</div>
                 </div>
@@ -1894,8 +1873,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               {currentTierData.next ? (
                 <div style={{ background: CARD, borderRadius: "10px", boxShadow: CARD_SHADOW, padding: "0.8rem 1rem", marginTop: "0.8rem", display: "flex", alignItems: "center", gap: "0.7rem" }}>
                   <div>
-                    <div style={{ fontSize: "0.72rem", color: "#aaa" }}>Points to next level</div>
-                    <div style={{ fontWeight: "bold", color: DARK }}><span style={{ fontSize: "1.3rem", color: G }}>{pointsToNext}</span> points to <em>{currentTierData.next}</em></div>
+                    <div style={{ fontSize: "0.72rem", color: "#aaa" }}>Points to next tier</div>
+                    <div style={{ fontWeight: "bold", color: DARK }}><span style={{ fontSize: "1.3rem", color: G }}>{pointsToNext}</span> pts to <em>{currentTierData.next}</em></div>
                   </div>
                 </div>
               ) : (
@@ -1923,7 +1902,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                           <div style={{ fontWeight: isCurrent ? "bold" : "normal", color: isCurrent ? t.color : "#555", fontSize: "0.88rem" }}>
                             {t.name} {isCurrent && <span style={{ fontSize: "0.72rem", background: t.color, color: "#fff", borderRadius: "4px", padding: "1px 5px", marginLeft: "4px", verticalAlign: "middle" }}>YOU</span>}
                           </div>
-                          <div style={{ fontSize: "0.72rem", color: "#999" }}>Score {t.min}–{t.max}</div>
+                          <div style={{ fontSize: "0.72rem", color: "#999" }}>CI {t.min}–{t.max}</div>
                         </div>
                         {isCurrent && currentTierData.next && (
                           <div style={{ fontSize: "0.72rem", color: G, fontWeight: "bold", textAlign: "right", flexShrink: 0 }}>
@@ -2156,7 +2135,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 {[
                   { label: "Avg Capacity Index", val: community.avgCI ?? "—", iconName: "peak",     sw: 2,   desc: "Our combined score" },
                   { label: "Avg VO₂ Score",       val: community.avgVO2  ?? "—", iconName: "lungs",    sw: 0,   desc: "Cardio engine" },
-                  { label: "Avg Grip Score",       val: community.avgGrip ?? "—", iconName: "dumbbell", sw: 0,   desc: "Strength anchor" },
+                  { label: "Avg Grip Score",       val: community.avgGrip,        iconName: "dumbbell", sw: 0,   desc: "Strength anchor" },
                 ].map(({ label, val, iconName, sw, desc }) => (
                   <div key={label} style={{ background: CARD, borderRadius: "14px", boxShadow: CARD_SHADOW, padding: "1rem 0.7rem", textAlign: "center" }}>
                     <div style={{ marginBottom: "0.2rem", display:"flex", justifyContent:"center" }}>
@@ -2263,7 +2242,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     };
 
     return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
@@ -2336,14 +2315,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       on_track: {
         headline: "Keep going.",
         body: "You're on pace to win your week.",
-        bullets: ["Stay consistent through the weekend", "Protect your sleep window tonight", "Log your check-in on Sunday"],
         icon: "bounce2",
         color: G,
       },
       slightly_off: {
         headline: "Small adjustment.",
         body: null,
-        bullets: ["1 cardio session (any length)", "Sleep tonight", "Protein at your next meal"],
+        bullets: ["Engine work", "Sleep tonight", "Protein at your next meal"],
         icon: "ripple",
         color: "#e09020",
       },
@@ -2359,7 +2337,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const content = resultContent[status] || resultContent.on_track;
 
     return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
 
@@ -2426,7 +2404,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     };
 
     return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
@@ -2517,7 +2495,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const content = resultContent[result] || resultContent.stayed_in;
 
     return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
 
@@ -2643,7 +2621,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const checkedInThisWeek  = lastCheck && !isEligibleForCheckin(lastCheck.date);
 
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
           <div style={{ display: "flex", justifyContent: "center", marginTop: "-1px" }}>
@@ -3050,7 +3028,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               { label: "Strength",  value: latest.strengthRPE === "Yes" ? 1 : 0, max: 1, display: latest.strengthRPE },
               { label: "Movement",  value: movementMap[latest.dailyMovement] ?? 0, max: 2, display: latest.dailyMovement },
               { label: "Protein",   value: proteinMap[latest.protein ?? latest.proteinFloor] ?? 0, max: 3, display: latest.protein || latest.proteinFloor || "—" },
-              { label: "Sleep Hours",value: sleepOppMap[latest.sleepOpportunity] ?? 0, max: 3, display: latest.sleepOpportunity || "—" },
+              { label: "Sleep Opp.",value: sleepOppMap[latest.sleepOpportunity] ?? 0, max: 3, display: latest.sleepOpportunity || "—" },
               { label: "Downshift", value: downshiftMap[latest.downshift ?? latest.regulation] ?? 0, max: 2, display: latest.downshift || latest.regulation || "—" },
               { label: "Sleep Quality", value: parseInt(latest.sleepQuality) || 0, max: 5, display: `${latest.sleepQuality}/5` },
               { label: "Energy",    value: parseInt(latest.energyLevel) || 0, max: 5, display: `${latest.energyLevel}/5` },
@@ -3087,7 +3065,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     {[
                       { group: "Performance", keys: ["Training","Zone 2","Strength"] },
                       { group: "Lifestyle",   keys: ["Movement","Protein"] },
-                      { group: "Recovery",    keys: ["Sleep Hours","Sleep Quality","Downshift","Energy","Recovery"] },
+                      { group: "Recovery",    keys: ["Sleep Opp.","Sleep Quality","Downshift","Energy","Recovery"] },
                     ].map(({ group, keys }) => {
                       const groupRows = rows.filter(r => keys.includes(r.label));
                       if (!groupRows.length) return null;
@@ -3226,7 +3204,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   if (view === "editProfile" && currentMember && editForm) {
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setView("profile")} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>← Back to Profile</button>
@@ -3261,7 +3239,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const lastCheckGate = existingWeeksGate.length > 0 ? existingWeeksGate[existingWeeksGate.length - 1] : null;
     if (lastCheckGate && lastCheckGate.date && !isEligibleForCheckin(lastCheckGate.date)) {
         return (
-          <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+          <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
             {hdr}
             <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", textAlign: "center" }}>
               <div style={{ marginBottom: "1rem" }}><GBSCIcon name="check" size={52} color="#4a9e38" strokeWidth={0}/></div>
@@ -3285,38 +3263,37 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }
     const weekNum = (currentMember.weeklyChecks?.filter(c => c && !c.isBaseline).length || 0) + 1;
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
             const fields = ["workouts","zone2","strengthRPE","dailyMovement","protein","downshift","sleepOpportunity","sleepQuality","energyLevel","physicalRecovery","disruption"];
             const answered = fields.filter(f => check[f] !== "" && check[f] != null).length;
-            const requiredDone = check.workouts && check.strengthRPE && check.zone2;
             const pct = Math.round((answered / fields.length) * 100);
             return (
               <div style={{ position: "sticky", top: 0, zIndex: 10, background: LIGHT_BG, paddingTop: "1rem", paddingBottom: "0.8rem" }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.3rem" }}>
                   <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: DARK }}>Week {weekNum} Check-In</div>
-                  <div style={{ fontSize: "0.8rem", color: answered === fields.length ? G : requiredDone ? G : "#888", fontWeight: (answered === fields.length || requiredDone) ? "bold" : "normal" }}>
-                    {answered === fields.length ? "✓ All done!" : requiredDone ? "✓ Ready to submit" : `${answered} of ${fields.length}`}
+                  <div style={{ fontSize: "0.8rem", color: answered === fields.length ? G : "#888", fontWeight: answered === fields.length ? "bold" : "normal" }}>
+                    {answered === fields.length ? "✓ All done!" : `${answered} of ${fields.length}`}
                   </div>
                 </div>
                 <div style={{ background: "#eee", borderRadius: "999px", height: "5px", marginBottom: "0.3rem" }}>
                   <div style={{ background: G, borderRadius: "999px", height: "5px", width: `${pct}%`, transition: "width 0.3s ease" }} />
                 </div>
-                <div style={{ color: "#666", fontSize: "0.85rem", marginBottom: "0.5rem" }}>Quick check-in · First instinct is fine</div>
+                <div style={{ color: "#666", fontSize: "0.85rem", marginBottom: "0.5rem" }}>~45 seconds · First instinct is fine</div>
                 <div style={{ borderBottom: "1px solid #e8e8e8" }} />
               </div>
             );
           })()}
           {[
             { label: "Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
-            { label: "Challenging strength session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session where you finished feeling genuinely challenged" },
+            { label: "Challenging strength session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
             { label: "Daily movement outside workouts", field: "dailyMovement", options: ["High","Moderate","Low"], hints: ["High (8k+ steps/day or very active job)", "Moderate (5–8k/day)", "Low (<5k/day)"] },
-            { label: "Steady-state cardio this week", field: "zone2", options: ["0–30 min","30–60 min","60–90 min","90+ min"], hint: "Jogging, cycling, rowing — breathing elevated but you could hold a conversation" },
-            { label: "Protein in 3+ meals per day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal (palm-sized portion of meat, fish, eggs, or Greek yogurt)" },
+            { label: "Zone 2 aerobic work this week", field: "zone2", options: ["0–30 min","30–60 min","60–90 min","90+ min"], hint: "Steady effort — breathing elevated but sustainable" },
+            { label: "Protein in 3+ meals per day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal" },
             { label: "Sleep opportunity", field: "sleepOpportunity", options: ["5+ nights","3–4 nights","1–2 nights","Rarely"], hint: "How many nights did you have 7+ hours available for sleep?" },
-            { label: "Intentional rest / decompression (10+ min)", field: "downshift", options: ["3+ times","1–2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
+            { label: "Intentional downshift (10+ min)", field: "downshift", options: ["3+ times","1–2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
           ].map((q, qi) => (
             <div key={q.field} style={{ paddingTop: "1.3rem", borderTop: qi === 0 ? "none" : "1px solid #efefef", marginBottom: "0.2rem" }}>
               <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>{q.label}</div>
@@ -3376,7 +3353,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               { label: "Movement",      val: check.dailyMovement   || "—" },
               { label: "Zone 2",        val: check.zone2           || "—" },
               { label: "Protein",       val: check.protein         || "—" },
-              { label: "Sleep Hours",    val: check.sleepOpportunity || "—" },
+              { label: "Sleep Opp.",    val: check.sleepOpportunity || "—" },
               { label: "Downshift",     val: check.downshift       || "—" },
               { label: "Sleep Quality", val: check.sleepQuality ? scaleLabels.sleepQuality[parseInt(check.sleepQuality)-1] : "—" },
               { label: "Energy",        val: check.energyLevel  ? scaleLabels.energyLevel[parseInt(check.energyLevel)-1]   : "—" },
@@ -4013,7 +3990,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
     : LIBRARY_ARTICLES.filter(a => a.category === activeCategory);
 
   return (
-    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
       <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
         <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.05em", flex: 1 }}>Recovery Library</div>
@@ -4067,7 +4044,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
 
 function ArticleReader({ article, onBack }) {
   return (
-    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
       <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
         <div style={{ flex: 1 }}>
@@ -4296,7 +4273,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     const ci = habitAvg !== null ? calcCapacityIndex(selected.vo2Score_pre, selected.gripScore_pre, habitAvg) : null;
     const tier = ci !== null ? getCapacityTier(ci) : null;
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "600px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: G, cursor: "pointer", marginBottom: "1rem", fontWeight: "bold" }}>← All Members</button>
@@ -4488,7 +4465,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     );
 
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -4828,7 +4805,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       : "";
 
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -5212,7 +5189,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         setPodDraft(d => ({ ...d, name: pick.name, emoji: pick.emoji }));
       };
       return (
-        <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           {hdr}
           <div style={{ maxWidth: "520px", margin: "0 auto", padding: "1.5rem" }}>
             <button onClick={() => { setEditingPod(null); setPodDraft(null); }}
@@ -5335,7 +5312,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
 
     // Pods list view
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
@@ -5430,7 +5407,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
       {hdr}
       <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
         {/* Gym summary */}
