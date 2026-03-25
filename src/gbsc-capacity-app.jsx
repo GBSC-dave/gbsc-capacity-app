@@ -1105,8 +1105,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     return () => clearInterval(timer);
   }, [lastCheckScore]);
 
- to specific article
-
 
   function startEdit() {
     setEditForm({
