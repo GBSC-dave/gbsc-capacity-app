@@ -475,6 +475,14 @@ export default function GBSCApp() {
 
   useEffect(() => { init(); }, []);
 
+  // Pin gradient to body so it stays fixed while content scrolls over it
+  useEffect(() => {
+    document.body.style.background = LIGHT_BG;
+    document.body.style.backgroundAttachment = "fixed";
+    document.body.style.margin = "0";
+    document.body.style.minHeight = "100vh";
+  }, []);
+
 
 
   async function init() {
@@ -1301,7 +1309,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "onboard") {
     // Step 1: Profile info
     if (onboardStep === 1) return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
@@ -1336,7 +1344,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     // Step 2: Baseline check-in
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
@@ -1660,7 +1668,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
 
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <style>{`
           @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
           @keyframes gbscTierSlide {
@@ -1671,19 +1679,22 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         `}</style>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", paddingBottom: "0" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: "0", background: "transparent", paddingBottom: "0" }}>
+            <button onClick={() => setView("profile")}
+              style={{ border: "1.5px solid rgba(255,255,255,0.25)", borderTop: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.2rem 1rem 0.4rem",
+                background: "rgba(255,255,255,0.12)",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.65)",
+                position: "relative", zIndex: 1, marginRight: "-2px" }}>
+              MY PROFILE
+            </button>
             <button onClick={() => setView("checkFeedback")}
               style={{ border: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.25rem 1.2rem 0.4rem",
+                borderRadius: "0 0 12px 12px", padding: "0.3rem 1.1rem 0.5rem",
                 background: G,
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#fff" }}>
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#fff",
+                position: "relative", zIndex: 2, marginTop: "-2px" }}>
               MY RESULTS
-            </button>
-            <button onClick={() => setView("profile")}
-              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderTop: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.25rem 1.2rem 0.4rem",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.6)" }}>
-              MY PROFILE
             </button>
           </div>
         </div>
@@ -2606,21 +2617,24 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const checkedInThisWeek  = lastCheck && !isEligibleForCheckin(lastCheck.date);
 
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", paddingBottom: "0" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: "0", background: "transparent", paddingBottom: "0" }}>
             <button onClick={() => setView("profile")}
               style={{ border: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.25rem 1.2rem 0.4rem",
+                borderRadius: "0 0 12px 12px", padding: "0.3rem 1.1rem 0.5rem",
                 background: G,
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#fff" }}>
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#fff",
+                position: "relative", zIndex: 2, marginTop: "-2px", marginRight: "-2px" }}>
               MY PROFILE
             </button>
             <button onClick={() => setView("checkFeedback")}
-              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderTop: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.25rem 1.2rem 0.4rem",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.6)" }}>
+              style={{ border: "1.5px solid rgba(255,255,255,0.25)", borderTop: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.2rem 1rem 0.4rem",
+                background: "rgba(255,255,255,0.12)",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.65)",
+                position: "relative", zIndex: 1 }}>
               MY RESULTS
             </button>
           </div>
@@ -2802,7 +2816,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   if (view === "editProfile" && currentMember && editForm) {
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setView("profile")} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>← Back to Profile</button>
@@ -2837,7 +2851,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const lastCheckGate = existingWeeksGate.length > 0 ? existingWeeksGate[existingWeeksGate.length - 1] : null;
     if (lastCheckGate && lastCheckGate.date && !isEligibleForCheckin(lastCheckGate.date)) {
         return (
-          <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+          <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
             {hdr}
             <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", textAlign: "center" }}>
               <div style={{ marginBottom: "1rem" }}><GBSCIcon name="check" size={52} color="#4a9e38" strokeWidth={0}/></div>
@@ -2861,7 +2875,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }
     const weekNum = (currentMember.weeklyChecks?.filter(c => c && !c.isBaseline).length || 0) + 1;
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
@@ -3588,7 +3602,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
     : LIBRARY_ARTICLES.filter(a => a.category === activeCategory);
 
   return (
-    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
       <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
         <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.05em", flex: 1 }}>Recovery Library</div>
@@ -3642,7 +3656,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
 
 function ArticleReader({ article, onBack }) {
   return (
-    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
       <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
         <div style={{ flex: 1 }}>
@@ -3871,7 +3885,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     const ci = habitAvg !== null ? calcCapacityIndex(selected.vo2Score_pre, selected.gripScore_pre, habitAvg) : null;
     const tier = ci !== null ? getCapacityTier(ci) : null;
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "600px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: G, cursor: "pointer", marginBottom: "1rem", fontWeight: "bold" }}>← All Members</button>
@@ -4063,7 +4077,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     );
 
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -4403,7 +4417,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       : "";
 
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -4787,7 +4801,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         setPodDraft(d => ({ ...d, name: pick.name, emoji: pick.emoji }));
       };
       return (
-        <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           {hdr}
           <div style={{ maxWidth: "520px", margin: "0 auto", padding: "1.5rem" }}>
             <button onClick={() => { setEditingPod(null); setPodDraft(null); }}
@@ -4910,7 +4924,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
 
     // Pods list view
     return (
-      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
@@ -5005,7 +5019,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
       {hdr}
       <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
         {/* Gym summary */}
