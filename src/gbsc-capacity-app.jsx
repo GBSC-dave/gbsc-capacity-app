@@ -1671,135 +1671,23 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         `}</style>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", paddingBottom: "0.4rem" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", paddingBottom: "0" }}>
             <button onClick={() => setView("checkFeedback")}
-              style={{ border: "none", cursor: "pointer", borderRadius: "999px", padding: "0.2rem 1rem 0.3rem",
-                background: `${G}22`, borderColor: `${G}66`, borderWidth: "1px", borderStyle: "solid",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G }}>
+              style={{ border: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.25rem 1.2rem 0.4rem",
+                background: G,
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#fff" }}>
               MY RESULTS
             </button>
             <button onClick={() => setView("profile")}
-              style={{ background: "none", border: "none", cursor: "pointer", borderRadius: "999px", padding: "0.2rem 1rem 0.3rem",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#666" }}>
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderTop: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.25rem 1.2rem 0.4rem",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.6)" }}>
               MY PROFILE
             </button>
           </div>
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
-
-          {/* Role milestone card — shows after baseline, first check-in, or when role improves */}
-          {(() => {
-            // Use baseline score if no weekly checks yet — gives immediate identity after setup
-            const isBaseline  = checks.length === 0 && !!baseline;
-            const isFirstWeek = checks.length === 1;
-            const scoreSource = checks.length > 0 ? checks[checks.length - 1] : (baseline || null);
-            if (!scoreSource) return null;
-            const latest = scoreSource;
-            const prev   = checks.length >= 2 ? checks[checks.length - 2] : null;
-            const roleOrder = { "Reset": 0, "Anchor": 1, "Builder": 2, "Expansion": 3 };
-            // Use cfDw.role as source of truth so role card matches "Your Week Is Set" screen
-            const CF_ROLE_LOOKUP = {
-              "Anchor":    { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer" },
-              "Builder":   { role: "Builder",   color: G,         emoji: "📈", icon: "builder"    },
-              "Expansion": { role: "Expansion", color: "#1a7a00", emoji: "🔥", icon: "performer"  },
-              "Reset":     { role: "Reset",     color: "#C8C4BC", emoji: "🔄", icon: null         },
-            };
-            const currentRole = cfDw ? (CF_ROLE_LOOKUP[cfDw.role] || null) : getCapacityRole(latest.score, isBaseline);
-            const prevRole    = prev ? getCapacityRole(prev.score) : null;
-            if (!currentRole) return null;
-            // Show after baseline, on first weekly check-in, or when role improves
-            const roleImproved = prevRole && (roleOrder[currentRole.role] ?? 0) > (roleOrder[prevRole.role] ?? 0);
-            if (!isBaseline && !isFirstWeek && !roleImproved) return null;
-            const firstWeekMessages = {
-              "Reset":      { headline: "Reset week.", body: "Something got in the way — that's part of the program. This week, come back to Anchor targets. Show up, keep it simple, and let consistency do the work." },
-              "Anchor": { headline: "Your starting role: Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
-              "Builder":    { headline: "Your starting role: Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
-              "Expansion":  { headline: "Your starting role: Expansion", body: "You can push, recover, and sustain. That's rare. Protect it." },
-            };
-            const upgradeMessages = {
-              "Anchor": { headline: "You've become an Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
-              "Builder":    { headline: "You're now a Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
-              "Expansion":  { headline: "You've reached Expansion", body: "You can push, recover, and sustain. This is rare." },
-            };
-            const msg = isFirstWeek ? firstWeekMessages[currentRole.role] : upgradeMessages[currentRole.role];
-            if (!msg) return null;
-            // Match the declared week color system exactly
-            const roleColors = {
-              Anchor:     { color: "#8A94A6", bg: "#F4F6F8", textSupport: "#5F6B7A" },
-              Builder:    { color: "#2FBF71", bg: "#F3FBF6", textSupport: "#2F6B4A" },
-              Expansion:  { color: "#2C4A6E", bg: "#F0F4F8", textSupport: "#1E3348" },
-              Reset:      { color: "#C8C4BC", bg: "#FAFAF8", textSupport: "#7A7570" },
-            };
-            const rc = roleColors[currentRole.role] || roleColors.Reset;
-            return (
-              <div onClick={() => { const dw = getDeclaredWeek(currentMember.weeklyChecks || []); if (dw) { setDeclaredWeek(dw); setView("declaredWeek"); } }}
-                style={{ background: rc.bg, border: `1.5px solid ${rc.color}44`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", cursor: "pointer", ...fadeUp(300) }}>
-                <div style={{ marginBottom: "0.7rem", display: "flex", justifyContent: "center" }}>
-                  {currentRole.icon ? <GBSCIcon name={currentRole.icon} size={40} color={rc.color} strokeWidth={2}/> : <span style={{fontSize:"2rem"}}>{currentRole.emoji}</span>}
-                </div>
-                <div style={{ fontWeight: "bold", color: rc.color, fontSize: "1.1rem", marginBottom: "0.3rem" }}>
-                  {msg.headline}
-                </div>
-                <div style={{ fontSize: "0.85rem", color: rc.textSupport, lineHeight: 1.6, marginBottom: "0.7rem" }}>
-                  {msg.body}
-                </div>
-                <div style={{ fontSize: "0.72rem", color: rc.color, fontWeight: "bold", opacity: 0.85 }}>
-                  See this week's action plan →
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Tier card */}
-
-          {/* ── Mid-week check banner — Wednesday+ or when done ── */}
-          {(() => {
-            const thisWeekCheck = getCurrentWeekCheck(currentMember);
-            if (!thisWeekCheck) return null;
-            const done = !!thisWeekCheck.midweekStatus;
-            if (!done && !isMidweekWindow()) return null;
-            const statusColors = { on_track: G, slightly_off: "#e09020", off_track: "#888580" };
-            const statusLabels = { on_track: "On Track ✓", slightly_off: "Slightly Off", off_track: "At Risk" };
-            const statusColor = done ? (statusColors[thisWeekCheck.midweekStatus] || G) : G;
-            return (
-              <div style={{
-                background: done ? `${statusColor}15` : `linear-gradient(135deg, ${DARK}, #1a3a0a)`,
-                border: `1.5px solid ${done ? statusColor+"44" : G+"33"}`,
-                borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.5rem",
-                display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer", ...fadeUp(0)
-              }}
-                onClick={() => setView("midweekCheckin")}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: done ? statusColor : G, letterSpacing: "0.08em", marginBottom: "0.2rem" }}>MID-WEEK CHECK</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: done ? statusColor : "#fff" }}>
-                    {done ? statusLabels[thisWeekCheck.midweekStatus] : "Are you on track to win your week?"}
-                  </div>
-                  {!done && <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>}
-                  {done && <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>Tap to update</div>}
-                </div>
-                <GBSCIcon name="check" size={28} color={done ? statusColor : G} strokeWidth={0}/>
-              </div>
-            );
-          })()}
-
-          {/* ── End-of-week reflection banner — Sunday ── */}
-          {(() => {
-            const thisWeekCheck = getCurrentWeekCheck(currentMember);
-            if (!thisWeekCheck) return null;
-            if (thisWeekCheck.weekResult !== null) return null;
-            if (!isEndOfWeekWindow()) return null;
-            return (
-              <div style={{ background: `linear-gradient(135deg, #1a2a4a, #0e1a2e)`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer", ...fadeUp(0) }}
-                onClick={() => setView("weekReflection")}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#8ab4f8", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>END OF WEEK</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>Did you win your week?</div>
-                  <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to reflect</div>
-                </div>
-                <GBSCIcon name="trophy" size={28} color="#8ab4f8" strokeWidth={0}/>
-              </div>
-            );
-          })()}
 
           {/* Week progress bar */}
           {weekNum > 0 && (
@@ -1878,7 +1766,121 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {tier && (
             <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.5rem", marginBottom: "1.5rem", ...fadeUp(450) }}>
-              {/* Tappable header row */}
+              {/* Role milestone card — shows after baseline, first check-in, or when role improves */}
+          {(() => {
+            // Use baseline score if no weekly checks yet — gives immediate identity after setup
+            const isBaseline  = checks.length === 0 && !!baseline;
+            const isFirstWeek = checks.length === 1;
+            const scoreSource = checks.length > 0 ? checks[checks.length - 1] : (baseline || null);
+            if (!scoreSource) return null;
+            const latest = scoreSource;
+            const prev   = checks.length >= 2 ? checks[checks.length - 2] : null;
+            const roleOrder = { "Reset": 0, "Anchor": 1, "Builder": 2, "Expansion": 3 };
+            // Use cfDw.role as source of truth so role card matches "Your Week Is Set" screen
+            const CF_ROLE_LOOKUP = {
+              "Anchor":    { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer" },
+              "Builder":   { role: "Builder",   color: G,         emoji: "📈", icon: "builder"    },
+              "Expansion": { role: "Expansion", color: "#1a7a00", emoji: "🔥", icon: "performer"  },
+              "Reset":     { role: "Reset",     color: "#C8C4BC", emoji: "🔄", icon: null         },
+            };
+            const currentRole = cfDw ? (CF_ROLE_LOOKUP[cfDw.role] || null) : getCapacityRole(latest.score, isBaseline);
+            const prevRole    = prev ? getCapacityRole(prev.score) : null;
+            if (!currentRole) return null;
+            // Show after baseline, on first weekly check-in, or when role improves
+            const roleImproved = prevRole && (roleOrder[currentRole.role] ?? 0) > (roleOrder[prevRole.role] ?? 0);
+            if (!isBaseline && !isFirstWeek && !roleImproved) return null;
+            const firstWeekMessages = {
+              "Reset":      { headline: "Reset week.", body: "Something got in the way — that's part of the program. This week, come back to Anchor targets. Show up, keep it simple, and let consistency do the work." },
+              "Anchor": { headline: "Your starting role: Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
+              "Builder":    { headline: "Your starting role: Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
+              "Expansion":  { headline: "Your starting role: Expansion", body: "You can push, recover, and sustain. That's rare. Protect it." },
+            };
+            const upgradeMessages = {
+              "Anchor": { headline: "You've become an Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
+              "Builder":    { headline: "You're now a Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
+              "Expansion":  { headline: "You've reached Expansion", body: "You can push, recover, and sustain. This is rare." },
+            };
+            const msg = isFirstWeek ? firstWeekMessages[currentRole.role] : upgradeMessages[currentRole.role];
+            if (!msg) return null;
+            // Match the declared week color system exactly
+            const roleColors = {
+              Anchor:     { color: "#8A94A6", bg: "#F4F6F8", textSupport: "#5F6B7A" },
+              Builder:    { color: "#2FBF71", bg: "#F3FBF6", textSupport: "#2F6B4A" },
+              Expansion:  { color: "#2C4A6E", bg: "#F0F4F8", textSupport: "#1E3348" },
+              Reset:      { color: "#C8C4BC", bg: "#FAFAF8", textSupport: "#7A7570" },
+            };
+            const rc = roleColors[currentRole.role] || roleColors.Reset;
+            return (
+              <div onClick={() => { const dw = getDeclaredWeek(currentMember.weeklyChecks || []); if (dw) { setDeclaredWeek(dw); setView("declaredWeek"); } }}
+                style={{ background: rc.bg, border: `1.5px solid ${rc.color}44`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", cursor: "pointer", ...fadeUp(300) }}>
+                <div style={{ marginBottom: "0.7rem", display: "flex", justifyContent: "center" }}>
+                  {currentRole.icon ? <GBSCIcon name={currentRole.icon} size={40} color={rc.color} strokeWidth={2}/> : <span style={{fontSize:"2rem"}}>{currentRole.emoji}</span>}
+                </div>
+                <div style={{ fontWeight: "bold", color: rc.color, fontSize: "1.1rem", marginBottom: "0.3rem" }}>
+                  {msg.headline}
+                </div>
+                <div style={{ fontSize: "0.85rem", color: rc.textSupport, lineHeight: 1.6, marginBottom: "0.7rem" }}>
+                  {msg.body}
+                </div>
+                <div style={{ fontSize: "0.72rem", color: rc.color, fontWeight: "bold", opacity: 0.85 }}>
+                  See this week's action plan →
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Tier card */}
+
+          {/* ── Mid-week check banner — Wednesday+ or when done ── */}
+          {(() => {
+            const thisWeekCheck = getCurrentWeekCheck(currentMember);
+            if (!thisWeekCheck) return null;
+            const done = !!thisWeekCheck.midweekStatus;
+            if (!done && !isMidweekWindow()) return null;
+            const statusColors = { on_track: G, slightly_off: "#8A94A6", off_track: "#888580" };
+            const statusLabels = { on_track: "On Track ✓", slightly_off: "Slightly Off", off_track: "At Risk" };
+            const statusColor = done ? (statusColors[thisWeekCheck.midweekStatus] || G) : G;
+            return (
+              <div style={{
+                background: done ? `${statusColor}15` : `linear-gradient(135deg, ${DARK}, #1a3a0a)`,
+                border: `1.5px solid ${done ? statusColor+"44" : G+"33"}`,
+                borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.5rem",
+                display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer", ...fadeUp(0)
+              }}
+                onClick={() => setView("midweekCheckin")}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: done ? statusColor : G, letterSpacing: "0.08em", marginBottom: "0.2rem" }}>MID-WEEK CHECK</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: done ? statusColor : "#fff" }}>
+                    {done ? statusLabels[thisWeekCheck.midweekStatus] : "Are you on track to win your week?"}
+                  </div>
+                  {!done && <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>}
+                  {done && <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>Tap to update</div>}
+                </div>
+                <GBSCIcon name="check" size={28} color={done ? statusColor : G} strokeWidth={0}/>
+              </div>
+            );
+          })()}
+
+          {/* ── End-of-week reflection banner — Sunday ── */}
+          {(() => {
+            const thisWeekCheck = getCurrentWeekCheck(currentMember);
+            if (!thisWeekCheck) return null;
+            if (thisWeekCheck.weekResult !== null) return null;
+            if (!isEndOfWeekWindow()) return null;
+            return (
+              <div style={{ background: `linear-gradient(135deg, #1a2a4a, #0e1a2e)`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer", ...fadeUp(0) }}
+                onClick={() => setView("weekReflection")}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#8ab4f8", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>END OF WEEK</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>Did you win your week?</div>
+                  <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to reflect</div>
+                </div>
+                <GBSCIcon name="trophy" size={28} color="#8ab4f8" strokeWidth={0}/>
+              </div>
+            );
+          })()}
+
+          {/* Tappable header row */}
               <button
                 onClick={() => setTierExpanded(e => !e)}
                 style={{ width: "100%", background: "none", border: "none", padding: 0, cursor: "pointer", borderRadius: "10px", textAlign: "left" }}
@@ -1995,137 +1997,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                       ? "Your score reflects a tough week, not your true capacity. Showing up at all during disruption is a sign of resilience — not failure."
                       : "Life happened this week. Your score may not reflect your full potential. Consistency over time matters more than any single week."}
                   </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* ── Insight + Coaching (merged) ──────────────────────────────── */}
-          {(() => {
-            const nonBaseline = checks.filter(c => c && !c.isBaseline);
-            const latest = nonBaseline[nonBaseline.length - 1];
-            if (!latest) return null;
-
-            // ── Identify weakest driver for coaching ──
-            const sleep    = parseInt(latest.sleepQuality) || 0;
-            const energy   = parseInt(latest.energyLevel) || 0;
-            const recovery = parseInt(latest.physicalRecovery) || 0;
-            const workouts = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[latest.workouts] || 0;
-            const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 }[latest.protein] ?? (latest.proteinFloor ? { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 }[latest.proteinFloor] || 0 : 0);
-            const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift] ?? (latest.regulation ? { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0 : 0);
-            const strength = latest.strengthRPE === "Yes";
-            const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 }[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0);
-            const movement = { "Low": 0, "Moderate": 1, "High": 2 }[latest.dailyMovement] ?? null;
-            const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 }[latest.sleepOpportunity] ?? null;
-            const areas = [
-              { key: "sleep",    pct: sleep / 5 },
-              { key: "energy",   pct: energy / 5 },
-              { key: "recovery", pct: recovery / 5 },
-              { key: "protein",  pct: protein / 3 },
-              { key: "reg",      pct: reg / 2 },
-              { key: "workouts", pct: workouts / 4 },
-              { key: "strength", pct: strength ? 1 : 0 },
-              { key: "aerobic",  pct: zone2Val / 3 },
-              ...(movement !== null ? [{ key: "movement", pct: movement / 2 }] : []),
-              ...(sleepOpp !== null ? [{ key: "sleepOpp", pct: sleepOpp / 3 }] : []),
-            ].sort((a, b) => a.pct - b.pct);
-            const weakest = areas[0];
-
-            const tips = {
-              sleep:    { icon: "😴", iconName: "ripple",     label: "Sleep",        focus: "Try locking in a consistent bedtime — even 30 minutes earlier makes a meaningful difference this week." },
-              energy:   { icon: "⚡", iconName: "bounce2",   label: "Energy",       focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
-              recovery: { icon: "🔄", iconName: "refresh",   label: "Recovery",     focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
-              protein:  { icon: "🥩", iconName: "plate",     label: "Nutrition",    focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
-              reg:      { icon: "🧘", iconName: "meditation",label: "Downshift",    focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
-              workouts: { icon: "🏋️", iconName: "dumbbell",  label: "Training",     focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
-              strength: { icon: "💪", iconName: "dumbbell",  label: "Strength",          focus: "Schedule one dedicated strength session this week. Even 30 minutes of compound movements counts." },
-              aerobic:  { icon: "🫁", iconName: "lungs",      label: "Zone 2",            focus: "Aim for at least one 30–60 min Zone 2 session this week — a pace where you can speak in short sentences but not comfortably hold a conversation." },
-              movement: { icon: "🚶", iconName: "bounce2",    label: "Daily Movement",    focus: "Add one 20-minute walk per day. Total movement volume matters as much as structured workouts." },
-              sleepOpp: { icon: "🛏️", iconName: "ripple",     label: "Sleep Opportunity", focus: "Try to protect 7+ hours in bed at least 4 nights this week. Even one extra night of full sleep makes a measurable difference in recovery." },
-            };
-            const tip = tips[weakest.key];
-            if (!tip) return null;
-
-            // ── Today's Focus: smart trigger map overrides weakest driver ──
-            // Check trigger combinations first; fall back to weakest-driver tip
-            const latestScore = latest.score;
-            let focusTip = { ...tip, articleIds: [DRIVER_ARTICLE_MAP[weakest.key]].filter(Boolean) };
-            const lowSleep    = sleep <= 2 || (sleepOpp !== null && sleepOpp <= 1);
-            const lowRecovery = recovery <= 2;
-            const lowWorkouts = workouts < 2;
-            const lowDownshift = reg === 0;
-            const highPerf    = latestScore >= 85;
-            if (lowSleep && lowRecovery) {
-              focusTip = { icon: "🛌", iconName: "ripple", label: "Recovery Support Day", focus: "Walk, fuel well, and wind down early tonight. Your body needs a reset, not more load.", articleIds: ["recovery-reset","sleep","nervous-system"] };
-            } else if (lowWorkouts) {
-              focusTip = { icon: "🚶", iconName: "bounce2", label: "Stay in Motion", focus: "Short movement counts today. Any 20–30 minutes of activity keeps the habit alive.", articleIds: ["weekly-minimums","lifestyle-habits","recovery-reset"] };
-            } else if (lowDownshift && lowSleep) {
-              focusTip = { icon: "🧘", iconName: "meditation", label: "Downshift Daily", focus: "10 quiet minutes today. Walk, breathe, journal, or go screen-free.", articleIds: ["nervous-system","sleep"] };
-            } else if (highPerf) {
-              focusTip = { icon: "🏋️", iconName: "dumbbell", label: "Push + Recover", focus: "Train hard today, then protect sleep and protein. Don't outrun your recovery.", articleIds: ["weekly-minimums","sleep","nutrition-recovery"] };
-            }
-            const linkedArticle = focusTip.articleIds?.length
-              ? LIBRARY_ARTICLES.find(a => focusTip.articleIds.includes(a.id))
-              : (DRIVER_ARTICLE_MAP[weakest.key] ? LIBRARY_ARTICLES.find(a => a.id === DRIVER_ARTICLE_MAP[weakest.key]) : null);
-            const displayTip = { icon: focusTip.icon, iconName: focusTip.iconName, label: focusTip.label, focus: focusTip.focus };
-
-            // ── Week-over-week change (if available) ──
-            const prev = nonBaseline.length >= 2 ? nonBaseline[nonBaseline.length - 2] : null;
-            const scoreDiff = prev ? latest.score - prev.score : null;
-
-            return (
-              <div style={{ background: CARD, border: `1.5px solid #e0e0e0`, borderRadius: "16px", overflow: "hidden", marginBottom: "1.5rem", ...fadeUp(480) }}>
-                {/* Focus body */}
-                <div style={{ padding: "1.2rem 1.4rem" }}>
-                  {/* Label pills */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.85rem" }}>
-                    <div style={{
-                      background: `${G}18`, border: `1px solid ${G}40`,
-                      borderRadius: "8px", padding: "0.25rem 0.6rem",
-                      fontSize: "0.68rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em",
-                      display: "flex", alignItems: "center", gap: "0.3rem",
-                    }}>
-                      Today's Focus
-                    </div>
-                    <div style={{
-                      background: "#f0f0f0", borderRadius: "8px", padding: "0.25rem 0.6rem",
-                      fontSize: "0.68rem", fontWeight: "bold", color: "#555", letterSpacing: "0.06em",
-                    }}>
-                      {displayTip.label.toUpperCase()}
-                    </div>
-                  </div>
-                  {/* Icon + tip */}
-                  <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
-                    <div style={{
-                      width: "56px", height: "56px", flexShrink: 0,
-                      background: `${G}15`, borderRadius: "14px",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {displayTip.iconName
-                        ? <GBSCIcon name={displayTip.iconName} size={48} color={G} strokeWidth={0}/>
-                        : <span style={{fontSize:"1.4rem"}}>{displayTip.icon}</span>}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: "0.9rem", color: DARK, lineHeight: 1.65 }}>{displayTip.focus}</div>
-                    </div>
-                  </div>
-                  {/* Read More CTA */}
-                  {linkedArticle && (
-                    <button onClick={() => { setLibraryArticleId(linkedArticle.id); setView("library"); }}
-                      style={{
-                        marginTop: "1rem", width: "100%",
-                        background: `${G}12`, border: `1.5px solid ${G}`,
-                        borderRadius: "10px", padding: "0.65rem 1rem",
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        cursor: "pointer", gap: "0.5rem",
-                      }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <GBSCIcon name="book" size={16} color="#2a7a14" strokeWidth={0}/>
-                        <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#2a7a14" }}>Read: {linkedArticle.title}</span>
-                      </div>
-                      <span style={{ fontSize: "1rem", color: G }}>→</span>
-                    </button>
-                  )}
                 </div>
               </div>
             );
@@ -2305,10 +2176,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <div style={{ color: "#ccc", fontSize: "0.82rem", marginTop: "0.4rem" }}>
                 Status: <span style={{ color: accentColor }}>{responses[already]?.label}</span>
               </div>
-              <button onClick={() => setView("profile")}
-                style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", marginTop: "1.2rem", fontSize: "0.82rem" }}>
-                ← Back to profile
-              </button>
+
             </div>
           ) : (
             /* Response buttons */
@@ -2510,10 +2378,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <div style={{ color: "#888", fontSize: "0.82rem", marginTop: "0.4rem" }}>
                 Result: <span style={{ color: accentColor }}>{responses[already]?.label}</span>
               </div>
-              <button onClick={() => setView("profile")}
-                style={{ background: "none", border: "none", color: "#666", cursor: "pointer", marginTop: "1.2rem", fontSize: "0.82rem" }}>
-                ← Back to profile
-              </button>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
@@ -2745,16 +2609,18 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", paddingBottom: "0.4rem" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: "0.75rem", background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", paddingBottom: "0" }}>
             <button onClick={() => setView("profile")}
-              style={{ border: "none", cursor: "pointer", borderRadius: "999px", padding: "0.2rem 1rem 0.3rem",
-                background: `${G}22`, borderColor: `${G}66`, borderWidth: "1px", borderStyle: "solid",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G }}>
+              style={{ border: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.25rem 1.2rem 0.4rem",
+                background: G,
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#fff" }}>
               MY PROFILE
             </button>
             <button onClick={() => setView("checkFeedback")}
-              style={{ background: "none", border: "none", cursor: "pointer", borderRadius: "999px", padding: "0.2rem 1rem 0.3rem",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#666" }}>
+              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.2)", borderTop: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.25rem 1.2rem 0.4rem",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.6)" }}>
               MY RESULTS
             </button>
           </div>
@@ -2817,7 +2683,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             if (!thisWeekCheck) return null;
             const done = !!thisWeekCheck.midweekStatus;
             if (!done && !isMidweekWindow()) return null;
-            const statusColors = { on_track: G, slightly_off: "#e09020", off_track: "#888580" };
+            const statusColors = { on_track: G, slightly_off: "#8A94A6", off_track: "#888580" };
             const statusLabels = { on_track: "On Track ✓", slightly_off: "Slightly Off", off_track: "At Risk" };
             const statusColor = done ? (statusColors[thisWeekCheck.midweekStatus] || G) : G;
             return (
