@@ -1671,18 +1671,18 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         `}</style>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <div style={{ display: "flex", justifyContent: "center", marginTop: "-1px" }}>
-            <div style={{
-              background: "rgba(45,45,45,0.82)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              borderRadius: "0 0 10px 10px",
-              padding: "0.2rem 1rem 0.3rem",
-              fontSize: "0.6rem",
-              fontWeight: "bold",
-              letterSpacing: "0.12em",
-              color: G,
-            }}>MY RESULTS</div>
+          <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", paddingBottom: "0.4rem" }}>
+            <button onClick={() => setView("checkFeedback")}
+              style={{ border: "none", cursor: "pointer", borderRadius: "999px", padding: "0.2rem 1rem 0.3rem",
+                background: `${G}22`, borderColor: `${G}66`, borderWidth: "1px", borderStyle: "solid",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G }}>
+              MY RESULTS
+            </button>
+            <button onClick={() => setView("profile")}
+              style={{ background: "none", border: "none", cursor: "pointer", borderRadius: "999px", padding: "0.2rem 1rem 0.3rem",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#666" }}>
+              MY PROFILE
+            </button>
           </div>
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
@@ -1752,21 +1752,32 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* Tier card */}
 
-          {/* ── Mid-week check banner — Wednesday through Saturday ── */}
+          {/* ── Mid-week check banner — Wednesday+ or when done ── */}
           {(() => {
             const thisWeekCheck = getCurrentWeekCheck(currentMember);
             if (!thisWeekCheck) return null;
-            if (thisWeekCheck.midweekStatus !== null) return null;
-            if (!isMidweekWindow()) return null;
+            const done = !!thisWeekCheck.midweekStatus;
+            if (!done && !isMidweekWindow()) return null;
+            const statusColors = { on_track: G, slightly_off: "#e09020", off_track: "#888580" };
+            const statusLabels = { on_track: "On Track ✓", slightly_off: "Slightly Off", off_track: "At Risk" };
+            const statusColor = done ? (statusColors[thisWeekCheck.midweekStatus] || G) : G;
             return (
-              <div style={{ background: `linear-gradient(135deg, ${DARK}, #1a3a0a)`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer", ...fadeUp(0) }}
+              <div style={{
+                background: done ? `${statusColor}15` : `linear-gradient(135deg, ${DARK}, #1a3a0a)`,
+                border: `1.5px solid ${done ? statusColor+"44" : G+"33"}`,
+                borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.5rem",
+                display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer", ...fadeUp(0)
+              }}
                 onClick={() => setView("midweekCheckin")}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: G, letterSpacing: "0.08em", marginBottom: "0.2rem" }}>MID-WEEK CHECK</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>Are you on track to win your week?</div>
-                  <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>
+                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: done ? statusColor : G, letterSpacing: "0.08em", marginBottom: "0.2rem" }}>MID-WEEK CHECK</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: done ? statusColor : "#fff" }}>
+                    {done ? statusLabels[thisWeekCheck.midweekStatus] : "Are you on track to win your week?"}
+                  </div>
+                  {!done && <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>}
+                  {done && <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>Tap to update</div>}
                 </div>
-                <GBSCIcon name="check" size={28} color={G} strokeWidth={0}/>
+                <GBSCIcon name="check" size={28} color={done ? statusColor : G} strokeWidth={0}/>
               </div>
             );
           })()}
@@ -2734,99 +2745,39 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <div style={{ display: "flex", justifyContent: "center", marginTop: "-1px" }}>
-            <div style={{
-              background: "rgba(45,45,45,0.82)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
-              borderRadius: "0 0 10px 10px",
-              padding: "0.2rem 1rem 0.3rem",
-              fontSize: "0.6rem",
-              fontWeight: "bold",
-              letterSpacing: "0.12em",
-              color: G,
-            }}>MY PROFILE</div>
+          <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", paddingBottom: "0.4rem" }}>
+            <button onClick={() => setView("profile")}
+              style={{ border: "none", cursor: "pointer", borderRadius: "999px", padding: "0.2rem 1rem 0.3rem",
+                background: `${G}22`, borderColor: `${G}66`, borderWidth: "1px", borderStyle: "solid",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G }}>
+              MY PROFILE
+            </button>
+            <button onClick={() => setView("checkFeedback")}
+              style={{ background: "none", border: "none", cursor: "pointer", borderRadius: "999px", padding: "0.2rem 1rem 0.3rem",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#666" }}>
+              MY RESULTS
+            </button>
           </div>
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
-          {/* ── MID-WEEK BANNER ─────────────────────────────────────────────── */}
-          {(() => {
-            const thisWeek = getCurrentWeekCheck(currentMember);
-            if (!thisWeek) return null;
-            const alreadyDone = !!thisWeek.midweekStatus;
-            const showWindow = isMidweekWindow();
-            if (!showWindow && !alreadyDone) return null;
-            const statusColors = { on_track: G, slightly_off: "#e09020", off_track: "#C8C4BC" };
-            const statusLabels = { on_track: "On Track ✓", slightly_off: "Slightly Off", off_track: "At Risk" };
-            return (
-              <div
-                onClick={() => setView("midweekCheckin")}
-                style={{
-                  background: alreadyDone ? `${statusColors[thisWeek.midweekStatus] || G}15` : `${DARK}`,
-                  border: `1.5px solid ${alreadyDone ? (statusColors[thisWeek.midweekStatus] || G)+"44" : G+"33"}`,
-                  borderRadius: "12px", padding: "0.85rem 1.1rem",
-                  marginBottom: "1.2rem", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  ...fadeUp(0)
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#888", letterSpacing: "0.1em", marginBottom: "0.2rem" }}>THIS WEEK</div>
-                  <div style={{ fontSize: "0.88rem", fontWeight: "bold", color: alreadyDone ? (statusColors[thisWeek.midweekStatus] || G) : "#fff" }}>
-                    {alreadyDone ? `Status: ${statusLabels[thisWeek.midweekStatus]}` : "Mid-week check — how are you tracking?"}
-                  </div>
-                </div>
-                <div style={{ color: "#555", fontSize: "1rem", flexShrink: 0 }}>›</div>
-              </div>
-            );
-          })()}
-
-          {/* ── END-OF-WEEK BANNER ──────────────────────────────────────────── */}
-          {(() => {
-            const thisWeek = getCurrentWeekCheck(currentMember);
-            if (!thisWeek) return null;
-            const alreadyDone = !!thisWeek.weekResult;
-            const showWindow = isEndOfWeekWindow();
-            if (!showWindow && !alreadyDone) return null;
-            const resultColors = { won: G, stayed_in: "#e09020", reset: "#C8C4BC" };
-            const resultLabels = { won: "Won it ✓", stayed_in: "Stayed in it ✓", reset: "Reset next week" };
-            return (
-              <div
-                onClick={() => setView("weekReflection")}
-                style={{
-                  background: alreadyDone ? `${resultColors[thisWeek.weekResult] || G}15` : DARK,
-                  border: `1.5px solid ${alreadyDone ? (resultColors[thisWeek.weekResult] || G)+"44" : G+"33"}`,
-                  borderRadius: "12px", padding: "0.85rem 1.1rem",
-                  marginBottom: "1.2rem", cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  ...fadeUp(0)
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#888", letterSpacing: "0.1em", marginBottom: "0.2rem" }}>END OF WEEK</div>
-                  <div style={{ fontSize: "0.88rem", fontWeight: "bold", color: alreadyDone ? (resultColors[thisWeek.weekResult] || G) : "#fff" }}>
-                    {alreadyDone ? `Result: ${resultLabels[thisWeek.weekResult]}` : "Did you win your week?"}
-                  </div>
-                </div>
-                <div style={{ color: "#555", fontSize: "1rem", flexShrink: 0 }}>›</div>
-              </div>
-            );
-          })()}
-
           {/* ── ZONE 1: YOUR WEEK ──────────────────────────────────────────── */}
 
           {/* Hero card — name, CI, tier — with declared week integrated at bottom */}
-          <div style={{ background: DARK, borderRadius: "16px", marginBottom: "1.2rem", overflow: "hidden" }}>
+          <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #1a2a1a 100%)`, borderRadius: "16px", marginBottom: "1.2rem", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ padding: "1.5rem", color: "#fff", textAlign: "center" }}>
               <div style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{currentMember.name}</div>
-              <div style={{ color: "#aaa", fontSize: "0.85rem", marginBottom: ci !== null ? "0" : "0" }}>Week {checks.length} of 8</div>
+              <div style={{ color: "#aaa", fontSize: "0.85rem" }}>Week {checks.length} of 8</div>
               {ci !== null && (
                 <>
-                  <div style={{ fontSize: "3rem", fontWeight: "bold", color: G, margin: "0.5rem 0", fontFamily: SERIF, textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{ci}</div>
-                  <div style={{ color: tier.color, fontSize: "1rem", fontWeight: "bold", fontFamily: SERIF, display:"flex", alignItems:"center", justifyContent:"center", gap:"0.35rem" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginTop: "1rem", marginBottom: "0.2rem" }}>Capacity Index</div>
+                  <div style={{ fontSize: "3.5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{ci}</div>
+                  <div style={{ color: tier.color, fontSize: "1rem", fontWeight: "bold", fontFamily: SERIF, display:"flex", alignItems:"center", justifyContent:"center", gap:"0.35rem", marginTop: "0.4rem" }}>
                     <GBSCIcon name={tier.icon} size={18} color={tier.color} strokeWidth={2}/>
                     {tier.tier}
+                  </div>
+                  <div style={{ fontSize: "0.68rem", color: "#555", marginTop: "0.9rem", borderTop: "1px solid #ffffff12", paddingTop: "0.8rem", lineHeight: 1.5 }}>
+                    Your overall score — combines fitness, strength, and weekly habits.
                   </div>
                 </>
               )}
@@ -2860,19 +2811,32 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
-          {/* ── Mid-week check banner on profile — Wednesday through Saturday ── */}
+          {/* ── Mid-week check banner on profile — Wednesday+ or when done ── */}
           {(() => {
             const thisWeekCheck = getCurrentWeekCheck(currentMember);
-            if (!thisWeekCheck || thisWeekCheck.midweekStatus !== null || !isMidweekWindow()) return null;
+            if (!thisWeekCheck) return null;
+            const done = !!thisWeekCheck.midweekStatus;
+            if (!done && !isMidweekWindow()) return null;
+            const statusColors = { on_track: G, slightly_off: "#e09020", off_track: "#888580" };
+            const statusLabels = { on_track: "On Track ✓", slightly_off: "Slightly Off", off_track: "At Risk" };
+            const statusColor = done ? (statusColors[thisWeekCheck.midweekStatus] || G) : G;
             return (
-              <div style={{ background: `linear-gradient(135deg, ${DARK}, #1a3a0a)`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer" }}
+              <div style={{
+                background: done ? `${statusColor}15` : `linear-gradient(135deg, ${DARK}, #1a3a0a)`,
+                border: `1.5px solid ${done ? statusColor+"44" : G+"33"}`,
+                borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.2rem",
+                display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer"
+              }}
                 onClick={() => setView("midweekCheckin")}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: G, letterSpacing: "0.08em", marginBottom: "0.2rem" }}>MID-WEEK CHECK</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>Are you on track to win your week?</div>
-                  <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>
+                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: done ? statusColor : G, letterSpacing: "0.08em", marginBottom: "0.2rem" }}>MID-WEEK CHECK</div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: done ? statusColor : "#fff" }}>
+                    {done ? statusLabels[thisWeekCheck.midweekStatus] : "Are you on track to win your week?"}
+                  </div>
+                  {!done && <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>}
+                  {done && <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>Tap to update</div>}
                 </div>
-                <GBSCIcon name="check" size={28} color={G} strokeWidth={0}/>
+                <GBSCIcon name={done ? "check" : "check"} size={28} color={done ? statusColor : G} strokeWidth={0}/>
               </div>
             );
           })()}
@@ -2948,120 +2912,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </button>
           )}
 
-          {/* ── ZONE 2: YOUR RECORD ────────────────────────────────────────── */}
-
-          {/* This Week — status, role, and the three scores, all in one card */}
-          {(ws || ci !== null) && (
-            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
-              <button onClick={() => setThisWeekOpen(o => !o)}
-                style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>This Week</span>
-                <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: thisWeekOpen ? "rotate(180deg)" : "none" }}>▾</span>
-              </button>
-              {thisWeekOpen && (
-                <div style={{ padding: "0 1.3rem 1.2rem" }}>
-                  {ws && role && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem", paddingBottom: "1rem", borderBottom: "1px solid #f0f0f0" }}>
-                      <div style={{ lineHeight: 1 }}>
-                        {ws.icon ? <GBSCIcon name={ws.icon} size={28} color={ws.color} strokeWidth={0}/> : <span style={{fontSize:"1.8rem"}}>{ws.emoji}</span>}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: "bold", color: ws.color, fontSize: "0.92rem" }}>{ws.status}</div>
-                        <div style={{ fontSize: "0.76rem", color: "#666", marginTop: "0.1rem" }}>{ws.msg}</div>
-                      </div>
-                      <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <div style={{ fontSize: "0.65rem", color: "#aaa", marginBottom: "0.1rem" }}>ROLE</div>
-                        <div style={{ fontWeight: "bold", color: role.color, fontSize: "0.82rem" }}>{role.role}</div>
-                      </div>
-                    </div>
-                  )}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.6rem" }}>
-                    {[
-                      { label: "VO₂ Score",  val: currentMember.vo2Score_pre },
-                      { label: "Grip Score", val: currentMember.gripScore_pre },
-                      { label: checks.length === 0 ? "Baseline" : "Habit Avg", val: habitAvg ?? "—" }
-                    ].map(({ label, val }) => (
-                      <div key={label} style={{ background: PAGE_BG, borderRadius: "10px", padding: "0.7rem", textAlign: "center" }}>
-                        <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: G }}>{val}</div>
-                        <div style={{ fontSize: "0.68rem", color: "#888", marginTop: "0.1rem" }}>{label}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tier Progress */}
-          {ci !== null && (
-            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
-              <button onClick={() => setTierProgressOpen(o => !o)}
-                style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Tier Progress</span>
-                <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: tierProgressOpen ? "rotate(180deg)" : "none" }}>▾</span>
-              </button>
-              {tierProgressOpen && (
-                <div style={{ padding: "0 1.3rem 1.2rem" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "#888", marginBottom: "0.35rem" }}>
-                    <span style={{ fontWeight: "bold", color: tier.color, display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                      <GBSCIcon name={currentTierData.icon} size={14} color={tier.color} strokeWidth={2}/>{currentTierData.name}
-                    </span>
-                    {currentTierData.next && <span>{currentTierData.next}</span>}
-                  </div>
-                  <div style={{ background: "#e0e0e0", borderRadius: "999px", height: "10px", overflow: "hidden", marginBottom: "0.7rem" }}>
-                    <div style={{ background: `linear-gradient(90deg, ${tier.color}, ${G})`, width: `${progressPct}%`, height: "100%", borderRadius: "999px", transition: "width 0.6s ease" }} />
-                  </div>
-                  {currentTierData.next ? (
-                    <div style={{ fontSize: "0.85rem", color: DARK }}>
-                      <span style={{ fontWeight: "bold", color: G, fontSize: "1.1rem" }}>{pointsToNext}</span> point{pointsToNext !== 1 ? "s" : ""} to <strong>{currentTierData.next}</strong>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#1a7a00" }}>You've reached the top tier. Maintain the standard.</div>
-                  )}
-                  {/* Capacity Trend Chart — lives here now */}
-                  {checks.length >= 2 && (() => {
-                    const points = [
-                      ...(baseline ? [{ label: "Base", score: baseline.score }] : []),
-                      ...checks.map(c => ({ label: `W${c.week}`, score: c.score }))
-                    ];
-                    const minScore = Math.max(0, Math.min(...points.map(p => p.score)) - 10);
-                    const maxScore = Math.min(100, Math.max(...points.map(p => p.score)) + 10);
-                    const range = maxScore - minScore || 1;
-                    const W = 400, H = 90, PAD = 22;
-                    const plotW = W - PAD * 2;
-                    const plotH = H - PAD;
-                    const x = (i) => PAD + (i / (points.length - 1)) * plotW;
-                    const y = (score) => PAD / 2 + (1 - (score - minScore) / range) * plotH;
-                    const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p.score)}`).join(" ");
-                    const areaPath = `${linePath} L ${x(points.length - 1)} ${H} L ${x(0)} ${H} Z`;
-                    const totalChange = points[points.length-1].score - points[0].score;
-                    return (
-                      <div style={{ marginTop: "1rem", paddingTop: "0.9rem", borderTop: "1px solid #f0f0f0" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.5rem" }}>
-                          <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.05em" }}>Habit Score Trend</div>
-                          <div style={{ fontSize: "0.75rem", color: totalChange >= 0 ? G : "#e07030", fontWeight: "bold" }}>{totalChange >= 0 ? "+" : ""}{totalChange} pts overall</div>
-                        </div>
-                        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", display: "block" }}>
-                          {[0.25, 0.5, 0.75].map(t => (
-                            <line key={t} x1={PAD} y1={PAD/2+t*plotH} x2={W-PAD} y2={PAD/2+t*plotH} stroke="#e0e0e0" strokeWidth="1"/>
-                          ))}
-                          <path d={areaPath} fill={G} fillOpacity="0.08"/>
-                          <path d={linePath} fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          {points.map((p, i) => (
-                            <g key={i}>
-                              <circle cx={x(i)} cy={y(p.score)} r="4" fill={G}/>
-                              <text x={x(i)} y={H-2} textAnchor="middle" fontSize="9" fill="#aaa">{p.label}</text>
-                              <text x={x(i)} y={y(p.score)-8} textAnchor="middle" fontSize="9" fill="#444" fontWeight="bold">{p.score}</text>
-                            </g>
-                          ))}
-                        </svg>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Pod card */}
           {(pods || []).find(pod => pod.memberIds?.includes(currentMember.id)) && (
@@ -3074,234 +2924,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             />
           )}
 
-          {/* Check-In History */}
-          {(baseline || checks.length > 0) && (
-            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
-              <button onClick={() => setHistoryOpen(o => !o)}
-                style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Check-In History</span>
-                <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: historyOpen ? "rotate(180deg)" : "none" }}>▾</span>
-              </button>
-              {historyOpen && (
-                <div style={{ padding: "0 1.3rem 1.2rem" }}>
-                  {baseline && (
-                    <div style={{ display: "flex", justifyContent: "space-between", background: "#f0f7ec", border: `1px solid ${G}`, borderRadius: "12px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
-                      <span style={{ color: "#555" }}>Baseline — {baseline.date}</span>
-                      <span style={{ fontWeight: "bold", color: G }}>{baseline.score}/100</span>
-                    </div>
-                  )}
-                  {checks.map((c, i) => {
-                    const ws = getWeekStatus(c.score);
-                    return (
-                      <div key={i} style={{ background: CARD, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                          <div>
-                            <span style={{ color: "#666" }}>Week {c.week} — {c.date}</span>
-                            {ws && (
-                              <div style={{ marginTop: "0.2rem" }}>
-                                <span style={{ fontSize: "0.7rem", fontWeight: "bold", color: ws.color, background: ws.color + "15", borderRadius: "999px", padding: "0.1rem 0.55rem", display:"inline-flex", alignItems:"center", gap:"0.25rem" }}>
-                                  {ws.icon ? <GBSCIcon name={ws.icon} size={12} color={ws.color} strokeWidth={0}/> : ws.emoji} {ws.status}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <span style={{ fontWeight: "bold", color: G, flexShrink: 0 }}>{c.score}/100</span>
-                        </div>
-                        {c.disruption && c.disruption !== "None" && (
-                          <div style={{ fontSize: "0.72rem", color: c.disruption === "Major disruption" ? "#c07030" : "#b09020", marginTop: "0.25rem" }}>
-                            {c.disruption === "Major disruption"
-                              ? <><GBSCIcon name="wave" size={14} color="#c07030" strokeWidth={0}/> {c.disruption}</>
-                              : <><GBSCIcon name="ripple" size={14} color="#b09020" strokeWidth={0}/> {c.disruption}</>}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Capacity Drivers */}
-          {(() => {
-            const latest = [...checks].reverse()[0];
-            if (!latest) return null;
-            const workoutMap  = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
-            const zone2Map    = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 };
-            const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 };
-            const downshiftMap = { "None": 0, "1-2 times": 1, "3+ times": 2 };
-            const movementMap = { "Low": 0, "Moderate": 1, "High": 2 };
-            const sleepOppMap = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 };
-            const rows = [
-              { label: "Training",  value: workoutMap[latest.workouts] ?? 0, max: 4, display: `${latest.workouts} workouts` },
-              { label: "Zone 2",    value: zone2Map[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0), max: 3, display: latest.zone2 || latest.aerobic90 || "—" },
-              { label: "Strength",  value: latest.strengthRPE === "Yes" ? 1 : 0, max: 1, display: latest.strengthRPE },
-              { label: "Movement",  value: movementMap[latest.dailyMovement] ?? 0, max: 2, display: latest.dailyMovement },
-              { label: "Protein",   value: proteinMap[latest.protein ?? latest.proteinFloor] ?? 0, max: 3, display: latest.protein || latest.proteinFloor || "—" },
-              { label: "Sleep Opp.",value: sleepOppMap[latest.sleepOpportunity] ?? 0, max: 3, display: latest.sleepOpportunity || "—" },
-              { label: "Downshift", value: downshiftMap[latest.downshift ?? latest.regulation] ?? 0, max: 2, display: latest.downshift || latest.regulation || "—" },
-              { label: "Sleep Quality", value: parseInt(latest.sleepQuality) || 0, max: 5, display: `${latest.sleepQuality}/5` },
-              { label: "Energy",    value: parseInt(latest.energyLevel) || 0, max: 5, display: `${latest.energyLevel}/5` },
-              { label: "Recovery",  value: parseInt(latest.physicalRecovery) || 0, max: 5, display: `${latest.physicalRecovery}/5` },
-            ];
-            const sortedRows   = [...rows].sort((a,b) => (b.value/b.max) - (a.value/a.max));
-            const topDriver    = sortedRows[0];
-            const bottomDriver = sortedRows[sortedRows.length - 1];
-            const topPct       = Math.round((topDriver.value / topDriver.max) * 100);
-            const bottomPct    = Math.round((bottomDriver.value / bottomDriver.max) * 100);
-            return (
-              <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
-                {(topPct >= 70 || bottomPct < 50) && (
-                  <div style={{ padding: "0.7rem 1.3rem 0", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                    {topPct >= 70 && (
-                      <span style={{ fontSize: "0.72rem", background: `${G}15`, color: "#2a7a14", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
-                        <GBSCIcon name="arrow_up" size={12} color="#2a7a14" strokeWidth={0}/>Main driver: {topDriver.label}
-                      </span>
-                    )}
-                    {bottomPct < 50 && (
-                      <span style={{ fontSize: "0.72rem", background: "#f0f0ee", color: "#888580", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
-                        <GBSCIcon name="arrow_down" size={12} color="#888580" strokeWidth={0}/>Main limiter: {bottomDriver.label}
-                      </span>
-                    )}
-                  </div>
-                )}
-                <button onClick={() => setDriversOpen(o => !o)}
-                  style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                  <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Capacity Drivers</span>
-                  <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: driversOpen ? "rotate(180deg)" : "none" }}>▾</span>
-                </button>
-                {driversOpen && (
-                  <div style={{ padding: "0 1.3rem 1.2rem" }}>
-                    {[
-                      { group: "Performance", keys: ["Training","Zone 2","Strength"] },
-                      { group: "Lifestyle",   keys: ["Movement","Protein"] },
-                      { group: "Recovery",    keys: ["Sleep Opp.","Sleep Quality","Downshift","Energy","Recovery"] },
-                    ].map(({ group, keys }) => {
-                      const groupRows = rows.filter(r => keys.includes(r.label));
-                      if (!groupRows.length) return null;
-                      return (
-                        <div key={group} style={{ marginBottom: "1rem" }}>
-                          <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.5rem", fontWeight: "bold" }}>{group.toUpperCase()}</div>
-                          {groupRows.map(row => {
-                            const pct = Math.round((row.value / row.max) * 100);
-                            return (
-                              <div key={row.label} style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "0.55rem" }}>
-                                <div style={{ fontSize: "0.78rem", color: "#666", minWidth: "80px" }}>{row.label}</div>
-                                <div style={{ flex: 1, background: "#eee", borderRadius: "999px", height: "6px", overflow: "hidden" }}>
-                                  <div style={{ width: `${pct}%`, height: "100%", background: pct >= 80 ? G : pct >= 50 ? "#a0c060" : "#e09050", borderRadius: "999px", transition: "width 0.4s ease" }}/>
-                                </div>
-                                <div style={{ fontSize: "0.72rem", color: "#888", minWidth: "28px", textAlign: "right" }}>{pct}%</div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* Capacity Badges */}
-          {(() => {
-            if (!latest) return null;
-            const nonBaseline = checks.filter(c => c && !c.isBaseline);
-            const streak = (() => { let s = 0; for (let i = nonBaseline.length-1; i>=0; i--) { if (nonBaseline[i].score >= 55) s++; else break; } return s; })();
-            const allAbove55 = nonBaseline.length > 0 && nonBaseline.every(c => c.score >= 55);
-            const highCount  = nonBaseline.filter(c => c.score >= 85).length;
-            const earned = [];
-            if (nonBaseline.length >= 1)  earned.push({ emoji: "🌱", icon: "seedling", title: "First Step",         desc: "Completed your first weekly check-in." });
-            if (allAbove55 && nonBaseline.length >= 2) earned.push({ emoji: "🏋", icon: "dumbbell", title: "Consistent Trainer", desc: "Stayed above 55 every week so far." });
-            if (latest.physicalRecovery >= 4 && latest.energyLevel >= 4) earned.push({ emoji: "⚡", icon: "bounce", title: "Recovery Builder", desc: "Strong recovery and energy this week." });
-            if (streak >= 2)              earned.push({ emoji: "🔥", icon: "flame",    title: "Momentum",           desc: `${streak} weeks in a row above 55.` });
-            if (latest.strengthRPE === "Yes" && nonBaseline.filter(c => c.strengthRPE === "Yes").length >= 3) earned.push({ emoji: "💪", icon: "dumbbell", title: "Strength Streak", desc: "Challenging strength session 3+ weeks." });
-            if ((latest.zone2 === "90+" || latest.zone2 === "90+ min" || latest.aerobic90 === "Yes") && nonBaseline.filter(c => c.zone2 === "90+" || c.zone2 === "90+ min" || c.aerobic90 === "Yes").length >= 2) earned.push({ emoji: "🫁", icon: "lungs", title: "Aerobic Engine", desc: "90+ min Zone 2 in 2+ weeks." });
-            if (nonBaseline.some(c => c.score >= 55) && nonBaseline.some(c => c.score < 55) && latest.score >= 55) earned.push({ emoji: "↗️", icon: "bounce2", title: "Bounce Back", desc: "Recovered from a tough week." });
-            if (highCount >= 1)           earned.push({ emoji: "🏆", icon: "trophy",  title: "High Expansion",     desc: "Scored 85+ in at least one week." });
-            if (nonBaseline.length >= 1 && nonBaseline.every(c => c.score >= 55)) earned.push({ emoji: "🔰", icon: "shield",  title: "No Zero Weeks",     desc: "Every week above the minimum so far." });
-            if (streak >= 1 && nonBaseline.some(c => c.score < 55)) earned.push({ emoji: "🏃", icon: "runner",  title: "Stayed in Motion",  desc: "Kept going even after a reset week." });
-            if (nonBaseline.length >= 3 && nonBaseline.slice(-3).every(c => c.score >= 55)) earned.push({ emoji: "📚", icon: "book_open",title: "Stacked Weeks",     desc: "3+ consecutive weeks above minimum." });
-            if (nonBaseline.some(c => c.disruption === "Major disruption" && c.score >= 55)) earned.push({ emoji: "🔧", icon: "foundation", title: "Adapted Under Pressure", desc: "Stayed above minimum during major disruption." });
-            if (highCount >= 3)           earned.push({ emoji: "🥇", icon: "medal_gold", title: "Consistency Leader", desc: "Scored 85+ in 3 or more weeks." });
-            if (!earned.length) return null;
-            return (
-              <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
-                <button onClick={() => setBadgesOpen(o => !o)}
-                  style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-                  <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Capacity Badges <span style={{ fontWeight: "normal", color: "#aaa", fontSize: "0.8rem" }}>· {earned.length} earned</span></span>
-                  <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: badgesOpen ? "rotate(180deg)" : "none" }}>▾</span>
-                </button>
-                {badgesOpen && (
-                  <div style={{ padding: "0 1.3rem 1.2rem" }}>
-                    {earned.map((badge, i) => (
-                      <div key={i} style={{ display: "flex", gap: "0.8rem", alignItems: "flex-start", marginBottom: i < earned.length-1 ? "0.8rem" : 0, paddingBottom: i < earned.length-1 ? "0.8rem" : 0, borderBottom: i < earned.length-1 ? "1px solid #f0f0f0" : "none" }}>
-                        <div style={{ lineHeight: 1, flexShrink: 0, display:"flex", alignItems:"center" }}>
-                          {badge.icon ? <GBSCIcon name={badge.icon} size={24} color={G} strokeWidth={0}/> : <span style={{fontSize:"1.5rem"}}>{badge.emoji}</span>}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>{badge.title}</div>
-                          <div style={{ fontSize: "0.76rem", color: "#777", marginTop: "0.1rem" }}>{badge.desc}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* ── Consistency streak module ─────────────────────────────── */}
-          {(() => {
-            const streak = calcStreak(currentMember);
-            const allNonBase = checks;
-            const lastResult = allNonBase.length ? allNonBase[allNonBase.length - 1].weekResult : null;
-            if (streak === 0 && !lastResult) return null;
-            const badgeMap = {
-              won:        { icon: "flame",    color: G,        label: "Full Capacity Week" },
-              stayed_in:  { icon: "check",    color: "#4a9e38",label: "Won the Week" },
-              reset:      { icon: "refresh",  color: "#C8C4BC",label: "Stayed in the Game" },
-            };
-            const badge = badgeMap[lastResult];
-            return (
-              <div style={{ background: CARD, border: "1.5px solid #e8e8e8", borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#aaa", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>CONSISTENCY</div>
-                  {streak > 0 ? (
-                    <div style={{ fontSize: "1.05rem", fontWeight: "bold", color: DARK }}>
-                      {streak} week{streak !== 1 ? "s" : ""} in a row
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: "0.9rem", color: "#888" }}>Start your streak this week</div>
-                  )}
-                  {badge && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "0.25rem" }}>
-                      <GBSCIcon name={badge.icon} size={12} color={badge.color} strokeWidth={0}/>
-                      <span style={{ fontSize: "0.72rem", color: badge.color, fontWeight: "bold" }}>{badge.label}</span>
-                    </div>
-                  )}
-                </div>
-                {streak >= 3 && (
-                  <div style={{ fontSize: "1.8rem", lineHeight: 1 }}>🔥</div>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* Library nudge */}
-          <button onClick={() => setView("library")}
-            style={{ background: "none", border: "none", width: "100%", textAlign: "center", cursor: "pointer", padding: "0.3rem 0", marginBottom: "0.8rem" }}>
-            <span style={{ fontSize: "0.78rem", color: "#aaa" }}>Protocols, guides, and recovery tools</span>
-            <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}> → Library</span>
-          </button>
-
-          {/* Secondary actions — show for baseline-only AND weekly check-in members */}
-          {(checks.length > 0 || baseline) && (
-            <button onClick={() => setView("checkFeedback")}
-              style={{ width: "100%", background: "none", border: `2px solid ${G}`, color: G, borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.7rem" }}>
-              {checks.length > 0 ? "View My Last Results" : "View My Score & Role →"}
-            </button>
-          )}
           <button onClick={startEdit}
             style={{ width: "100%", background: "none", border: "2px solid #ddd", color: "#666", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.5rem", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.5rem" }}>
             <GBSCIcon name="pencil" size={16} color="#666" strokeWidth={0}/>Edit My Profile
