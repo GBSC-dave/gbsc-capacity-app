@@ -551,7 +551,6 @@ export default function GBSCApp() {
     try {
       await supabase.from("members").upsert({ id: m.id, data: m, updated_at: new Date().toISOString() });
       localStorage.setItem("gbsc-this-member", m.id);
-      setCurrentMember(m);
     } catch (e) { console.error("saveMember error:", e); throw e; }
     setMembers(prev => {
       const idx = prev.findIndex(x => x.id === m.id);
@@ -1144,6 +1143,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       gripScore_pre: gripScore,
     };
     await saveMember(updated);
+    setCurrentMember(updated);
     setView("profile");
   }
 
@@ -1245,6 +1245,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       setValidationMsg("Something went wrong saving your check-in. Please try again.");
       return;
     }
+    setCurrentMember(updatedMember);
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     const dw = getDeclaredWeek(updatedMember.weeklyChecks);
