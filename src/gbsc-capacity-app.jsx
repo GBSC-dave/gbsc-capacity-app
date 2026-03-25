@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://kosuhljlzzzjrbuzgmdr.supabase.co";
@@ -706,6 +706,7 @@ export default function GBSCApp() {
   // ── REGISTRATION (first-time only) ────────────────────────────────────────
   if (view === "register") {
     return (
+      <ErrorBoundary>
       <MemberPortal
         view="onboard"
         setView={setMemberView}
@@ -718,12 +719,14 @@ export default function GBSCApp() {
         onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView(dw ? "declaredWeek" : "checkFeedback"); }}
         onCoachAccess={() => setView("coachPin")}
       />
+      </ErrorBoundary>
     );
   }
 
   // ── RETURNING MEMBER ──────────────────────────────────────────────────────
   if (view === "member") {
     return (
+      <ErrorBoundary>
       <MemberPortal
         view={memberView}
         setView={setMemberView}
@@ -736,6 +739,7 @@ export default function GBSCApp() {
         onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView(dw ? "declaredWeek" : "checkFeedback"); }}
         onCoachAccess={() => setView("coachPin")}
       />
+      </ErrorBoundary>
     );
   }
 
@@ -1019,6 +1023,31 @@ function GBSCIcon({ name, size = 28, color = "currentColor", strokeWidth = 2.5 }
   return icons[name] || null;
 }
 
+// ─── Error Boundary ──────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  componentDidCatch(e, info) { console.error("GBSC Error:", e, info); }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: "2rem", fontFamily: "monospace", background: "#1a1a1a", color: "#ff6b6b", minHeight: "100vh" }}>
+          <div style={{ marginBottom: "1rem", fontWeight: "bold", fontSize: "1.1rem" }}>Render Error</div>
+          <div style={{ background: "#2a1a1a", padding: "1rem", borderRadius: "8px", whiteSpace: "pre-wrap", fontSize: "0.8rem" }}>
+            {this.state.error.toString()}
+            {this.state.error.stack && "\n\n" + this.state.error.stack.split("\n").slice(0,8).join("\n")}
+          </div>
+          <button onClick={() => this.setState({ error: null })}
+            style={{ marginTop: "1rem", background: "#5DC842", color: "#fff", border: "none", padding: "0.5rem 1rem", borderRadius: "6px", cursor: "pointer" }}>
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ─── Accordion Section Component ─────────────────────────────────────────────
 function AccordionSection({ label, open, onToggle, accentColor, textColor, children }) {
   return (
@@ -1230,22 +1259,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         weekResultDate: null,
       }]
     };
-    try {
-      await saveMember(updatedMember);
-    } catch (e) {
-      console.error("Check-in save failed:", e);
-      setValidationMsg("Something went wrong saving your check-in. Please try again.");
-      return;
-    }
+    await saveMember(updatedMember);
+    setCurrentMember(updatedMember);
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     const dw = getDeclaredWeek(updatedMember.weeklyChecks);
-    if (dw) {
-      setDeclaredWeek(dw);
-      setView("declaredWeek");
-    } else {
-      setView("checkFeedback");
-    }
+    setDeclaredWeek(dw);
+    setView("declaredWeek");
   }
 
 
@@ -2233,12 +2253,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           : c
       );
       const updated = { ...currentMember, weeklyChecks: updatedChecks };
-      try {
-        await saveMember(updated);
-      } catch (e) {
-        console.error("Midweek save failed:", e);
-        return;
-      }
+      await saveMember(updated);
+      setCurrentMember(updated);
       setView("midweekResult");
     }
 
@@ -2444,12 +2460,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           : c
       );
       const updated = { ...currentMember, weeklyChecks: updatedChecks };
-      try {
-        await saveMember(updated);
-      } catch (e) {
-        console.error("Week result save failed:", e);
-        return;
-      }
+      await saveMember(updated);
+      setCurrentMember(updated);
       setView("weekReflectionResult");
     }
 
