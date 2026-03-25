@@ -472,18 +472,7 @@ export default function GBSCApp() {
 
   useEffect(() => { init(); }, []);
 
-  // Keep body background fixed so gradient stays locked while content scrolls
-  // Switch between dark and light gradient based on active view + memberView
-  useEffect(() => {
-    const darkTopViews = ["loading", "coachPin", "coach"];
-    const darkMemberViews = ["midweekCheckin", "midweekResult", "weekReflection", "weekReflectionResult", "declaredWeek"];
-    const isDark = darkTopViews.includes(view)
-      || (view === "member" && darkMemberViews.includes(memberView));
-    document.body.style.background = isDark ? DARK_BG : LIGHT_BG;
-    document.body.style.backgroundAttachment = "fixed";
-    document.body.style.margin = "0";
-    document.body.style.minHeight = "100vh";
-  }, [view, memberView]);
+
 
   async function init() {
     const MIN_SPLASH_MS = 6000; // minimum time logo is visible — extended so tagline has time to land
@@ -564,7 +553,7 @@ export default function GBSCApp() {
   if (view === "loading") {
     return (
       <div style={{
-        minHeight: "100vh", background: "transparent",
+        minHeight: "100vh", background: DARK_BG,
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         opacity: splashFading ? 0 : 1,
         transition: splashFading ? "opacity 1.2s ease" : "none",
@@ -617,7 +606,7 @@ export default function GBSCApp() {
             <div style={{
               position: "absolute",
               inset: "-80px",
-              background: "radial-gradient(ellipse 60% 60% at 52.9% 50%, rgba(93,200,66,0.28) 0%, rgba(93,200,66,0.08) 55%, transparent 80%)",
+              background: "radial-gradient(ellipse 60% 60% at 47.9% 50%, rgba(93,200,66,0.28) 0%, rgba(93,200,66,0.08) 55%, transparent 80%)",
               opacity: 0,
               animation: "glowRise 1.4s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards, glowPulse 3.5s ease-in-out 1.9s infinite",
               willChange: "opacity",
@@ -677,7 +666,7 @@ export default function GBSCApp() {
   // ── COACH PIN ─────────────────────────────────────────────────────────────
   if (view === "coachPin") {
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
         <img src={LOGO_HORIZ} alt="GBSC" style={{ width: "min(280px, 80vw)", marginBottom: "2rem" }} />
         <div style={{ background: DARK, borderRadius: "16px", padding: "2rem", width: "100%", maxWidth: "320px" }}>
           <div style={{ color: "#fff", fontWeight: "bold", fontSize: "1.1rem", marginBottom: "1.2rem", textAlign: "center", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.4rem" }}><GBSCIcon name="lock" size={18} color="#fff" strokeWidth={0}/>Coach Access</div>
@@ -1298,7 +1287,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "onboard") {
     // Step 1: Profile info
     if (onboardStep === 1) return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
@@ -1333,7 +1322,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     // Step 2: Baseline check-in
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
@@ -1655,7 +1644,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         <style>{`
           @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
           @keyframes gbscTierSlide {
@@ -2237,7 +2226,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "midweekCheckin" && currentMember) {
     const allChecks = currentMember.weeklyChecks || [];
     const thisWeek  = getCurrentWeekCheck(currentMember);
-    if (!thisWeek) return null;
+    if (!thisWeek) { setView("profile"); return null; }
 
     const already = thisWeek.midweekStatus;
     const dw = declaredWeek || getDeclaredWeek(allChecks);
@@ -2267,7 +2256,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     };
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
@@ -2278,7 +2267,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               Are you on track<br/>to win your week?
             </div>
             {dw && (
-              <div style={{ fontSize: "0.82rem", color: "#888", marginTop: "0.4rem" }}>
+              <div style={{ fontSize: "0.82rem", color: "#ccc", marginTop: "0.4rem" }}>
                 Your goal: <span style={{ color: accentColor, fontWeight: "bold" }}>{dw.winLine}</span>
               </div>
             )}
@@ -2291,11 +2280,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <div style={{ color: "#fff", fontWeight: "bold", marginTop: "0.7rem", fontSize: "1rem" }}>
                 Already checked in
               </div>
-              <div style={{ color: "#888", fontSize: "0.82rem", marginTop: "0.4rem" }}>
+              <div style={{ color: "#ccc", fontSize: "0.82rem", marginTop: "0.4rem" }}>
                 Status: <span style={{ color: accentColor }}>{responses[already]?.label}</span>
               </div>
               <button onClick={() => setView("profile")}
-                style={{ background: "none", border: "none", color: "#666", cursor: "pointer", marginTop: "1.2rem", fontSize: "0.82rem" }}>
+                style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", marginTop: "1.2rem", fontSize: "0.82rem" }}>
                 ← Back to profile
               </button>
             </div>
@@ -2314,14 +2303,14 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   onMouseLeave={e => { e.currentTarget.style.background="#ffffff08"; e.currentTarget.style.borderColor="#ffffff18"; }}
                 >
                   <div style={{ fontWeight: "bold", color: "#fff", fontSize: "1rem", marginBottom: "0.2rem" }}>{label}</div>
-                  <div style={{ fontSize: "0.78rem", color: "#888" }}>{desc}</div>
+                  <div style={{ fontSize: "0.78rem", color: "#bbb" }}>{desc}</div>
                 </button>
               ))}
             </div>
           )}
 
           <button onClick={() => setView("profile")}
-            style={{ background: "none", border: "none", color: "#555", cursor: "pointer", marginTop: "2rem", fontSize: "0.82rem", textAlign: "center" }}>
+            style={{ background: "none", border: "none", color: "#999", cursor: "pointer", marginTop: "2rem", fontSize: "0.82rem", textAlign: "center" }}>
             ← Back to profile
           </button>
         </div>
@@ -2332,37 +2321,71 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   // ── MID-WEEK RESULT ────────────────────────────────────────────────────────
   if (view === "midweekResult" && currentMember) {
     const thisWeek = getCurrentWeekCheck(currentMember);
+    if (!thisWeek) { setView("checkFeedback"); return null; }
     const status = thisWeek?.midweekStatus;
     const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || []);
     const accentColor = dw?.color || G;
 
+    // Rotating message banks — pick one at random each render
+    const midweekMessages = {
+      on_track: [
+        "Keep stacking wins.",
+        "You're building momentum.",
+        "This is how progress compounds.",
+        "Consistency compounds.",
+        "Stay in it.",
+      ],
+      slightly_off: [
+        "Small adjustments work.",
+        "You're still in it.",
+        "Reset the day, not the week.",
+        "Small days add up.",
+        "Momentum beats motivation.",
+      ],
+      off_track: [
+        "A small win today matters.",
+        "Don't chase perfect.",
+        "Keep the week alive.",
+        "Showing up counts.",
+        "Stay in it.",
+      ],
+    };
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
     const resultContent = {
       on_track: {
         headline: "Keep going.",
-        body: "You're on pace to win your week.",
+        reframe: "You're building consistency.",
+        reframeSub: "That's what actually drives results.",
+        rotatingMsg: pick(midweekMessages.on_track),
         icon: "bounce2",
         color: G,
+        bullets: null,
       },
       slightly_off: {
         headline: "Small adjustment.",
-        body: null,
-        bullets: ["Engine work", "Sleep tonight", "Protein at your next meal"],
+        reframe: "Small adjustments beat perfect plans.",
+        reframeSub: "You're still in it.",
+        rotatingMsg: pick(midweekMessages.slightly_off),
         icon: "ripple",
         color: "#e09020",
+        bullets: ["Engine work", "Sleep tonight", "Protein at your next meal"],
       },
       off_track: {
-        headline: "Reset.",
-        body: "Win the week like this:",
-        bullets: ["1 workout", "30 min movement", "Protein today"],
+        headline: "Missing days is normal.",
+        reframe: "Staying in it is what matters.",
+        reframeSub: null,
+        rotatingMsg: pick(midweekMessages.off_track),
         icon: "refresh",
         color: "#C8C4BC",
+        bullets: ["1 workout", "30 min movement", "Protein today"],
       },
     };
 
     const content = resultContent[status] || resultContent.on_track;
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
 
@@ -2370,18 +2393,20 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <GBSCIcon name={content.icon} size={52} color={content.color} strokeWidth={0}/>
           </div>
 
-          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.8rem" }}>
+          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.5rem" }}>
             {content.headline}
           </div>
 
-          {content.body && (
-            <div style={{ fontSize: "0.95rem", color: "#aaa", marginBottom: content.bullets ? "1rem" : 0, lineHeight: 1.6 }}>
-              {content.body}
-            </div>
-          )}
+          {/* Reframe lines */}
+          <div style={{ marginBottom: "1.2rem" }}>
+            <div style={{ fontSize: "1rem", color: "#ddd", lineHeight: 1.6 }}>{content.reframe}</div>
+            {content.reframeSub && (
+              <div style={{ fontSize: "0.9rem", color: "#aaa", lineHeight: 1.6 }}>{content.reframeSub}</div>
+            )}
+          </div>
 
           {content.bullets && (
-            <div style={{ background: "#ffffff0a", borderRadius: "12px", padding: "1rem 1.4rem", marginBottom: "1rem", textAlign: "left", width: "100%" }}>
+            <div style={{ background: "#ffffff0a", borderRadius: "12px", padding: "1rem 1.4rem", marginBottom: "1.2rem", textAlign: "left", width: "100%" }}>
               {content.bullets.map(b => (
                 <div key={b} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.35rem 0", borderBottom: "1px solid #ffffff0a" }}>
                   <GBSCIcon name="check" size={14} color={content.color} strokeWidth={0}/>
@@ -2391,12 +2416,17 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
+          {/* Rotating message */}
+          <div style={{ fontSize: "0.78rem", color: content.color, fontWeight: "bold", letterSpacing: "0.04em", marginBottom: "0.5rem", opacity: 0.9 }}>
+            {content.rotatingMsg}
+          </div>
+
           <button onClick={() => setView("checkFeedback")}
             style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginTop: "1.5rem" }}>
             Back to My Results →
           </button>
           <button onClick={() => setView("profile")}
-            style={{ width: "100%", background: "none", border: "none", color: "#666", cursor: "pointer", marginTop: "0.5rem", fontSize: "0.85rem" }}>
+            style={{ width: "100%", background: "none", border: "none", color: "#aaa", cursor: "pointer", marginTop: "0.5rem", fontSize: "0.85rem" }}>
             Go to My Profile
           </button>
         </div>
@@ -2438,7 +2468,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     };
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
@@ -2505,22 +2535,51 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const accentColor = dw?.color || G;
     const streak = calcStreak(currentMember);
 
+    // Rotating message banks for end-of-week
+    const eowMessages = {
+      won: [
+        "Keep stacking wins.",
+        "This is how progress compounds.",
+        "Consistency compounds.",
+        "Momentum beats motivation.",
+        "You're building momentum.",
+      ],
+      stayed_in: [
+        "Small days add up.",
+        "Showing up counts.",
+        "Stay in it.",
+        "Momentum beats motivation.",
+        "Consistency compounds.",
+      ],
+      reset: [
+        "Small days add up.",
+        "Stay in it.",
+        "Showing up counts.",
+        "Momentum beats motivation.",
+        "Consistency compounds.",
+      ],
+    };
+    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
     const resultContent = {
       won: {
-        headline: "Strong week.",
-        body: "That's how capacity builds.",
+        headline: "You followed through.",
+        reframe: "That's how capacity builds over time.",
+        rotatingMsg: pick(eowMessages.won),
         icon: "flame",
         color: G,
       },
       stayed_in: {
-        headline: "You stayed in it.",
-        body: "That counts. Keep building.",
+        headline: "You didn't fall off.",
+        reframe: "That's real consistency.",
+        rotatingMsg: pick(eowMessages.stayed_in),
         icon: "bounce2",
         color: "#e09020",
       },
       reset: {
-        headline: "Reset.",
-        body: "Next week starts fresh.",
+        headline: "One week doesn't define you.",
+        reframe: "What matters is coming back.",
+        rotatingMsg: pick(eowMessages.reset),
         icon: "refresh",
         color: "#C8C4BC",
       },
@@ -2529,7 +2588,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const content = resultContent[result] || resultContent.stayed_in;
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
 
@@ -2537,11 +2596,22 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <GBSCIcon name={content.icon} size={52} color={content.color} strokeWidth={0}/>
           </div>
 
-          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.6rem" }}>
+          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.5rem" }}>
             {content.headline}
           </div>
-          <div style={{ fontSize: "0.95rem", color: "#aaa", marginBottom: "1.5rem", lineHeight: 1.6 }}>
-            {content.body}
+          <div style={{ fontSize: "1rem", color: "#ddd", marginBottom: "0.4rem", lineHeight: 1.6 }}>
+            {content.reframe}
+          </div>
+          {/* Rotating message + optional role identity line */}
+          <div style={{ marginBottom: "1.2rem" }}>
+            <div style={{ fontSize: "0.78rem", color: content.color, fontWeight: "bold", letterSpacing: "0.04em", opacity: 0.9 }}>
+              {content.rotatingMsg}
+            </div>
+            {dw?.role && result !== "reset" && (
+              <div style={{ fontSize: "0.72rem", color: "#777", marginTop: "0.3rem", fontStyle: "italic" }}>
+                {dw.role === "Anchor" ? "Anchors stay steady." : dw.role === "Builder" ? "This is what a Builder does." : dw.role === "Expansion" ? "Expansion weeks require follow-through." : null}
+              </div>
+            )}
           </div>
 
           {/* Streak display */}
@@ -2655,7 +2725,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const checkedInThisWeek  = lastCheck && !isEligibleForCheckin(lastCheck.date);
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
           <div style={{ display: "flex", justifyContent: "center", marginTop: "-1px" }}>
@@ -3238,7 +3308,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   if (view === "editProfile" && currentMember && editForm) {
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setView("profile")} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>← Back to Profile</button>
@@ -3273,7 +3343,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const lastCheckGate = existingWeeksGate.length > 0 ? existingWeeksGate[existingWeeksGate.length - 1] : null;
     if (lastCheckGate && lastCheckGate.date && !isEligibleForCheckin(lastCheckGate.date)) {
         return (
-          <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
             {hdr}
             <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", textAlign: "center" }}>
               <div style={{ marginBottom: "1rem" }}><GBSCIcon name="check" size={52} color="#4a9e38" strokeWidth={0}/></div>
@@ -3297,7 +3367,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }
     const weekNum = (currentMember.weeklyChecks?.filter(c => c && !c.isBaseline).length || 0) + 1;
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           {(() => {
@@ -4024,7 +4094,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
     : LIBRARY_ARTICLES.filter(a => a.category === activeCategory);
 
   return (
-    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
       <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
         <div style={{ color: "#fff", fontWeight: "bold", letterSpacing: "0.05em", flex: 1 }}>Recovery Library</div>
@@ -4078,7 +4148,7 @@ function RecoveryLibrary({ onBack, initialArticleId }) {
 
 function ArticleReader({ article, onBack }) {
   return (
-    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
       <div style={{ background: DARK, padding: "1rem 1.5rem", display: "flex", alignItems: "center", gap: "1rem" }}>
         <button onClick={onBack} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1.2rem" }}>←</button>
         <div style={{ flex: 1 }}>
@@ -4307,7 +4377,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     const ci = habitAvg !== null ? calcCapacityIndex(selected.vo2Score_pre, selected.gripScore_pre, habitAvg) : null;
     const tier = ci !== null ? getCapacityTier(ci) : null;
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "600px", margin: "0 auto", padding: "1.5rem" }}>
           <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: G, cursor: "pointer", marginBottom: "1rem", fontWeight: "bold" }}>← All Members</button>
@@ -4499,7 +4569,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     );
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -4839,7 +4909,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       : "";
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
 
@@ -5223,7 +5293,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         setPodDraft(d => ({ ...d, name: pick.name, emoji: pick.emoji }));
       };
       return (
-        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+        <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
           {hdr}
           <div style={{ maxWidth: "520px", margin: "0 auto", padding: "1.5rem" }}>
             <button onClick={() => { setEditingPod(null); setPodDraft(null); }}
@@ -5346,7 +5416,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
 
     // Pods list view
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.2rem" }}>
@@ -5441,7 +5511,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+    <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
       {hdr}
       <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
         {/* Gym summary */}
