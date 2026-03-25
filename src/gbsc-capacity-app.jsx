@@ -2233,6 +2233,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* Capacity Badges */}
           {(() => {
+            const latest = checks.filter(c => c && !c.isBaseline).slice(-1)[0] || null;
             if (!latest) return null;
             const nonBaseline = checks.filter(c => c && !c.isBaseline);
             const streak = (() => { let s = 0; for (let i = nonBaseline.length-1; i>=0; i--) { if (nonBaseline[i].score >= 55) s++; else break; } return s; })();
