@@ -1045,15 +1045,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [lastCheckScore, setLastCheckScore] = useState(null);
   const [displayedScore, setDisplayedScore] = useState(0);
 
-  // Seed score display when landing on checkFeedback from profile
-  // (when arriving from check-in submit, lastCheckScore is already set)
-  useEffect(() => {
-    if (view === "checkFeedback" && lastCheckScore === null) {
-      const checks = (currentMember?.weeklyChecks || []).filter(c => c && !c.isBaseline);
-      const latestScore = checks.length ? checks[checks.length - 1].score : null;
-      if (latestScore !== null) setLastCheckScore(latestScore);
-    }
-  }, [view, currentMember]);
   const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
   const [validationMsg, setValidationMsg] = useState("");
   const [declaredWeek, setDeclaredWeek] = useState(null);
@@ -1064,6 +1055,22 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [communityOpen, setCommunityOpen] = useState(false);
   const [thisWeekOpen, setThisWeekOpen]   = useState(false);
   const [tierProgressOpen, setTierProgressOpen] = useState(false);
+  const [editForm, setEditForm] = useState(null);
+  const [tierExpanded, setTierExpanded] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [libraryArticleId, setLibraryArticleId] = useState(null); // opens library to specific article
+  const [driversOpen, setDriversOpen] = useState(false);
+  const [badgesOpen, setBadgesOpen] = useState(false);
+
+  // Seed score display when landing on checkFeedback from profile
+  // (when arriving from check-in submit, lastCheckScore is already set)
+  useEffect(() => {
+    if (view === "checkFeedback" && lastCheckScore === null) {
+      const checks = (currentMember?.weeklyChecks || []).filter(c => c && !c.isBaseline);
+      const latestScore = checks.length ? checks[checks.length - 1].score : null;
+      if (latestScore !== null) setLastCheckScore(latestScore);
+    }
+  }, [view, currentMember]);
 
   // Scroll to top and reset accordion state on every view transition
   useEffect(() => {
@@ -1098,12 +1105,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     return () => clearInterval(timer);
   }, [lastCheckScore]);
 
-  const [editForm, setEditForm] = useState(null);
-  const [tierExpanded, setTierExpanded] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [libraryArticleId, setLibraryArticleId] = useState(null); // opens library to specific article
-  const [driversOpen, setDriversOpen] = useState(false);   // profile page drivers accordion
-  const [badgesOpen, setBadgesOpen] = useState(false);     // profile page badges accordion
+ to specific article
+
 
   function startEdit() {
     setEditForm({
