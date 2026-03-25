@@ -475,7 +475,9 @@ export default function GBSCApp() {
   // Keep body background fixed so gradient stays locked while content scrolls
   // Switch between dark and light gradient based on active view
   useEffect(() => {
-    const isDark = view === "loading" || view === "coachPin" || view === "coach";
+    const isDark = view === "loading" || view === "coachPin" || view === "coach"
+      || view === "midweekCheckin" || view === "midweekResult"
+      || view === "weekReflection" || view === "weekReflectionResult";
     document.body.style.background = isDark ? DARK_BG : LIGHT_BG;
     document.body.style.backgroundAttachment = "fixed";
     document.body.style.margin = "0";
@@ -549,8 +551,8 @@ export default function GBSCApp() {
     try {
       await supabase.from("members").upsert({ id: m.id, data: m, updated_at: new Date().toISOString() });
       localStorage.setItem("gbsc-this-member", m.id);
-    } catch (e) { console.error(e); }
-    setCurrentMember(m);
+      setCurrentMember(m);
+    } catch (e) { console.error("saveMember error:", e); throw e; }
     setMembers(prev => {
       const idx = prev.findIndex(x => x.id === m.id);
       if (idx >= 0) { const n = [...prev]; n[idx] = m; return n; }
@@ -1236,13 +1238,22 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         weekResultDate: null,
       }]
     };
-    await saveMember(updatedMember);
-    setCurrentMember(updatedMember);
+    try {
+      await saveMember(updatedMember);
+    } catch (e) {
+      console.error("Check-in save failed:", e);
+      setValidationMsg("Something went wrong saving your check-in. Please try again.");
+      return;
+    }
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     const dw = getDeclaredWeek(updatedMember.weeklyChecks);
-    setDeclaredWeek(dw);
-    setView("declaredWeek");
+    if (dw) {
+      setDeclaredWeek(dw);
+      setView("declaredWeek");
+    } else {
+      setView("checkFeedback");
+    }
   }
 
 
@@ -2242,7 +2253,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     };
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
@@ -2337,7 +2348,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const content = resultContent[status] || resultContent.on_track;
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
 
@@ -2404,7 +2415,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     };
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
@@ -2495,7 +2506,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const content = resultContent[result] || resultContent.stayed_in;
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
 
