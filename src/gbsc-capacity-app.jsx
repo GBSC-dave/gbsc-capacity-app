@@ -460,6 +460,9 @@ function calcWeeklyScore(check) {
 // ─── Main App ─────────────────────────────────────────────────────────────────
 const COACH_PIN = "12345";
 
+// Shared animation helper — used across multiple views
+const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
+
 export default function GBSCApp() {
   const [view, setView] = useState("loading"); // loading | member | register | coach | coachPin
   const [memberView, setMemberView] = useState("profile"); // checkin | profile | checkFeedback | midweekCheckin | endOfWeek
@@ -1655,7 +1658,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }
     const community = getCommunityStats();
 
-    const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
 
     return (
       <div style={{ minHeight: "100vh", background: LIGHT_BG, fontFamily: SANS }}>
