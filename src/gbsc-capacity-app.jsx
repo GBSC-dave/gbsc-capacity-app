@@ -1841,56 +1841,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           })()}
 
           {/* Tier card */}
-
-          {/* ── Mid-week check banner — Wednesday+ or when done ── */}
-          {(() => {
-            const thisWeekCheck = getCurrentWeekCheck(currentMember);
-            if (!thisWeekCheck) return null;
-            const done = !!thisWeekCheck.midweekStatus;
-            if (!done && !isMidweekWindow()) return null;
-            const statusColors = { on_track: G, slightly_off: "#8A94A6", off_track: "#888580" };
-            const statusLabels = { on_track: "On Track ✓", slightly_off: "Slightly Off", off_track: "At Risk" };
-            const statusColor = done ? (statusColors[thisWeekCheck.midweekStatus] || G) : G;
-            return (
-              <div style={{
-                background: done ? `${statusColor}15` : `linear-gradient(135deg, ${DARK}, #1a3a0a)`,
-                border: `1.5px solid ${done ? statusColor+"44" : G+"33"}`,
-                borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.5rem",
-                display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer", ...fadeUp(0)
-              }}
-                onClick={() => setView("midweekCheckin")}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: done ? statusColor : G, letterSpacing: "0.08em", marginBottom: "0.2rem" }}>MID-WEEK CHECK</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: done ? statusColor : "#fff" }}>
-                    {done ? statusLabels[thisWeekCheck.midweekStatus] : "Are you on track to win your week?"}
-                  </div>
-                  {!done && <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>}
-                  {done && <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>Tap to update</div>}
-                </div>
-                <GBSCIcon name="check" size={28} color={done ? statusColor : G} strokeWidth={0}/>
-              </div>
-            );
-          })()}
-
-          {/* ── End-of-week reflection banner — Sunday ── */}
-          {(() => {
-            const thisWeekCheck = getCurrentWeekCheck(currentMember);
-            if (!thisWeekCheck) return null;
-            if (thisWeekCheck.weekResult !== null) return null;
-            if (!isEndOfWeekWindow()) return null;
-            return (
-              <div style={{ background: `linear-gradient(135deg, #1a2a4a, #0e1a2e)`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer", ...fadeUp(0) }}
-                onClick={() => setView("weekReflection")}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#8ab4f8", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>END OF WEEK</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>Did you win your week?</div>
-                  <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to reflect</div>
-                </div>
-                <GBSCIcon name="trophy" size={28} color="#8ab4f8" strokeWidth={0}/>
-              </div>
-            );
-          })()}
-
+          {ci !== null && (
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.4rem", marginBottom: "1.5rem", ...fadeUp(400) }}>
           {/* Tappable header row */}
               <button
                 onClick={() => setTierExpanded(e => !e)}
@@ -1987,6 +1939,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
+          </div>
+          )}
+
           {/* ── Disruption Context Banner ────────────────────────────────── */}
           {(() => {
             const latest = checks.filter(c => c && !c.isBaseline).slice(-1)[0];
@@ -2012,6 +1967,318 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               </div>
             );
           })()}
+
+          {/* ── Insight + Coaching (merged) ──────────────────────────────── */}
+          {(() => {
+            const nonBaseline = checks.filter(c => c && !c.isBaseline);
+            const latest = nonBaseline[nonBaseline.length - 1];
+            if (!latest) return null;
+
+            // ── Identify weakest driver for coaching ──
+            const sleep    = parseInt(latest.sleepQuality) || 0;
+            const energy   = parseInt(latest.energyLevel) || 0;
+            const recovery = parseInt(latest.physicalRecovery) || 0;
+            const workouts = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[latest.workouts] || 0;
+            const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 }[latest.protein] ?? (latest.proteinFloor ? { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 }[latest.proteinFloor] || 0 : 0);
+            const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift] ?? (latest.regulation ? { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0 : 0);
+            const strength = latest.strengthRPE === "Yes";
+            const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 }[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0);
+            const movement = { "Low": 0, "Moderate": 1, "High": 2 }[latest.dailyMovement] ?? null;
+            const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 }[latest.sleepOpportunity] ?? null;
+            const areas = [
+              { key: "sleep",    pct: sleep / 5 },
+              { key: "energy",   pct: energy / 5 },
+              { key: "recovery", pct: recovery / 5 },
+              { key: "protein",  pct: protein / 3 },
+              { key: "reg",      pct: reg / 2 },
+              { key: "workouts", pct: workouts / 4 },
+              { key: "strength", pct: strength ? 1 : 0 },
+              { key: "aerobic",  pct: zone2Val / 3 },
+              ...(movement !== null ? [{ key: "movement", pct: movement / 2 }] : []),
+              ...(sleepOpp !== null ? [{ key: "sleepOpp", pct: sleepOpp / 3 }] : []),
+            ].sort((a, b) => a.pct - b.pct);
+            const weakest = areas[0];
+
+            const tips = {
+              sleep:    { icon: "😴", iconName: "ripple",     label: "Sleep",        focus: "Try locking in a consistent bedtime — even 30 minutes earlier makes a meaningful difference this week." },
+              energy:   { icon: "⚡", iconName: "bounce2",   label: "Energy",       focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
+              recovery: { icon: "🔄", iconName: "refresh",   label: "Recovery",     focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
+              protein:  { icon: "🥩", iconName: "plate",     label: "Nutrition",    focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
+              reg:      { icon: "🧘", iconName: "meditation",label: "Downshift",    focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
+              workouts: { icon: "🏋️", iconName: "dumbbell",  label: "Training",     focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
+              strength: { icon: "💪", iconName: "dumbbell",  label: "Strength",          focus: "Schedule one dedicated strength session this week. Even 30 minutes of compound movements counts." },
+              aerobic:  { icon: "🫁", iconName: "lungs",      label: "Zone 2",            focus: "Aim for at least one 30–60 min Zone 2 session this week — a pace where you can speak in short sentences but not comfortably hold a conversation." },
+              movement: { icon: "🚶", iconName: "bounce2",    label: "Daily Movement",    focus: "Add one 20-minute walk per day. Total movement volume matters as much as structured workouts." },
+              sleepOpp: { icon: "🛏️", iconName: "ripple",     label: "Sleep Opportunity", focus: "Try to protect 7+ hours in bed at least 4 nights this week. Even one extra night of full sleep makes a measurable difference in recovery." },
+            };
+            const tip = tips[weakest.key];
+            if (!tip) return null;
+
+            // ── Today's Focus: smart trigger map overrides weakest driver ──
+            // Check trigger combinations first; fall back to weakest-driver tip
+            const latestScore = latest.score;
+            let focusTip = { ...tip, articleIds: [DRIVER_ARTICLE_MAP[weakest.key]].filter(Boolean) };
+            const lowSleep    = sleep <= 2 || (sleepOpp !== null && sleepOpp <= 1);
+            const lowRecovery = recovery <= 2;
+            const lowWorkouts = workouts < 2;
+            const lowDownshift = reg === 0;
+            const highPerf    = latestScore >= 85;
+            if (lowSleep && lowRecovery) {
+              focusTip = { icon: "🛌", iconName: "ripple", label: "Recovery Support Day", focus: "Walk, fuel well, and wind down early tonight. Your body needs a reset, not more load.", articleIds: ["recovery-reset","sleep","nervous-system"] };
+            } else if (lowWorkouts) {
+              focusTip = { icon: "🚶", iconName: "bounce2", label: "Stay in Motion", focus: "Short movement counts today. Any 20–30 minutes of activity keeps the habit alive.", articleIds: ["weekly-minimums","lifestyle-habits","recovery-reset"] };
+            } else if (lowDownshift && lowSleep) {
+              focusTip = { icon: "🧘", iconName: "meditation", label: "Downshift Daily", focus: "10 quiet minutes today. Walk, breathe, journal, or go screen-free.", articleIds: ["nervous-system","sleep"] };
+            } else if (highPerf) {
+              focusTip = { icon: "🏋️", iconName: "dumbbell", label: "Push + Recover", focus: "Train hard today, then protect sleep and protein. Don't outrun your recovery.", articleIds: ["weekly-minimums","sleep","nutrition-recovery"] };
+            }
+            const linkedArticle = focusTip.articleIds?.length
+              ? LIBRARY_ARTICLES.find(a => focusTip.articleIds.includes(a.id))
+              : (DRIVER_ARTICLE_MAP[weakest.key] ? LIBRARY_ARTICLES.find(a => a.id === DRIVER_ARTICLE_MAP[weakest.key]) : null);
+            const displayTip = { icon: focusTip.icon, iconName: focusTip.iconName, label: focusTip.label, focus: focusTip.focus };
+
+            // ── Week-over-week change (if available) ──
+            const prev = nonBaseline.length >= 2 ? nonBaseline[nonBaseline.length - 2] : null;
+            const scoreDiff = prev ? latest.score - prev.score : null;
+
+            return (
+              <div style={{ background: CARD, border: `1.5px solid #e0e0e0`, borderRadius: "16px", overflow: "hidden", marginBottom: "1.5rem", ...fadeUp(480) }}>
+                {/* Focus body */}
+                <div style={{ padding: "1.2rem 1.4rem" }}>
+                  {/* Label pills */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.85rem" }}>
+                    <div style={{
+                      background: `${G}18`, border: `1px solid ${G}40`,
+                      borderRadius: "8px", padding: "0.25rem 0.6rem",
+                      fontSize: "0.68rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em",
+                      display: "flex", alignItems: "center", gap: "0.3rem",
+                    }}>
+                      Today's Focus
+                    </div>
+                    <div style={{
+                      background: "#f0f0f0", borderRadius: "8px", padding: "0.25rem 0.6rem",
+                      fontSize: "0.68rem", fontWeight: "bold", color: "#555", letterSpacing: "0.06em",
+                    }}>
+                      {displayTip.label.toUpperCase()}
+                    </div>
+                  </div>
+                  {/* Icon + tip */}
+                  <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+                    <div style={{
+                      width: "56px", height: "56px", flexShrink: 0,
+                      background: `${G}15`, borderRadius: "14px",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {displayTip.iconName
+                        ? <GBSCIcon name={displayTip.iconName} size={48} color={G} strokeWidth={0}/>
+                        : <span style={{fontSize:"1.4rem"}}>{displayTip.icon}</span>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "0.9rem", color: DARK, lineHeight: 1.65 }}>{displayTip.focus}</div>
+                    </div>
+                  </div>
+                  {/* Read More CTA */}
+                  {linkedArticle && (
+                    <button onClick={() => { setLibraryArticleId(linkedArticle.id); setView("library"); }}
+                      style={{
+                        marginTop: "1rem", width: "100%",
+                        background: `${G}12`, border: `1.5px solid ${G}`,
+                        borderRadius: "10px", padding: "0.65rem 1rem",
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        cursor: "pointer", gap: "0.5rem",
+                      }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <GBSCIcon name="book" size={16} color="#2a7a14" strokeWidth={0}/>
+                        <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#2a7a14" }}>Read: {linkedArticle.title}</span>
+                      </div>
+                      <span style={{ fontSize: "1rem", color: G }}>→</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+
+          {/* Check-In History */}
+          {(baseline || checks.length > 0) && (
+            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
+              <button onClick={() => setHistoryOpen(o => !o)}
+                style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Check-In History</span>
+                <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: historyOpen ? "rotate(180deg)" : "none" }}>▾</span>
+              </button>
+              {historyOpen && (
+                <div style={{ padding: "0 1.3rem 1.2rem" }}>
+                  {baseline && (
+                    <div style={{ display: "flex", justifyContent: "space-between", background: "#f0f7ec", border: `1px solid ${G}`, borderRadius: "12px", padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
+                      <span style={{ color: "#555" }}>Baseline — {baseline.date}</span>
+                      <span style={{ fontWeight: "bold", color: G }}>{baseline.score}/100</span>
+                    </div>
+                  )}
+                  {checks.map((c, i) => {
+                    const ws = getWeekStatus(c.score);
+                    return (
+                      <div key={i} style={{ background: CARD, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "0.7rem 1rem", marginBottom: "0.5rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <div>
+                            <span style={{ color: "#666" }}>Week {c.week} — {c.date}</span>
+                            {ws && (
+                              <div style={{ marginTop: "0.2rem" }}>
+                                <span style={{ fontSize: "0.7rem", fontWeight: "bold", color: ws.color, background: ws.color + "15", borderRadius: "999px", padding: "0.1rem 0.55rem", display:"inline-flex", alignItems:"center", gap:"0.25rem" }}>
+                                  {ws.icon ? <GBSCIcon name={ws.icon} size={12} color={ws.color} strokeWidth={0}/> : ws.emoji} {ws.status}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <span style={{ fontWeight: "bold", color: G, flexShrink: 0 }}>{c.score}/100</span>
+                        </div>
+                        {c.disruption && c.disruption !== "None" && (
+                          <div style={{ fontSize: "0.72rem", color: c.disruption === "Major disruption" ? "#c07030" : "#b09020", marginTop: "0.25rem" }}>
+                            {c.disruption === "Major disruption"
+                              ? <><GBSCIcon name="wave" size={14} color="#c07030" strokeWidth={0}/> {c.disruption}</>
+                              : <><GBSCIcon name="ripple" size={14} color="#b09020" strokeWidth={0}/> {c.disruption}</>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+
+          {/* Capacity Drivers */}
+          {(() => {
+            const latest = [...checks].reverse()[0];
+            if (!latest) return null;
+            const workoutMap  = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
+            const zone2Map    = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 };
+            const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 };
+            const downshiftMap = { "None": 0, "1-2 times": 1, "3+ times": 2 };
+            const movementMap = { "Low": 0, "Moderate": 1, "High": 2 };
+            const sleepOppMap = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 };
+            const rows = [
+              { label: "Training",  value: workoutMap[latest.workouts] ?? 0, max: 4, display: `${latest.workouts} workouts` },
+              { label: "Zone 2",    value: zone2Map[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0), max: 3, display: latest.zone2 || latest.aerobic90 || "—" },
+              { label: "Strength",  value: latest.strengthRPE === "Yes" ? 1 : 0, max: 1, display: latest.strengthRPE },
+              { label: "Movement",  value: movementMap[latest.dailyMovement] ?? 0, max: 2, display: latest.dailyMovement },
+              { label: "Protein",   value: proteinMap[latest.protein ?? latest.proteinFloor] ?? 0, max: 3, display: latest.protein || latest.proteinFloor || "—" },
+              { label: "Sleep Opp.",value: sleepOppMap[latest.sleepOpportunity] ?? 0, max: 3, display: latest.sleepOpportunity || "—" },
+              { label: "Downshift", value: downshiftMap[latest.downshift ?? latest.regulation] ?? 0, max: 2, display: latest.downshift || latest.regulation || "—" },
+              { label: "Sleep Quality", value: parseInt(latest.sleepQuality) || 0, max: 5, display: `${latest.sleepQuality}/5` },
+              { label: "Energy",    value: parseInt(latest.energyLevel) || 0, max: 5, display: `${latest.energyLevel}/5` },
+              { label: "Recovery",  value: parseInt(latest.physicalRecovery) || 0, max: 5, display: `${latest.physicalRecovery}/5` },
+            ];
+            const sortedRows   = [...rows].sort((a,b) => (b.value/b.max) - (a.value/a.max));
+            const topDriver    = sortedRows[0];
+            const bottomDriver = sortedRows[sortedRows.length - 1];
+            const topPct       = Math.round((topDriver.value / topDriver.max) * 100);
+            const bottomPct    = Math.round((bottomDriver.value / bottomDriver.max) * 100);
+            return (
+              <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
+                {(topPct >= 70 || bottomPct < 50) && (
+                  <div style={{ padding: "0.7rem 1.3rem 0", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                    {topPct >= 70 && (
+                      <span style={{ fontSize: "0.72rem", background: `${G}15`, color: "#2a7a14", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
+                        <GBSCIcon name="arrow_up" size={12} color="#2a7a14" strokeWidth={0}/>Main driver: {topDriver.label}
+                      </span>
+                    )}
+                    {bottomPct < 50 && (
+                      <span style={{ fontSize: "0.72rem", background: "#f0f0ee", color: "#888580", borderRadius: "999px", padding: "0.15rem 0.65rem", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>
+                        <GBSCIcon name="arrow_down" size={12} color="#888580" strokeWidth={0}/>Main limiter: {bottomDriver.label}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <button onClick={() => setDriversOpen(o => !o)}
+                  style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Capacity Drivers</span>
+                  <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: driversOpen ? "rotate(180deg)" : "none" }}>▾</span>
+                </button>
+                {driversOpen && (
+                  <div style={{ padding: "0 1.3rem 1.2rem" }}>
+                    {[
+                      { group: "Performance", keys: ["Training","Zone 2","Strength"] },
+                      { group: "Lifestyle",   keys: ["Movement","Protein"] },
+                      { group: "Recovery",    keys: ["Sleep Opp.","Sleep Quality","Downshift","Energy","Recovery"] },
+                    ].map(({ group, keys }) => {
+                      const groupRows = rows.filter(r => keys.includes(r.label));
+                      if (!groupRows.length) return null;
+                      return (
+                        <div key={group} style={{ marginBottom: "1rem" }}>
+                          <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.5rem", fontWeight: "bold" }}>{group.toUpperCase()}</div>
+                          {groupRows.map(row => {
+                            const pct = Math.round((row.value / row.max) * 100);
+                            return (
+                              <div key={row.label} style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "0.55rem" }}>
+                                <div style={{ fontSize: "0.78rem", color: "#666", minWidth: "80px" }}>{row.label}</div>
+                                <div style={{ flex: 1, background: "#eee", borderRadius: "999px", height: "6px", overflow: "hidden" }}>
+                                  <div style={{ width: `${pct}%`, height: "100%", background: pct >= 80 ? G : pct >= 50 ? "#a0c060" : "#e09050", borderRadius: "999px", transition: "width 0.4s ease" }}/>
+                                </div>
+                                <div style={{ fontSize: "0.72rem", color: "#888", minWidth: "28px", textAlign: "right" }}>{pct}%</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+
+          {/* Capacity Badges */}
+          {(() => {
+            if (!latest) return null;
+            const nonBaseline = checks.filter(c => c && !c.isBaseline);
+            const streak = (() => { let s = 0; for (let i = nonBaseline.length-1; i>=0; i--) { if (nonBaseline[i].score >= 55) s++; else break; } return s; })();
+            const allAbove55 = nonBaseline.length > 0 && nonBaseline.every(c => c.score >= 55);
+            const highCount  = nonBaseline.filter(c => c.score >= 85).length;
+            const earned = [];
+            if (nonBaseline.length >= 1)  earned.push({ emoji: "🌱", icon: "seedling", title: "First Step",         desc: "Completed your first weekly check-in." });
+            if (allAbove55 && nonBaseline.length >= 2) earned.push({ emoji: "🏋", icon: "dumbbell", title: "Consistent Trainer", desc: "Stayed above 55 every week so far." });
+            if (latest.physicalRecovery >= 4 && latest.energyLevel >= 4) earned.push({ emoji: "⚡", icon: "bounce", title: "Recovery Builder", desc: "Strong recovery and energy this week." });
+            if (streak >= 2)              earned.push({ emoji: "🔥", icon: "flame",    title: "Momentum",           desc: `${streak} weeks in a row above 55.` });
+            if (latest.strengthRPE === "Yes" && nonBaseline.filter(c => c.strengthRPE === "Yes").length >= 3) earned.push({ emoji: "💪", icon: "dumbbell", title: "Strength Streak", desc: "Challenging strength session 3+ weeks." });
+            if ((latest.zone2 === "90+" || latest.zone2 === "90+ min" || latest.aerobic90 === "Yes") && nonBaseline.filter(c => c.zone2 === "90+" || c.zone2 === "90+ min" || c.aerobic90 === "Yes").length >= 2) earned.push({ emoji: "🫁", icon: "lungs", title: "Aerobic Engine", desc: "90+ min Zone 2 in 2+ weeks." });
+            if (nonBaseline.some(c => c.score >= 55) && nonBaseline.some(c => c.score < 55) && latest.score >= 55) earned.push({ emoji: "↗️", icon: "bounce2", title: "Bounce Back", desc: "Recovered from a tough week." });
+            if (highCount >= 1)           earned.push({ emoji: "🏆", icon: "trophy",  title: "High Expansion",     desc: "Scored 85+ in at least one week." });
+            if (nonBaseline.length >= 1 && nonBaseline.every(c => c.score >= 55)) earned.push({ emoji: "🔰", icon: "shield",  title: "No Zero Weeks",     desc: "Every week above the minimum so far." });
+            if (streak >= 1 && nonBaseline.some(c => c.score < 55)) earned.push({ emoji: "🏃", icon: "runner",  title: "Stayed in Motion",  desc: "Kept going even after a reset week." });
+            if (nonBaseline.length >= 3 && nonBaseline.slice(-3).every(c => c.score >= 55)) earned.push({ emoji: "📚", icon: "book_open",title: "Stacked Weeks",     desc: "3+ consecutive weeks above minimum." });
+            if (nonBaseline.some(c => c.disruption === "Major disruption" && c.score >= 55)) earned.push({ emoji: "🔧", icon: "foundation", title: "Adapted Under Pressure", desc: "Stayed above minimum during major disruption." });
+            if (highCount >= 3)           earned.push({ emoji: "🥇", icon: "medal_gold", title: "Consistency Leader", desc: "Scored 85+ in 3 or more weeks." });
+            if (!earned.length) return null;
+            return (
+              <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, marginBottom: "1rem", overflow: "hidden" }}>
+                <button onClick={() => setBadgesOpen(o => !o)}
+                  style={{ width: "100%", background: "none", border: "none", padding: "1rem 1.3rem", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+                  <span style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>Capacity Badges <span style={{ fontWeight: "normal", color: "#aaa", fontSize: "0.8rem" }}>· {earned.length} earned</span></span>
+                  <span style={{ color: "#666", fontSize: "1.3rem", transition: "transform 0.2s", display: "inline-block", transform: badgesOpen ? "rotate(180deg)" : "none" }}>▾</span>
+                </button>
+                {badgesOpen && (
+                  <div style={{ padding: "0 1.3rem 1.2rem" }}>
+                    {earned.map((badge, i) => (
+                      <div key={i} style={{ display: "flex", gap: "0.8rem", alignItems: "flex-start", marginBottom: i < earned.length-1 ? "0.8rem" : 0, paddingBottom: i < earned.length-1 ? "0.8rem" : 0, borderBottom: i < earned.length-1 ? "1px solid #f0f0f0" : "none" }}>
+                        <div style={{ lineHeight: 1, flexShrink: 0, display:"flex", alignItems:"center" }}>
+                          {badge.icon ? <GBSCIcon name={badge.icon} size={24} color={G} strokeWidth={0}/> : <span style={{fontSize:"1.5rem"}}>{badge.emoji}</span>}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.88rem" }}>{badge.title}</div>
+                          <div style={{ fontSize: "0.76rem", color: "#777", marginTop: "0.1rem" }}>{badge.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
 
           {/* ── Community Scoreboard (collapsible) ──────────────────────── */}
           {community && (
@@ -2123,6 +2390,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             )}
             </div>
           )}
+
+
+
 
           <button onClick={() => setView("profile")}
             style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>← Back to Profile</button>
