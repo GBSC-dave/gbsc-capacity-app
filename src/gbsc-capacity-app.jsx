@@ -473,16 +473,17 @@ export default function GBSCApp() {
   useEffect(() => { init(); }, []);
 
   // Keep body background fixed so gradient stays locked while content scrolls
-  // Switch between dark and light gradient based on active view
+  // Switch between dark and light gradient based on active view + memberView
   useEffect(() => {
-    const isDark = view === "loading" || view === "coachPin" || view === "coach"
-      || view === "midweekCheckin" || view === "midweekResult"
-      || view === "weekReflection" || view === "weekReflectionResult";
+    const darkTopViews = ["loading", "coachPin", "coach"];
+    const darkMemberViews = ["midweekCheckin", "midweekResult", "weekReflection", "weekReflectionResult", "declaredWeek"];
+    const isDark = darkTopViews.includes(view)
+      || (view === "member" && darkMemberViews.includes(memberView));
     document.body.style.background = isDark ? DARK_BG : LIGHT_BG;
     document.body.style.backgroundAttachment = "fixed";
     document.body.style.margin = "0";
     document.body.style.minHeight = "100vh";
-  }, [view]);
+  }, [view, memberView]);
 
   async function init() {
     const MIN_SPLASH_MS = 6000; // minimum time logo is visible — extended so tagline has time to land
@@ -1054,6 +1055,16 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [check, setCheck] = useState({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
   const [lastCheckScore, setLastCheckScore] = useState(null);
   const [displayedScore, setDisplayedScore] = useState(0);
+
+  // Seed score display when landing on checkFeedback from profile
+  // (when arriving from check-in submit, lastCheckScore is already set)
+  React.useEffect(() => {
+    if (view === "checkFeedback" && lastCheckScore === null) {
+      const checks = (currentMember?.weeklyChecks || []).filter(c => c && !c.isBaseline);
+      const latestScore = checks.length ? checks[checks.length - 1].score : null;
+      if (latestScore !== null) setLastCheckScore(latestScore);
+    }
+  }, [view, currentMember]);
   const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
   const [validationMsg, setValidationMsg] = useState("");
   const [declaredWeek, setDeclaredWeek] = useState(null);
@@ -1555,9 +1566,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     // Seed count-up when arriving from profile ("View Last Results") rather than via submit
     const latestScore = checks.length ? checks[checks.length - 1].score : null;
-    if (lastCheckScore === null && latestScore !== null && displayedScore === 0) {
-      setLastCheckScore(latestScore);
-    }
 
     // Points to next tier
     const tierOrder = [
@@ -2229,7 +2237,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "midweekCheckin" && currentMember) {
     const allChecks = currentMember.weeklyChecks || [];
     const thisWeek  = getCurrentWeekCheck(currentMember);
-    if (!thisWeek) { setView("profile"); return null; }
+    if (!thisWeek) return null;
 
     const already = thisWeek.midweekStatus;
     const dw = declaredWeek || getDeclaredWeek(allChecks);
@@ -2242,8 +2250,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           : c
       );
       const updated = { ...currentMember, weeklyChecks: updatedChecks };
-      await saveMember(updated);
-      setCurrentMember(updated);
+      try {
+        await saveMember(updated);
+        setCurrentMember(updated);
+      } catch (e) {
+        console.error("Midweek save failed:", e);
+        return;
+      }
       setView("midweekResult");
     }
 
@@ -2254,7 +2267,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     };
 
     return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
@@ -2349,7 +2362,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const content = resultContent[status] || resultContent.on_track;
 
     return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
 
@@ -2378,9 +2391,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
-          <button onClick={() => setView("profile")}
+          <button onClick={() => setView("checkFeedback")}
             style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginTop: "1.5rem" }}>
-            Back to My Week →
+            Back to My Results →
+          </button>
+          <button onClick={() => setView("profile")}
+            style={{ width: "100%", background: "none", border: "none", color: "#666", cursor: "pointer", marginTop: "0.5rem", fontSize: "0.85rem" }}>
+            Go to My Profile
           </button>
         </div>
       </div>
@@ -2391,7 +2408,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   if (view === "weekReflection" && currentMember) {
     const allChecks = currentMember.weeklyChecks || [];
     const thisWeek  = getCurrentWeekCheck(currentMember);
-    if (!thisWeek) { setView("profile"); return null; }
+    if (!thisWeek) return null;
 
     const already = thisWeek.weekResult;
     const dw = declaredWeek || getDeclaredWeek(allChecks);
@@ -2404,8 +2421,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           : c
       );
       const updated = { ...currentMember, weeklyChecks: updatedChecks };
-      await saveMember(updated);
-      setCurrentMember(updated);
+      try {
+        await saveMember(updated);
+        setCurrentMember(updated);
+      } catch (e) {
+        console.error("Week result save failed:", e);
+        return;
+      }
       setView("weekReflectionResult");
     }
 
@@ -2416,7 +2438,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     };
 
     return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
@@ -2507,7 +2529,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const content = resultContent[result] || resultContent.stayed_in;
 
     return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
 
