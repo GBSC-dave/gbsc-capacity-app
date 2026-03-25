@@ -1055,22 +1055,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [communityOpen, setCommunityOpen] = useState(false);
   const [thisWeekOpen, setThisWeekOpen]   = useState(false);
   const [tierProgressOpen, setTierProgressOpen] = useState(false);
-  const [editForm, setEditForm] = useState(null);
-  const [tierExpanded, setTierExpanded] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [libraryArticleId, setLibraryArticleId] = useState(null); // opens library to specific article
-  const [driversOpen, setDriversOpen] = useState(false);
-  const [badgesOpen, setBadgesOpen] = useState(false);
-
-  // Seed score display when landing on checkFeedback from profile
-  // (when arriving from check-in submit, lastCheckScore is already set)
-  useEffect(() => {
-    if (view === "checkFeedback" && lastCheckScore === null) {
-      const checks = (currentMember?.weeklyChecks || []).filter(c => c && !c.isBaseline);
-      const latestScore = checks.length ? checks[checks.length - 1].score : null;
-      if (latestScore !== null) setLastCheckScore(latestScore);
-    }
-  }, [view, currentMember]);
 
   // Scroll to top and reset accordion state on every view transition
   useEffect(() => {
@@ -1104,6 +1088,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }, interval);
     return () => clearInterval(timer);
   }, [lastCheckScore]);
+
+  const [editForm, setEditForm] = useState(null);
+  const [tierExpanded, setTierExpanded] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [libraryArticleId, setLibraryArticleId] = useState(null); // opens library to specific article
+  const [driversOpen, setDriversOpen] = useState(false);   // profile page drivers accordion
+  const [badgesOpen, setBadgesOpen] = useState(false);     // profile page badges accordion
 
 
   function startEdit() {
@@ -1556,6 +1547,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     // Seed count-up when arriving from profile ("View Last Results") rather than via submit
     const latestScore = checks.length ? checks[checks.length - 1].score : null;
+    if (lastCheckScore === null && latestScore !== null && displayedScore === 0) {
+      setLastCheckScore(latestScore);
+    }
 
     // Points to next tier
     const tierOrder = [
