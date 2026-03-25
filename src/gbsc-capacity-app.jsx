@@ -1047,7 +1047,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   // Seed score display when landing on checkFeedback from profile
   // (when arriving from check-in submit, lastCheckScore is already set)
-  React.useEffect(() => {
+  useEffect(() => {
     if (view === "checkFeedback" && lastCheckScore === null) {
       const checks = (currentMember?.weeklyChecks || []).filter(c => c && !c.isBaseline);
       const latestScore = checks.length ? checks[checks.length - 1].score : null;
