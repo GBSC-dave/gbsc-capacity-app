@@ -513,11 +513,11 @@ export default function GBSCApp() {
 
           if (lastCheck) {
             if (!isEligibleForCheckin(lastCheck.date)) {
-              // Already checked in this week (since Monday) — go to feedback
-              setMemberView("checkFeedback");
+              // Already checked in this week (since Monday) — go to profile home
+              setMemberView("profile");
             } else if (nonBaseline.length >= 8) {
               // Program complete
-              setMemberView("checkFeedback");
+              setMemberView("profile");
             } else {
               // A full week has passed — eligible for next check-in
               setMemberView("checkin");
@@ -1967,138 +1967,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               </div>
             );
           })()}
-
-          {/* ── Insight + Coaching (merged) ──────────────────────────────── */}
-          {(() => {
-            const nonBaseline = checks.filter(c => c && !c.isBaseline);
-            const latest = nonBaseline[nonBaseline.length - 1];
-            if (!latest) return null;
-
-            // ── Identify weakest driver for coaching ──
-            const sleep    = parseInt(latest.sleepQuality) || 0;
-            const energy   = parseInt(latest.energyLevel) || 0;
-            const recovery = parseInt(latest.physicalRecovery) || 0;
-            const workouts = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[latest.workouts] || 0;
-            const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 }[latest.protein] ?? (latest.proteinFloor ? { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 }[latest.proteinFloor] || 0 : 0);
-            const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift] ?? (latest.regulation ? { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0 : 0);
-            const strength = latest.strengthRPE === "Yes";
-            const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 }[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0);
-            const movement = { "Low": 0, "Moderate": 1, "High": 2 }[latest.dailyMovement] ?? null;
-            const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 }[latest.sleepOpportunity] ?? null;
-            const areas = [
-              { key: "sleep",    pct: sleep / 5 },
-              { key: "energy",   pct: energy / 5 },
-              { key: "recovery", pct: recovery / 5 },
-              { key: "protein",  pct: protein / 3 },
-              { key: "reg",      pct: reg / 2 },
-              { key: "workouts", pct: workouts / 4 },
-              { key: "strength", pct: strength ? 1 : 0 },
-              { key: "aerobic",  pct: zone2Val / 3 },
-              ...(movement !== null ? [{ key: "movement", pct: movement / 2 }] : []),
-              ...(sleepOpp !== null ? [{ key: "sleepOpp", pct: sleepOpp / 3 }] : []),
-            ].sort((a, b) => a.pct - b.pct);
-            const weakest = areas[0];
-
-            const tips = {
-              sleep:    { icon: "😴", iconName: "ripple",     label: "Sleep",        focus: "Try locking in a consistent bedtime — even 30 minutes earlier makes a meaningful difference this week." },
-              energy:   { icon: "⚡", iconName: "bounce2",   label: "Energy",       focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
-              recovery: { icon: "🔄", iconName: "refresh",   label: "Recovery",     focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
-              protein:  { icon: "🥩", iconName: "plate",     label: "Nutrition",    focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
-              reg:      { icon: "🧘", iconName: "meditation",label: "Downshift",    focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
-              workouts: { icon: "🏋️", iconName: "dumbbell",  label: "Training",     focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
-              strength: { icon: "💪", iconName: "dumbbell",  label: "Strength",          focus: "Schedule one dedicated strength session this week. Even 30 minutes of compound movements counts." },
-              aerobic:  { icon: "🫁", iconName: "lungs",      label: "Zone 2",            focus: "Aim for at least one 30–60 min Zone 2 session this week — a pace where you can speak in short sentences but not comfortably hold a conversation." },
-              movement: { icon: "🚶", iconName: "bounce2",    label: "Daily Movement",    focus: "Add one 20-minute walk per day. Total movement volume matters as much as structured workouts." },
-              sleepOpp: { icon: "🛏️", iconName: "ripple",     label: "Sleep Opportunity", focus: "Try to protect 7+ hours in bed at least 4 nights this week. Even one extra night of full sleep makes a measurable difference in recovery." },
-            };
-            const tip = tips[weakest.key];
-            if (!tip) return null;
-
-            // ── Today's Focus: smart trigger map overrides weakest driver ──
-            // Check trigger combinations first; fall back to weakest-driver tip
-            const latestScore = latest.score;
-            let focusTip = { ...tip, articleIds: [DRIVER_ARTICLE_MAP[weakest.key]].filter(Boolean) };
-            const lowSleep    = sleep <= 2 || (sleepOpp !== null && sleepOpp <= 1);
-            const lowRecovery = recovery <= 2;
-            const lowWorkouts = workouts < 2;
-            const lowDownshift = reg === 0;
-            const highPerf    = latestScore >= 85;
-            if (lowSleep && lowRecovery) {
-              focusTip = { icon: "🛌", iconName: "ripple", label: "Recovery Support Day", focus: "Walk, fuel well, and wind down early tonight. Your body needs a reset, not more load.", articleIds: ["recovery-reset","sleep","nervous-system"] };
-            } else if (lowWorkouts) {
-              focusTip = { icon: "🚶", iconName: "bounce2", label: "Stay in Motion", focus: "Short movement counts today. Any 20–30 minutes of activity keeps the habit alive.", articleIds: ["weekly-minimums","lifestyle-habits","recovery-reset"] };
-            } else if (lowDownshift && lowSleep) {
-              focusTip = { icon: "🧘", iconName: "meditation", label: "Downshift Daily", focus: "10 quiet minutes today. Walk, breathe, journal, or go screen-free.", articleIds: ["nervous-system","sleep"] };
-            } else if (highPerf) {
-              focusTip = { icon: "🏋️", iconName: "dumbbell", label: "Push + Recover", focus: "Train hard today, then protect sleep and protein. Don't outrun your recovery.", articleIds: ["weekly-minimums","sleep","nutrition-recovery"] };
-            }
-            const linkedArticle = focusTip.articleIds?.length
-              ? LIBRARY_ARTICLES.find(a => focusTip.articleIds.includes(a.id))
-              : (DRIVER_ARTICLE_MAP[weakest.key] ? LIBRARY_ARTICLES.find(a => a.id === DRIVER_ARTICLE_MAP[weakest.key]) : null);
-            const displayTip = { icon: focusTip.icon, iconName: focusTip.iconName, label: focusTip.label, focus: focusTip.focus };
-
-            // ── Week-over-week change (if available) ──
-            const prev = nonBaseline.length >= 2 ? nonBaseline[nonBaseline.length - 2] : null;
-            const scoreDiff = prev ? latest.score - prev.score : null;
-
-            return (
-              <div style={{ background: CARD, border: `1.5px solid #e0e0e0`, borderRadius: "16px", overflow: "hidden", marginBottom: "1.5rem", ...fadeUp(480) }}>
-                {/* Focus body */}
-                <div style={{ padding: "1.2rem 1.4rem" }}>
-                  {/* Label pills */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.85rem" }}>
-                    <div style={{
-                      background: `${G}18`, border: `1px solid ${G}40`,
-                      borderRadius: "8px", padding: "0.25rem 0.6rem",
-                      fontSize: "0.68rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em",
-                      display: "flex", alignItems: "center", gap: "0.3rem",
-                    }}>
-                      Today's Focus
-                    </div>
-                    <div style={{
-                      background: "#f0f0f0", borderRadius: "8px", padding: "0.25rem 0.6rem",
-                      fontSize: "0.68rem", fontWeight: "bold", color: "#555", letterSpacing: "0.06em",
-                    }}>
-                      {displayTip.label.toUpperCase()}
-                    </div>
-                  </div>
-                  {/* Icon + tip */}
-                  <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
-                    <div style={{
-                      width: "56px", height: "56px", flexShrink: 0,
-                      background: `${G}15`, borderRadius: "14px",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {displayTip.iconName
-                        ? <GBSCIcon name={displayTip.iconName} size={48} color={G} strokeWidth={0}/>
-                        : <span style={{fontSize:"1.4rem"}}>{displayTip.icon}</span>}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: "0.9rem", color: DARK, lineHeight: 1.65 }}>{displayTip.focus}</div>
-                    </div>
-                  </div>
-                  {/* Read More CTA */}
-                  {linkedArticle && (
-                    <button onClick={() => { setLibraryArticleId(linkedArticle.id); setView("library"); }}
-                      style={{
-                        marginTop: "1rem", width: "100%",
-                        background: `${G}12`, border: `1.5px solid ${G}`,
-                        borderRadius: "10px", padding: "0.65rem 1rem",
-                        display: "flex", alignItems: "center", justifyContent: "space-between",
-                        cursor: "pointer", gap: "0.5rem",
-                      }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <GBSCIcon name="book" size={16} color="#2a7a14" strokeWidth={0}/>
-                        <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "#2a7a14" }}>Read: {linkedArticle.title}</span>
-                      </div>
-                      <span style={{ fontSize: "1rem", color: G }}>→</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-
 
           {/* Check-In History */}
           {(baseline || checks.length > 0) && (
