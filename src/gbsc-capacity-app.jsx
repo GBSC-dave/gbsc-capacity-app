@@ -1679,21 +1679,21 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         `}</style>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <div style={{ display: "flex", justifyContent: "center", gap: "0", background: "transparent", paddingBottom: "0" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: "3px", background: "transparent", paddingBottom: "0" }}>
             <button onClick={() => setView("profile")}
-              style={{ border: "1.5px solid rgba(255,255,255,0.25)", borderTop: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.2rem 1rem 0.4rem",
-                background: "rgba(255,255,255,0.12)",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.65)",
-                position: "relative", zIndex: 1, marginRight: "-2px" }}>
+              style={{ border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
+                background: "rgba(80,80,80,0.6)",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)",
+                position: "relative", zIndex: 1 }}>
               MY PROFILE
             </button>
             <button onClick={() => setView("checkFeedback")}
               style={{ border: "none", cursor: "pointer",
-                borderRadius: "0 0 12px 12px", padding: "0.3rem 1.1rem 0.5rem",
-                background: G,
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#fff",
-                position: "relative", zIndex: 2, marginTop: "-2px" }}>
+                borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
+                background: "rgba(45,45,45,0.92)",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G,
+                position: "relative", zIndex: 2, marginTop: "-1px" }}>
               MY RESULTS
             </button>
           </div>
@@ -2620,20 +2620,20 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <div style={{ display: "flex", justifyContent: "center", gap: "0", background: "transparent", paddingBottom: "0" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: "3px", background: "transparent", paddingBottom: "0" }}>
             <button onClick={() => setView("profile")}
               style={{ border: "none", cursor: "pointer",
-                borderRadius: "0 0 12px 12px", padding: "0.3rem 1.1rem 0.5rem",
-                background: G,
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "#fff",
-                position: "relative", zIndex: 2, marginTop: "-2px", marginRight: "-2px" }}>
+                borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
+                background: "rgba(45,45,45,0.92)",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G,
+                position: "relative", zIndex: 2, marginTop: "-1px" }}>
               MY PROFILE
             </button>
             <button onClick={() => setView("checkFeedback")}
-              style={{ border: "1.5px solid rgba(255,255,255,0.25)", borderTop: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.2rem 1rem 0.4rem",
-                background: "rgba(255,255,255,0.12)",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.65)",
+              style={{ border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
+                background: "rgba(80,80,80,0.6)",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)",
                 position: "relative", zIndex: 1 }}>
               MY RESULTS
             </button>
