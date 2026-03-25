@@ -541,7 +541,8 @@ export default function GBSCApp() {
     try {
       await supabase.from("members").upsert({ id: m.id, data: m, updated_at: new Date().toISOString() });
       localStorage.setItem("gbsc-this-member", m.id);
-    } catch (e) { console.error("saveMember error:", e); throw e; }
+    } catch (e) { console.error(e); }
+    setCurrentMember(m);
     setMembers(prev => {
       const idx = prev.findIndex(x => x.id === m.id);
       if (idx >= 0) { const n = [...prev]; n[idx] = m; return n; }
@@ -1135,7 +1136,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       gripScore_pre: gripScore,
     };
     await saveMember(updated);
-    setCurrentMember(updated);
     setView("profile");
   }
 
@@ -1237,7 +1237,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       setValidationMsg("Something went wrong saving your check-in. Please try again.");
       return;
     }
-    setCurrentMember(updatedMember);
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     const dw = getDeclaredWeek(updatedMember.weeklyChecks);
@@ -2236,7 +2235,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       const updated = { ...currentMember, weeklyChecks: updatedChecks };
       try {
         await saveMember(updated);
-        setCurrentMember(updated);
       } catch (e) {
         console.error("Midweek save failed:", e);
         return;
@@ -2448,7 +2446,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       const updated = { ...currentMember, weeklyChecks: updatedChecks };
       try {
         await saveMember(updated);
-        setCurrentMember(updated);
       } catch (e) {
         console.error("Week result save failed:", e);
         return;
@@ -5615,4 +5612,3 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     </div>
   );
 }
-
