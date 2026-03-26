@@ -475,13 +475,22 @@ export default function GBSCApp() {
 
   useEffect(() => { init(); }, []);
 
-  // Pin gradient to body so it stays fixed while content scrolls over it
+  // Set gradient on <html> — the only approach that stays truly fixed on iOS Safari
+  // The html element's background is treated as the page canvas and never scrolls
   useEffect(() => {
-    document.body.style.background = LIGHT_BG;
-    document.body.style.backgroundAttachment = "fixed";
-    document.body.style.margin = "0";
-    document.body.style.minHeight = "100vh";
+    const html = document.documentElement;
+    html.style.background = LIGHT_BG;
+    html.style.backgroundAttachment = "fixed";
+    html.style.minHeight = "100%";
+    document.body.style.background = "transparent";
+    document.body.style.minHeight = "100%";
+    return () => {
+      html.style.background = "";
+      html.style.backgroundAttachment = "";
+      document.body.style.background = "";
+    };
   }, []);
+
 
 
 
@@ -1136,6 +1145,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [libraryArticleId, setLibraryArticleId] = useState(null); // opens library to specific article
   const [driversOpen, setDriversOpen] = useState(false);   // profile page drivers accordion
   const [badgesOpen, setBadgesOpen] = useState(false);     // profile page badges accordion
+  const [prevView, setPrevView] = useState("profile");     // where declared week was entered from
 
 
   function startEdit() {
@@ -1275,6 +1285,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     const dw = getDeclaredWeek(updatedMember.weeklyChecks);
+    setPrevView("profile");
     setDeclaredWeek(dw);
     setView("declaredWeek");
   }
@@ -1496,7 +1507,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           </div>
 
           {/* ── CTA (above the fold) ── */}
-          <button onClick={() => setView("checkFeedback")}
+          <button onClick={() => setView(prevView)}
             style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.6rem" }}>
             {dw.buttonLabel} →
           </button>
@@ -1551,9 +1562,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           </AccordionSection>
 
-          <button onClick={() => setView("profile")}
+          <button onClick={() => setView(prevView)}
             style={{ width: "100%", background: "none", border: "none", color: dw.textSupport, cursor: "pointer", fontSize: "0.85rem", marginTop: "0.6rem", paddingBottom: "2rem" }}>
-            Back to My Profile
+            {prevView === "profile" ? "← Back to My Profile" : "← Back to My Results"}
           </button>
 
         </div>
@@ -1822,7 +1833,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             };
             const rc = roleColors[currentRole.role] || roleColors.Reset;
             return (
-              <div onClick={() => { const dw = getDeclaredWeek(currentMember.weeklyChecks || []); if (dw) { setDeclaredWeek(dw); setView("declaredWeek"); } }}
+              <div onClick={() => { const dw = getDeclaredWeek(currentMember.weeklyChecks || []); if (dw) { setPrevView("checkFeedback"); setDeclaredWeek(dw); setView("declaredWeek"); } }}
                 style={{ background: rc.bg, border: `1.5px solid ${rc.color}44`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", cursor: "pointer", ...fadeUp(300) }}>
                 <div style={{ marginBottom: "0.7rem", display: "flex", justifyContent: "center" }}>
                   {currentRole.icon ? <GBSCIcon name={currentRole.icon} size={40} color={rc.color} strokeWidth={2}/> : <span style={{fontSize:"2rem"}}>{currentRole.emoji}</span>}
@@ -2804,7 +2815,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             {/* Declared week — integrated as bottom strip of hero card */}
             {dw && (
               <div style={{ background: dw.color, padding: "0.85rem 1.3rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer" }}
-                onClick={() => { setDeclaredWeek(dw); setView("declaredWeek"); }}>
+                onClick={() => { setPrevView("profile"); setDeclaredWeek(dw); setView("declaredWeek"); }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.7)", letterSpacing: "0.08em", fontWeight: "bold", marginBottom: "0.1rem" }}>THIS WEEK</div>
                   <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>{dw.subtext}</span></div>
