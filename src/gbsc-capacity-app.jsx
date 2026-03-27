@@ -86,7 +86,7 @@ const CARD = "#fdfcfb";
 const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.05)";
 const PAGE_BG = "#f9f7f4";
 const DARK_BG  = "linear-gradient(180deg, #363636 0%, #222222 100%)";
-const LIGHT_BG = "linear-gradient(180deg, #d8d6d4 0%, #c8c5cf 100%)";
+const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #c2bfc8 100%)";
 const SERIF = "'Georgia', serif";
 const SANS  = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -2358,23 +2358,32 @@ const LEAN_IN_PRESCRIPTIONS = {
         `}</style>
         <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <div style={{ display: "flex", justifyContent: "center", gap: "3px", background: "transparent", paddingBottom: "0" }}>
-            <button onClick={() => setView("profile")}
-              style={{ border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
-                background: "rgba(80,80,80,0.6)",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)",
-                position: "relative", zIndex: 1 }}>
-              MY PROFILE
-            </button>
-            <button onClick={() => setView("checkFeedback")}
-              style={{ border: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
-                background: "rgba(45,45,45,0.92)",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G,
-                position: "relative", zIndex: 2, marginTop: "-1px" }}>
-              MY RESULTS
-            </button>
+          <div style={{ position: "relative" }}>
+            {/* Tab row — transparent sides so gradient shows through */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "3px", background: "transparent", paddingBottom: "0" }}>
+              <button onClick={() => setView("profile")}
+                style={{ border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
+                  borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
+                  background: "rgba(80,80,80,0.6)",
+                  fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)",
+                  position: "relative", zIndex: 1 }}>
+                MY PROFILE
+              </button>
+              <button onClick={() => setView("checkFeedback")}
+                style={{ border: "none", cursor: "pointer",
+                  borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
+                  background: "rgba(45,45,45,0.92)",
+                  fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G,
+                  position: "relative", zIndex: 2, marginTop: "-1px" }}>
+                MY RESULTS
+              </button>
+            </div>
+            {/* Gradient fade strip — softens the hard line between header and content */}
+            <div style={{
+              position: "absolute", left: 0, right: 0, top: "100%", height: "18px",
+              background: "linear-gradient(to bottom, rgba(45,45,45,0.18), transparent)",
+              pointerEvents: "none", zIndex: 10,
+            }}/>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -3591,23 +3600,32 @@ const LEAN_IN_PRESCRIPTIONS = {
       <div style={{ height: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <div style={{ display: "flex", justifyContent: "center", gap: "3px", background: "transparent", paddingBottom: "0" }}>
-            <button onClick={() => setView("profile")}
-              style={{ border: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
-                background: "rgba(45,45,45,0.92)",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G,
-                position: "relative", zIndex: 2, marginTop: "-1px" }}>
-              MY PROFILE
-            </button>
-            <button onClick={() => setView("checkFeedback")}
-              style={{ border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
-                background: "rgba(80,80,80,0.6)",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)",
-                position: "relative", zIndex: 1 }}>
-              MY RESULTS
-            </button>
+          <div style={{ position: "relative" }}>
+            {/* Tab row — transparent sides so gradient shows through */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "3px", background: "transparent", paddingBottom: "0" }}>
+              <button onClick={() => setView("profile")}
+                style={{ border: "none", cursor: "pointer",
+                  borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
+                  background: "rgba(45,45,45,0.92)",
+                  fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G,
+                  position: "relative", zIndex: 2, marginTop: "-1px" }}>
+                MY PROFILE
+              </button>
+              <button onClick={() => setView("checkFeedback")}
+                style={{ border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
+                  borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
+                  background: "rgba(80,80,80,0.6)",
+                  fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)",
+                  position: "relative", zIndex: 1 }}>
+                MY RESULTS
+              </button>
+            </div>
+            {/* Gradient fade strip — softens the hard line between header and content */}
+            <div style={{
+              position: "absolute", left: 0, right: 0, top: "100%", height: "18px",
+              background: "linear-gradient(to bottom, rgba(45,45,45,0.18), transparent)",
+              pointerEvents: "none", zIndex: 10,
+            }}/>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -3680,10 +3698,11 @@ const LEAN_IN_PRESCRIPTIONS = {
             const statusColor = done ? (statusColors[thisWeekCheck.midweekStatus] || G) : G;
             return (
               <div style={{
-                background: done ? `${statusColor}15` : `linear-gradient(135deg, ${DARK}, #1a3a0a)`,
-                border: `1.5px solid ${done ? statusColor+"44" : G+"33"}`,
+                background: done ? CARD : `linear-gradient(135deg, ${DARK}, #1a3a0a)`,
+                border: `1.5px solid ${done ? statusColor+"66" : G+"33"}`,
                 borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.2rem",
-                display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer"
+                display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer",
+                boxShadow: done ? CARD_SHADOW : "none",
               }}
                 onClick={() => setView("midweekCheckin")}>
                 <div style={{ flex: 1 }}>
@@ -3692,9 +3711,9 @@ const LEAN_IN_PRESCRIPTIONS = {
                     {done ? statusLabels[thisWeekCheck.midweekStatus] : "Are you on track to win your week?"}
                   </div>
                   {!done && <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>}
-                  {done && <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>Tap to update</div>}
+                  {done && <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to update</div>}
                 </div>
-                <GBSCIcon name={done ? "check" : "check"} size={28} color={done ? statusColor : G} strokeWidth={0}/>
+                <GBSCIcon name="check" size={28} color={done ? statusColor : G} strokeWidth={0}/>
               </div>
             );
           })()}
