@@ -2347,7 +2347,7 @@ const LEAN_IN_PRESCRIPTIONS = {
 
 
     return (
-      <div style={{ height: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ height: "100vh", background: "transparent", fontFamily: SANS, overflowY: "auto", WebkitOverflowScrolling: "touch", position: "relative" }}>
         <style>{`
           @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
           @keyframes gbscTierSlide {
@@ -2356,7 +2356,8 @@ const LEAN_IN_PRESCRIPTIONS = {
           }
           .gbsc-tier-ladder { animation: gbscTierSlide 0.25s ease forwards; }
         `}</style>
-        <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 20, isolation: "isolate" }}>
+        {/* Header + tabs — sticky overlay so content scrolls behind the frosted glass */}
+        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
           {/* Tabs — absolutely positioned below header, centered, transparent sides */}
           <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
@@ -2378,7 +2379,6 @@ const LEAN_IN_PRESCRIPTIONS = {
             </button>
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
 
           {/* Week progress bar */}
@@ -2969,7 +2969,6 @@ const LEAN_IN_PRESCRIPTIONS = {
 
           <button onClick={() => setView("profile")}
             style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>← Back to Profile</button>
-        </div>
         </div>
       </div>
     );
@@ -3589,8 +3588,9 @@ const LEAN_IN_PRESCRIPTIONS = {
     const checkedInThisWeek  = lastCheck && !isEligibleForCheckin(lastCheck.date);
 
     return (
-      <div style={{ height: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 20, isolation: "isolate" }}>
+      <div style={{ height: "100vh", background: "transparent", fontFamily: SANS, overflowY: "auto", WebkitOverflowScrolling: "touch", position: "relative" }}>
+        {/* Header + tabs — sticky overlay so content scrolls behind the frosted glass */}
+        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
           {/* Tabs — absolutely positioned below header, centered, transparent sides */}
           <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
@@ -3612,7 +3612,6 @@ const LEAN_IN_PRESCRIPTIONS = {
             </button>
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
 
           {/* ── ZONE 1: YOUR WEEK ──────────────────────────────────────────── */}
@@ -3824,7 +3823,6 @@ const LEAN_IN_PRESCRIPTIONS = {
             <GBSCIcon name="pencil" size={16} color="#666" strokeWidth={0}/>Edit My Profile
           </button>
 
-        </div>
         </div>
       </div>
     );
