@@ -1146,6 +1146,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [driversOpen, setDriversOpen] = useState(false);   // profile page drivers accordion
   const [badgesOpen, setBadgesOpen] = useState(false);     // profile page badges accordion
   const [prevView, setPrevView] = useState("profile");     // where declared week was entered from
+  const [frictionChoice, setFrictionChoice] = useState(null); // friction planning selection
 
 
   function startEdit() {
@@ -1278,6 +1279,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         midweekDate: null,
         weekResult: null,
         weekResultDate: null,
+        weeklyFrictionType: null,
       }]
     };
     await saveMember(updatedMember);
@@ -1507,7 +1509,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           </div>
 
           {/* ── CTA (above the fold) ── */}
-          <button onClick={() => setView(prevView)}
+          <div style={{ fontSize: "0.82rem", color: dw.textSupport, textAlign: "center", marginBottom: "0.6rem", fontStyle: "italic", opacity: 0.85 }}>
+            Plan for a real week, not a perfect one.
+          </div>
+          <button onClick={() => { setFrictionChoice(null); setView("frictionPlanning"); }}
             style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.6rem" }}>
             {dw.buttonLabel} →
           </button>
@@ -1565,6 +1570,132 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <button onClick={() => setView(prevView)}
             style={{ width: "100%", background: "none", border: "none", color: dw.textSupport, cursor: "pointer", fontSize: "0.85rem", marginTop: "0.6rem", paddingBottom: "2rem" }}>
             {prevView === "profile" ? "← Back to My Profile" : "← Back to My Results"}
+          </button>
+
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "frictionPlanning" && currentMember) {
+    const allChecks = currentMember.weeklyChecks || [];
+    const dw = getDeclaredWeek(allChecks);
+    const checks = allChecks.filter(c => c && !c.isBaseline);
+    const thisWeek = getCurrentWeekCheck(currentMember);
+    const accentColor = dw ? dw.color : G;
+
+    const frictionOptions = [
+      { key: "time",     label: "Time / schedule" },
+      { key: "energy",   label: "Low energy / poor sleep" },
+      { key: "stress",   label: "Stress / life load" },
+      { key: "travel",   label: "Travel / disruption" },
+      { key: "body",     label: "Body feels beat up" },
+      { key: "mixed",    label: "Not sure / mixed week" },
+    ];
+
+    const reinforcementLines = {
+      time:   "Busy weeks still count.",
+      energy: "Low energy weeks build resilience.",
+      stress: "This is where consistency matters most.",
+      travel: "Adaptability wins this week.",
+      body:   "Recovery is how you stay in it.",
+      mixed:  "Unpredictable weeks still win with minimums.",
+    };
+
+    async function commitFriction() {
+      if (!frictionChoice || !thisWeek) {
+        setView("profile");
+        return;
+      }
+      const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+        c && c.week === thisWeek.week && !c.isBaseline
+          ? { ...c, weeklyFrictionType: frictionChoice }
+          : c
+      );
+      const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
+      await saveMember(updatedMember);
+      setCurrentMember(updatedMember);
+      setView("profile");
+    }
+
+    return (
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+        {hdr}
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", flex: 1 }}>
+
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+            <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.5rem" }}>
+              Where might this week get tight?
+            </div>
+            <div style={{ fontSize: "0.9rem", color: "#aaa", lineHeight: 1.6 }}>
+              Pick one. You're planning ahead.
+            </div>
+          </div>
+
+          {/* Options — single select, inline expansion */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.5rem" }}>
+            {frictionOptions.map(({ key, label }) => {
+              const selected = frictionChoice === key;
+              return (
+                <div key={key}>
+                  <button
+                    onClick={() => setFrictionChoice(selected ? null : key)}
+                    style={{
+                      width: "100%", textAlign: "left",
+                      background: selected ? `${accentColor}22` : "#ffffff08",
+                      border: `1.5px solid ${selected ? accentColor : "#ffffff18"}`,
+                      borderRadius: selected ? "12px 12px 0 0" : "12px",
+                      padding: "0.9rem 1.2rem",
+                      cursor: "pointer", transition: "all 0.15s ease",
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                    }}>
+                    <span style={{ fontSize: "0.95rem", fontWeight: selected ? "bold" : "normal", color: selected ? accentColor : "#ddd" }}>
+                      {label}
+                    </span>
+                    <span style={{ color: selected ? accentColor : "#555", fontSize: "1rem", transition: "transform 0.2s", display: "inline-block", transform: selected ? "rotate(180deg)" : "none" }}>▾</span>
+                  </button>
+
+                  {/* Inline expansion */}
+                  {selected && (
+                    <div style={{
+                      background: "#ffffff06", border: `1.5px solid ${accentColor}`,
+                      borderTop: "none", borderRadius: "0 0 12px 12px",
+                      padding: "1rem 1.2rem",
+                    }}>
+                      <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.08em", marginBottom: "0.6rem" }}>
+                        WHEN THAT HITS (IT WILL), DO THIS:
+                      </div>
+                      {dw && (dw.tightTargets || []).map(({ label: tl, value }) => (
+                        <div key={tl} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.4rem", alignItems: "flex-start" }}>
+                          <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: accentColor, minWidth: "68px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{tl}</div>
+                          <div style={{ fontSize: "0.85rem", color: "#ccc", lineHeight: 1.4 }}>{value}</div>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: "0.82rem", color: "#aaa", marginTop: "0.7rem", fontStyle: "italic" }}>
+                        This keeps your week alive.
+                      </div>
+                      <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: accentColor, marginTop: "0.5rem" }}>
+                        {reinforcementLines[key]}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Commit button */}
+          <button
+            onClick={commitFriction}
+            style={{
+              width: "100%", background: frictionChoice ? accentColor : "#333",
+              color: frictionChoice ? "#fff" : "#666",
+              border: "none", borderRadius: "12px", padding: "1rem",
+              fontSize: "1rem", fontWeight: "bold", cursor: "pointer",
+              transition: "all 0.2s ease", marginBottom: "0.8rem",
+            }}>
+            {frictionChoice ? "Got it — I'll stay in it" : "Skip for now →"}
           </button>
 
         </div>
@@ -1744,14 +1875,37 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
-          {/* Main score card */}
-          <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #2a4a1a 100%)`, borderRadius: "20px", padding: "2rem 1.5rem", color: "#fff", textAlign: "center", marginBottom: "1.5rem", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", ...fadeUp(150) }}>
-            <div style={{ fontSize: "0.78rem", color: "#aaa", marginBottom: "0.5rem", letterSpacing: "0.04em" }}>Habit score</div>
-            <div style={{ fontSize: "5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", minWidth: "3ch", display: "inline-block" }}>{displayedScore}</div>
-            <div style={{ fontSize: "0.85rem", color: "#888", marginTop: "0.3rem" }}>out of 100</div>
-            <div style={{ fontSize: "0.72rem", color: "#666", marginTop: "0.9rem", borderTop: "1px solid #ffffff18", paddingTop: "0.9rem" }}>
-              Measures your weekly habits around training, recovery, and resilience.
-            </div>
+          {/* Main score card — CI as hero, habit score as supporting */}
+          <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #1a2a1a 100%)`, borderRadius: "20px", padding: "2rem 1.5rem", color: "#fff", textAlign: "center", marginBottom: "1.5rem", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", ...fadeUp(150) }}>
+            {ci !== null ? (
+              <>
+                <div style={{ fontSize: "0.78rem", color: "#aaa", marginBottom: "0.5rem", letterSpacing: "0.04em" }}>Capacity Index</div>
+                <div style={{ fontSize: "5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", minWidth: "3ch", display: "inline-block", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{ci}</div>
+                {tier && (
+                  <div style={{ color: tier.color, fontSize: "1rem", fontWeight: "bold", fontFamily: SERIF, display:"flex", alignItems:"center", justifyContent:"center", gap:"0.35rem", marginTop: "0.4rem" }}>
+                    <GBSCIcon name={tier.icon} size={18} color={tier.color} strokeWidth={2}/>
+                    {tier.tier}
+                  </div>
+                )}
+                <div style={{ fontSize: "0.72rem", color: "#666", marginTop: "0.9rem", borderTop: "1px solid #ffffff18", paddingTop: "0.9rem" }}>
+                  Your overall score — combines fitness, strength, and weekly habits.
+                </div>
+                <div style={{ marginTop: "0.8rem", paddingTop: "0.6rem", borderTop: "1px solid #ffffff10", display: "flex", justifyContent: "center", gap: "0.4rem", alignItems: "baseline" }}>
+                  <span style={{ fontSize: "0.68rem", color: "#666" }}>Habit score this week:</span>
+                  <span style={{ fontSize: "1rem", fontWeight: "bold", color: G }}>{displayedScore}</span>
+                  <span style={{ fontSize: "0.68rem", color: "#555" }}>/ 100</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: "0.78rem", color: "#aaa", marginBottom: "0.5rem", letterSpacing: "0.04em" }}>Habit Score</div>
+                <div style={{ fontSize: "5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", minWidth: "3ch", display: "inline-block" }}>{displayedScore}</div>
+                <div style={{ fontSize: "0.85rem", color: "#888", marginTop: "0.3rem" }}>out of 100</div>
+                <div style={{ fontSize: "0.72rem", color: "#666", marginTop: "0.9rem", borderTop: "1px solid #ffffff18", paddingTop: "0.9rem" }}>
+                  Measures your weekly habits around training, recovery, and resilience.
+                </div>
+              </>
+            )}
           </div>
 
           {/* Score movement — week 2+ */}
@@ -2303,6 +2457,16 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       setView("midweekResult");
     }
 
+    const frictionCopy = {
+      time:   "You planned for a busy week. Stay in it.",
+      energy: "Low energy was expected. Keep it simple.",
+      stress: "This is the week that matters most.",
+      travel: "You planned for disruption. Adapt and keep going.",
+      body:   "Pull back, don't drop out.",
+      mixed:  "Unpredictable week. Minimums win.",
+    };
+    const frictionType = thisWeek?.weeklyFrictionType;
+
     const responses = {
       on_track:    { label: "On Track",     desc: "You're moving in the right direction." },
       slightly_off:{ label: "Slightly Off", desc: "A small adjustment can still win the week." },
@@ -2472,8 +2636,29 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             {content.rotatingMsg}
           </div>
 
+          {/* Carry-forward — closes the friction planning loop */}
+          {(() => {
+            const ft = thisWeek?.weeklyFrictionType;
+            const carryForward = {
+              time:   "That busy week you planned for? You handled it.",
+              energy: "Even with low energy — you stayed in it.",
+              stress: "Stress showed up. You didn't disappear.",
+              travel: "You adapted. That's the whole skill.",
+              body:   "You pulled back instead of dropping out. Smart.",
+              mixed:  "Unpredictable week. You showed up anyway.",
+            };
+            if (!ft || !carryForward[ft]) return null;
+            return (
+              <div style={{ background: "#ffffff08", borderRadius: "10px", padding: "0.75rem 1rem", marginTop: "1rem", marginBottom: "0.5rem" }}>
+                <div style={{ fontSize: "0.85rem", color: content.color, fontWeight: "bold", fontStyle: "italic" }}>
+                  {carryForward[ft]}
+                </div>
+              </div>
+            );
+          })()}
+
           <button onClick={() => setView("checkFeedback")}
-            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginTop: "1.5rem" }}>
+            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginTop: "1rem" }}>
             Back to My Results →
           </button>
           <button onClick={() => setView("profile")}
@@ -2669,6 +2854,27 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
+          {/* Carry-forward — closes the friction planning loop */}
+          {(() => {
+            const ft = thisWeek?.weeklyFrictionType;
+            const carryForward = {
+              time:   "That busy week you planned for? You handled it.",
+              energy: "Even with low energy — you stayed in it.",
+              stress: "Stress showed up. You didn't disappear.",
+              travel: "You adapted. That's the whole skill.",
+              body:   "You pulled back instead of dropping out. Smart.",
+              mixed:  "Unpredictable week. You showed up anyway.",
+            };
+            if (!ft || !carryForward[ft]) return null;
+            return (
+              <div style={{ background: "#ffffff08", borderRadius: "10px", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+                <div style={{ fontSize: "0.85rem", color: content.color, fontWeight: "bold", fontStyle: "italic" }}>
+                  {carryForward[ft]}
+                </div>
+              </div>
+            );
+          })()}
+
           <button onClick={() => setView("profile")}
             style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
             Back to My Week →
@@ -2793,21 +2999,36 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* ── ZONE 1: YOUR WEEK ──────────────────────────────────────────── */}
 
-          {/* Hero card — name, CI, tier — with declared week integrated at bottom */}
-          <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #1a2a1a 100%)`, borderRadius: "16px", marginBottom: "1.2rem", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+          {/* Hero card — habit score + role, with declared week strip */}
+          <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #2a4a1a 100%)`, borderRadius: "16px", marginBottom: "1.2rem", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
             <div style={{ padding: "1.5rem", color: "#fff", textAlign: "center" }}>
               <div style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{currentMember.name}</div>
               <div style={{ color: "#aaa", fontSize: "0.85rem" }}>Week {checks.length} of 8</div>
-              {ci !== null && (
+              {latest && (
                 <>
-                  <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginTop: "1rem", marginBottom: "0.2rem" }}>Capacity Index</div>
-                  <div style={{ fontSize: "3.5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{ci}</div>
-                  <div style={{ color: tier.color, fontSize: "1rem", fontWeight: "bold", fontFamily: SERIF, display:"flex", alignItems:"center", justifyContent:"center", gap:"0.35rem", marginTop: "0.4rem" }}>
-                    <GBSCIcon name={tier.icon} size={18} color={tier.color} strokeWidth={2}/>
-                    {tier.tier}
-                  </div>
-                  <div style={{ fontSize: "0.68rem", color: "#555", marginTop: "0.9rem", borderTop: "1px solid #ffffff12", paddingTop: "0.8rem", lineHeight: 1.5 }}>
-                    Your overall score — combines fitness, strength, and weekly habits.
+                  <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginTop: "1rem", marginBottom: "0.2rem" }}>Habit Score</div>
+                  <div style={{ fontSize: "3.5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{latest.score}</div>
+                  <div style={{ fontSize: "0.78rem", color: "#888", marginTop: "0.2rem" }}>out of 100 this week</div>
+                  {tier && (
+                    <div style={{ color: tier.color, fontSize: "0.9rem", fontWeight: "bold", fontFamily: SERIF, display:"flex", alignItems:"center", justifyContent:"center", gap:"0.35rem", marginTop: "0.5rem" }}>
+                      <GBSCIcon name={tier.icon} size={16} color={tier.color} strokeWidth={2}/>
+                      {tier.tier}
+                    </div>
+                  )}
+                  {ci !== null && (
+                    <div style={{ fontSize: "0.68rem", color: "#555", marginTop: "0.9rem", borderTop: "1px solid #ffffff12", paddingTop: "0.8rem" }}>
+                      Capacity Index: <span style={{ color: G, fontWeight: "bold" }}>{ci}</span>
+                      <span style={{ color: "#444", marginLeft: "0.4rem" }}>· See full breakdown in My Results</span>
+                    </div>
+                  )}
+                </>
+              )}
+              {!latest && baseline && (
+                <>
+                  <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginTop: "1rem", marginBottom: "0.2rem" }}>Baseline Habit Score</div>
+                  <div style={{ fontSize: "3.5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums" }}>{baseline.score}</div>
+                  <div style={{ fontSize: "0.72rem", color: "#555", marginTop: "0.9rem", borderTop: "1px solid #ffffff12", paddingTop: "0.8rem", lineHeight: 1.5 }}>
+                    Your starting point. Check in each week to track your progress.
                   </div>
                 </>
               )}
@@ -2825,11 +3046,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             )}
           </div>
 
-          {/* Today's Focus */}
+          {/* This Week's Focus */}
           {focusTipForProfile && (
             <div style={{ background: CARD, border: `1.5px solid #e8e8e8`, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.1rem 1.3rem", marginBottom: "1.2rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.7rem" }}>
-                <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em", background: `${G}15`, border: `1px solid ${G}30`, borderRadius: "6px", padding: "0.2rem 0.5rem" }}>Today's Focus</div>
+                <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em", background: `${G}15`, border: `1px solid ${G}30`, borderRadius: "6px", padding: "0.2rem 0.5rem" }}>This Week's Focus</div>
                 <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#666", letterSpacing: "0.06em", background: "#f0f0f0", borderRadius: "6px", padding: "0.2rem 0.5rem" }}>{focusTipForProfile.label.toUpperCase()}</div>
               </div>
               <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
