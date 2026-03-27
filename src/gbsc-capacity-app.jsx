@@ -672,26 +672,19 @@ export default function GBSCApp() {
 
   useEffect(() => { init(); }, []);
 
-  // Lock gradient to viewport on iOS Safari — the only reliable approach.
-  // html/body get height:100% + overflow:hidden so the gradient is painted
-  // once on the viewport canvas. Scrolling happens inside content divs only.
+  // Paint gradient on html element — most reliable cross-browser approach.
+  // We do NOT lock overflow so all views scroll naturally.
+  // The gradient covers the full viewport height and repeats if content is longer.
   useEffect(() => {
     const html = document.documentElement;
-    const body = document.body;
-    html.style.height = "100%";
-    html.style.overflow = "hidden";
     html.style.background = LIGHT_BG;
-    body.style.height = "100%";
-    body.style.overflow = "hidden";
-    body.style.background = "transparent";
-    body.style.margin = "0";
+    html.style.backgroundAttachment = "fixed";
+    document.body.style.background = "transparent";
+    document.body.style.margin = "0";
     return () => {
-      html.style.height = "";
-      html.style.overflow = "";
       html.style.background = "";
-      body.style.height = "";
-      body.style.overflow = "";
-      body.style.background = "";
+      html.style.backgroundAttachment = "";
+      document.body.style.background = "";
     };
   }, []);
 
@@ -1664,6 +1657,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   if (view === "declaredWeek" && currentMember && declaredWeek) {
     const dw = declaredWeek;
+    const dwThisWeek = getCurrentWeekCheck(currentMember);
+    const dwOutlook = dwThisWeek?.weeklyOutlook;
+    const dwLeanIn = dwThisWeek?.weeklyLeanIn;
     const isFirstWeeks = dw.weekCount <= 2;
 
     // Accordion state for the 4 expandable sections
@@ -1693,7 +1689,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               {dw.role} Week
             </div>
             <div style={{ fontSize: "1.1rem", color: dw.textSupport, fontStyle: "italic", marginBottom: "1rem", fontFamily: SERIF }}>
-              {dw.subtext}
+              {dwOutlook === "tight"    ? "Stay in it this week."
+               : dwOutlook === "on_track" ? "Stay consistent."
+               : dwOutlook === "room" && dwLeanIn ? `Lean in on ${dwLeanIn}.`
+               : dwOutlook === "room"     ? "Use the room wisely."
+               : dw.subtext}
             </div>
             <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6 }}>
               {dw.reasonLine}
@@ -1713,7 +1713,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {/* ── Win condition (above the fold) ── */}
           <div style={{ background: `${dw.color}18`, border: `1.5px solid ${dw.color}44`, borderRadius: "12px", padding: "0.9rem 1.2rem", marginBottom: "1.4rem", textAlign: "center" }}>
-            <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6, fontStyle: "italic", fontFamily: SERIF }}>{dw.winLine}</div>
+            <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6, fontStyle: "italic", fontFamily: SERIF }}>
+              {dwOutlook === "tight"    ? `${dw.role} Week: Stay in it.`
+               : dwOutlook === "on_track" ? `${dw.role} Week: Hit your targets.`
+               : dwOutlook === "room" && dwLeanIn ? `${dw.role} Week: Lean in on ${dwLeanIn}.`
+               : dwOutlook === "room"     ? `${dw.role} Week: Use the room wisely.`
+               : dw.winLine}
+            </div>
           </div>
 
           {/* ── CTA (above the fold) ── */}
@@ -2347,7 +2353,7 @@ const LEAN_IN_PRESCRIPTIONS = {
 
 
     return (
-      <div style={{ height: "100vh", background: "transparent", fontFamily: SANS, overflowY: "auto", WebkitOverflowScrolling: "touch", position: "relative" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <style>{`
           @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
           @keyframes gbscTierSlide {
@@ -2356,7 +2362,6 @@ const LEAN_IN_PRESCRIPTIONS = {
           }
           .gbsc-tier-ladder { animation: gbscTierSlide 0.25s ease forwards; }
         `}</style>
-        {/* Header + tabs — sticky overlay so content scrolls behind the frosted glass */}
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
           {/* Tabs — absolutely positioned below header, centered, transparent sides */}
@@ -3588,8 +3593,7 @@ const LEAN_IN_PRESCRIPTIONS = {
     const checkedInThisWeek  = lastCheck && !isEligibleForCheckin(lastCheck.date);
 
     return (
-      <div style={{ height: "100vh", background: "transparent", fontFamily: SANS, overflowY: "auto", WebkitOverflowScrolling: "touch", position: "relative" }}>
-        {/* Header + tabs — sticky overlay so content scrolls behind the frosted glass */}
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
           {/* Tabs — absolutely positioned below header, centered, transparent sides */}
@@ -3647,7 +3651,18 @@ const LEAN_IN_PRESCRIPTIONS = {
                 onClick={() => { setPrevView("profile"); setDeclaredWeek(dw); setView("declaredWeek"); }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.7)", letterSpacing: "0.08em", fontWeight: "bold", marginBottom: "0.1rem" }}>THIS WEEK</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>{dw.subtext}</span></div>
+                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>
+                    {(() => {
+                      const outlook = getCurrentWeekCheck(currentMember)?.weeklyOutlook;
+                      const leanIn = getCurrentWeekCheck(currentMember)?.weeklyLeanIn;
+                      const leanLabels = { fitness: "Leaning in on Fitness", nutrition: "Leaning in on Nutrition", recovery: "Leaning in on Recovery" };
+                      if (outlook === "tight")    return <>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>Staying in it</span></>;
+                      if (outlook === "on_track") return <>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>Staying consistent</span></>;
+                      if (outlook === "room" && leanIn) return <>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>{leanLabels[leanIn]}</span></>;
+                      if (outlook === "room")     return <>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>Open week — lean in</span></>;
+                      return <>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>{dw.subtext}</span></>;
+                    })()}
+                  </div>
                 </div>
                 <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "1.1rem", flexShrink: 0 }}>→</div>
               </div>
@@ -3665,7 +3680,18 @@ const LEAN_IN_PRESCRIPTIONS = {
                 <div style={{ width: "40px", height: "40px", flexShrink: 0, background: `${G}12`, borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <GBSCIcon name={focusTipForProfile.iconName} size={24} color={G} strokeWidth={0}/>
                 </div>
-                <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.65, flex: 1 }}>{focusTipForProfile.focus}</div>
+                <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.65, flex: 1 }}>
+                {(() => {
+                  const outlook = getCurrentWeekCheck(currentMember)?.weeklyOutlook;
+                  const leanIn = getCurrentWeekCheck(currentMember)?.weeklyLeanIn;
+                  const prefix = outlook === "tight"    ? "This week is about staying in it — "
+                               : outlook === "on_track" ? "You're on track — "
+                               : outlook === "room" && leanIn === "recovery" ? "You have room — double down on recovery. "
+                               : outlook === "room"     ? "You have room this week — "
+                               : "";
+                  return <>{prefix}{focusTipForProfile.focus}</>;
+                })()}
+              </div>
               </div>
             </div>
           )}
