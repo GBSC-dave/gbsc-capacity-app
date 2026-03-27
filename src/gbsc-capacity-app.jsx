@@ -86,7 +86,7 @@ const CARD = "#fdfcfb";
 const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.05)";
 const PAGE_BG = "#f9f7f4";
 const DARK_BG  = "linear-gradient(180deg, #363636 0%, #222222 100%)";
-const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #e8e6ee 100%)";
+const LIGHT_BG = "linear-gradient(180deg, #d8d6d4 0%, #c8c5cf 100%)";
 const SERIF = "'Georgia', serif";
 const SANS  = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
@@ -177,6 +177,203 @@ function getGripScore(grip, bw, age, sex) {
   }
   return 8;
 }
+
+// ── Friction × Role Prescriptions ────────────────────────────────────────────
+// Eric's role-specific fallback plans for each friction type.
+const FRICTION_PRESCRIPTIONS = {
+  time: {
+    Anchor: {
+      targets: [
+        { label: "Training",  value: "2 × 20–30 min sessions (short + simple)" },
+        { label: "Engine",    value: "10–15 min walks · accumulate 60 min total" },
+        { label: "Nutrition", value: "Protein at 1–2 meals/day minimum" },
+        { label: "Recovery",  value: "3 nights of 7+ hrs · get in bed earlier 3 nights" },
+        { label: "Actions",   value: "1 recovery action (walk, stretch, breathe)" },
+      ],
+      rule: "Short counts. Done beats planned.",
+    },
+    Builder: {
+      targets: [
+        { label: "Training",  value: "3 workouts → allow 2 shorter if needed" },
+        { label: "Engine",    value: "Break into 15–20 min chunks · reach ~75–90 min" },
+        { label: "Nutrition", value: "Protein at most meals (don't skip)" },
+        { label: "Recovery",  value: "4 nights of 7+ hrs · consistent wind-down" },
+        { label: "Actions",   value: "2 recovery actions (stack onto existing routines)" },
+      ],
+      rule: "Split it up. It still counts.",
+    },
+    Expansion: {
+      targets: [
+        { label: "Training",  value: "4 workouts → minimum 3 if compressed week" },
+        { label: "Engine",    value: "Hit 90 min minimum (reduce from stretch goal)" },
+        { label: "Nutrition", value: "Keep quality high, simplify meals if needed" },
+        { label: "Recovery",  value: "Protect 5 nights · reduce intensity if sleep drops" },
+        { label: "Actions",   value: "2–3 recovery actions (keep it efficient)" },
+      ],
+      rule: "Maintain rhythm, not volume.",
+    },
+  },
+  energy: {
+    Anchor: {
+      targets: [
+        { label: "Training",  value: "2 light sessions (move, don't push)" },
+        { label: "Engine",    value: "Easy walks · 60 min total" },
+        { label: "Nutrition", value: "Protein + hydrate (don't under-eat)" },
+        { label: "Recovery",  value: "Priority → 3–4 nights of 7+ hrs" },
+        { label: "Actions",   value: "2 recovery actions (nap, NSDR, early bedtime)" },
+      ],
+      rule: "Downshift, don't stop.",
+    },
+    Builder: {
+      targets: [
+        { label: "Training",  value: "3 workouts → keep 1 lighter" },
+        { label: "Engine",    value: "60–75 min easy aerobic (not intensity)" },
+        { label: "Nutrition", value: "Protein + carbs to support energy" },
+        { label: "Recovery",  value: "4+ nights of 7+ hrs (non-negotiable focus)" },
+        { label: "Actions",   value: "2–3 recovery actions (double down here)" },
+      ],
+      rule: "Earn energy back, don't spend it.",
+    },
+    Expansion: {
+      targets: [
+        { label: "Training",  value: "4 workouts → cap intensity (1 push max if ready)" },
+        { label: "Engine",    value: "75–90 min aerobic (no redlining)" },
+        { label: "Nutrition", value: "High quality + adequate calories" },
+        { label: "Recovery",  value: "5+ nights (this is the lever)" },
+        { label: "Actions",   value: "3+ recovery actions (sauna, mobility, sleep routine)" },
+      ],
+      rule: "Adjust intensity, keep structure.",
+    },
+  },
+  stress: {
+    Anchor: {
+      targets: [
+        { label: "Training",  value: "2 sessions (keep them simple + familiar)" },
+        { label: "Engine",    value: "Walks · 60 min total (great for stress)" },
+        { label: "Nutrition", value: "Protein baseline, don't skip meals" },
+        { label: "Recovery",  value: "3–4 nights · focus on winding down" },
+        { label: "Actions",   value: "2 recovery actions (breathing, walks, quiet time)" },
+      ],
+      rule: "Movement is medicine this week.",
+    },
+    Builder: {
+      targets: [
+        { label: "Training",  value: "3 workouts (avoid overreaching)" },
+        { label: "Engine",    value: "75–90 min mostly low intensity" },
+        { label: "Nutrition", value: "Stay consistent (avoid stress eating swings)" },
+        { label: "Recovery",  value: "4+ nights of 7+ hrs" },
+        { label: "Actions",   value: "2–3 recovery actions (non-negotiable)" },
+      ],
+      rule: "Control what you can control.",
+    },
+    Expansion: {
+      targets: [
+        { label: "Training",  value: "4 workouts → reduce intensity if overwhelmed" },
+        { label: "Engine",    value: "90 min steady aerobic" },
+        { label: "Nutrition", value: "Keep structure tight (anchor your day)" },
+        { label: "Recovery",  value: "5+ nights (protect this hard)" },
+        { label: "Actions",   value: "3+ recovery actions (this becomes the focus)" },
+      ],
+      rule: "Don't stack stress on stress.",
+    },
+  },
+  travel: {
+    Anchor: {
+      targets: [
+        { label: "Training",  value: "2 bodyweight or hotel sessions" },
+        { label: "Engine",    value: "Walk whenever possible · 60 min total accumulated" },
+        { label: "Nutrition", value: "Protein whenever available (flexible)" },
+        { label: "Recovery",  value: "Aim for 3 nights quality sleep" },
+        { label: "Actions",   value: "1 recovery action (walk or stretch)" },
+      ],
+      rule: "Adapt, don't skip.",
+    },
+    Builder: {
+      targets: [
+        { label: "Training",  value: "3 workouts (bodyweight / hotel gym)" },
+        { label: "Engine",    value: "75–90 min via walking or light cardio" },
+        { label: "Nutrition", value: "Protein priority, flexible structure" },
+        { label: "Recovery",  value: "4 nights of quality sleep (as able)" },
+        { label: "Actions",   value: "2 recovery actions (mobility, hydration)" },
+      ],
+      rule: "Keep the floor high.",
+    },
+    Expansion: {
+      targets: [
+        { label: "Training",  value: "4 workouts → minimum 3 while traveling" },
+        { label: "Engine",    value: "90 min (walking counts heavily here)" },
+        { label: "Nutrition", value: "High-quality choices when available" },
+        { label: "Recovery",  value: "Adjust intensity if sleep suffers" },
+        { label: "Actions",   value: "2–3 recovery actions (keep routine elements)" },
+      ],
+      rule: "Win the environment you're in.",
+    },
+  },
+  body: {
+    Anchor: {
+      targets: [
+        { label: "Training",  value: "2 modified sessions (pain-free movement only)" },
+        { label: "Engine",    value: "Low-impact (walk, bike) · 60 min" },
+        { label: "Nutrition", value: "Protein + hydration (support recovery)" },
+        { label: "Recovery",  value: "3–4 nights of 7+ hrs" },
+        { label: "Actions",   value: "2 recovery actions (mobility, soft tissue)" },
+      ],
+      rule: "Heal while staying in it.",
+    },
+    Builder: {
+      targets: [
+        { label: "Training",  value: "3 workouts → modify movements" },
+        { label: "Engine",    value: "75–90 min low impact" },
+        { label: "Nutrition", value: "Protein at most meals" },
+        { label: "Recovery",  value: "4+ nights of 7+ hrs" },
+        { label: "Actions",   value: "2–3 recovery actions (priority)" },
+      ],
+      rule: "Train around it, not through it.",
+    },
+    Expansion: {
+      targets: [
+        { label: "Training",  value: "4 workouts → adjust load/intensity" },
+        { label: "Engine",    value: "90 min low to moderate intensity" },
+        { label: "Nutrition", value: "High quality fueling" },
+        { label: "Recovery",  value: "5+ nights" },
+        { label: "Actions",   value: "3+ recovery actions (lean in here)" },
+      ],
+      rule: "Longevity over intensity.",
+    },
+  },
+  mixed: {
+    Anchor: {
+      targets: [
+        { label: "Training",  value: "2 workouts" },
+        { label: "Engine",    value: "60 min total aerobic" },
+        { label: "Nutrition", value: "Protein once daily" },
+        { label: "Recovery",  value: "Prioritize sleep when possible" },
+        { label: "Actions",   value: "1 recovery action" },
+      ],
+      rule: "Keep it simple. Hit the minimums.",
+    },
+    Builder: {
+      targets: [
+        { label: "Training",  value: "3 workouts" },
+        { label: "Engine",    value: "90 min" },
+        { label: "Nutrition", value: "Protein at most meals" },
+        { label: "Recovery",  value: "4+ nights" },
+        { label: "Actions",   value: "2–3 recovery actions" },
+      ],
+      rule: "Stay steady.",
+    },
+    Expansion: {
+      targets: [
+        { label: "Training",  value: "4 workouts" },
+        { label: "Engine",    value: "90–120 min" },
+        { label: "Nutrition", value: "High quality" },
+        { label: "Recovery",  value: "5+ nights" },
+        { label: "Actions",   value: "3+ recovery actions" },
+      ],
+      rule: "Build momentum.",
+    },
+  },
+};
 
 // ─── Declared Week Engine ─────────────────────────────────────────────────────
 function getDeclaredWeek(allChecks) {
@@ -305,7 +502,7 @@ function getDeclaredWeek(allChecks) {
       color: "#2C4A6E", bg: "linear-gradient(180deg, #f2f6fa 0%, #d8e4ef 100%)", accent: "#A8BECE", textSupport: "#1E3348", iconName: "performer",
       subtext: "Take it further.",
       targets: [
-        { label: "Training",       value: "3 workouts (4 if aligned)" },
+        { label: "Training",       value: "4 workouts (5 if aligned)" },
         { label: "Engine",         value: "90 min baseline — build toward 150+" },
         { label: "Nutrition",      value: "High-quality fueling" },
         { label: "Recovery",       value: "5+ nights of 7+ hours · 3+ recovery actions" },
@@ -475,19 +672,26 @@ export default function GBSCApp() {
 
   useEffect(() => { init(); }, []);
 
-  // Set gradient on <html> — the only approach that stays truly fixed on iOS Safari
-  // The html element's background is treated as the page canvas and never scrolls
+  // Lock gradient to viewport on iOS Safari — the only reliable approach.
+  // html/body get height:100% + overflow:hidden so the gradient is painted
+  // once on the viewport canvas. Scrolling happens inside content divs only.
   useEffect(() => {
     const html = document.documentElement;
+    const body = document.body;
+    html.style.height = "100%";
+    html.style.overflow = "hidden";
     html.style.background = LIGHT_BG;
-    html.style.backgroundAttachment = "fixed";
-    html.style.minHeight = "100%";
-    document.body.style.background = "transparent";
-    document.body.style.minHeight = "100%";
+    body.style.height = "100%";
+    body.style.overflow = "hidden";
+    body.style.background = "transparent";
+    body.style.margin = "0";
     return () => {
+      html.style.height = "";
+      html.style.overflow = "";
       html.style.background = "";
-      html.style.backgroundAttachment = "";
-      document.body.style.background = "";
+      body.style.height = "";
+      body.style.overflow = "";
+      body.style.background = "";
     };
   }, []);
 
@@ -1147,6 +1351,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [badgesOpen, setBadgesOpen] = useState(false);     // profile page badges accordion
   const [prevView, setPrevView] = useState("profile");     // where declared week was entered from
   const [frictionChoice, setFrictionChoice] = useState(null); // friction planning selection
+  const [outlookChoice, setOutlookChoice] = useState(null);   // week outlook: tight/on_track/room
+  const [leanInChoice, setLeanInChoice] = useState(null);     // lean-in domain: fitness/nutrition/recovery
 
 
   function startEdit() {
@@ -1280,6 +1486,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         weekResult: null,
         weekResultDate: null,
         weeklyFrictionType: null,
+        weeklyOutlook: null,
+        weeklyLeanIn: null,
       }]
     };
     await saveMember(updatedMember);
@@ -1512,7 +1720,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <div style={{ fontSize: "0.82rem", color: dw.textSupport, textAlign: "center", marginBottom: "0.6rem", fontStyle: "italic", opacity: 0.85 }}>
             Plan for a real week, not a perfect one.
           </div>
-          <button onClick={() => { setFrictionChoice(null); setView("frictionPlanning"); }}
+          <button onClick={() => { setOutlookChoice(null); setFrictionChoice(null); setLeanInChoice(null); setView("weekOutlook"); }}
             style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.6rem" }}>
             {dw.buttonLabel} →
           </button>
@@ -1572,6 +1780,331 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             {prevView === "profile" ? "← Back to My Profile" : "← Back to My Results"}
           </button>
 
+        </div>
+      </div>
+    );
+  }
+
+// ── Lean-In Prescriptions ────────────────────────────────────────────────────
+// Eric's role-specific lean-in plans for open weeks.
+const LEAN_IN_PRESCRIPTIONS = {
+  fitness: {
+    Anchor: {
+      actions: [
+        "Add 1 extra workout this week (optional 3rd)",
+        "OR add 1 × 20–30 min aerobic session",
+      ],
+      rule: "Do a little more, not everything.",
+    },
+    Builder: {
+      actions: [
+        "Add a 4th workout",
+        "OR upgrade 1 session with more focus or effort",
+      ],
+      rule: "Upgrade one session, not all of them.",
+    },
+    Expansion: {
+      actions: [
+        "Add a 5th workout (if aligned)",
+        "OR choose 1 session to push intensity",
+      ],
+      rule: "Push once. Recover well.",
+    },
+  },
+  nutrition: {
+    Anchor: {
+      actions: [
+        "Add protein to 1 more meal each day",
+        "Keep everything else simple",
+      ],
+      rule: "One better choice per day is enough.",
+    },
+    Builder: {
+      actions: [
+        "Tighten meal quality this week",
+        "Reduce missed or low-quality meals",
+      ],
+      rule: "Be more consistent, not stricter.",
+    },
+    Expansion: {
+      actions: [
+        "Fully align meals this week",
+        "Fuel to support performance and recovery",
+      ],
+      rule: "Fuel like it matters — because it does.",
+    },
+  },
+  recovery: {
+    Anchor: {
+      actions: [
+        "Add 1 extra recovery action this week",
+        "OR get to bed earlier 2–3 nights",
+      ],
+      rule: "Recover a little better, not perfectly.",
+    },
+    Builder: {
+      actions: [
+        "Add 1 more recovery action",
+        "OR improve sleep consistency this week",
+      ],
+      rule: "Better recovery = better output.",
+    },
+    Expansion: {
+      actions: [
+        "Add 1–2 extra recovery actions",
+        "Protect sleep (5+ nights)",
+      ],
+      rule: "Growth happens when you recover.",
+    },
+  },
+};
+
+  // ── SCREEN 1: WEEK OUTLOOK ────────────────────────────────────────────────
+  if (view === "weekOutlook" && currentMember) {
+    const allChecks = currentMember.weeklyChecks || [];
+    const dw = getDeclaredWeek(allChecks);
+    const accentColor = dw ? dw.color : G;
+    const thisWeek = getCurrentWeekCheck(currentMember);
+
+    async function commitOutlook(outlook) {
+      if (!thisWeek) { setView("profile"); return; }
+      // Save outlook to current week
+      const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+        c && c.week === thisWeek.week && !c.isBaseline
+          ? { ...c, weeklyOutlook: outlook }
+          : c
+      );
+      const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
+      await saveMember(updatedMember);
+      setCurrentMember(updatedMember);
+      setOutlookChoice(outlook);
+      // Route to appropriate next screen
+      if (outlook === "tight") {
+        setFrictionChoice(null);
+        setView("frictionPlanning");
+      } else if (outlook === "on_track") {
+        setView("onTrack");
+      } else if (outlook === "room") {
+        setLeanInChoice(null);
+        setView("openWeek");
+      }
+    }
+
+    const outlookOptions = [
+      { key: "tight",    label: "Tight / unpredictable", sub: "Stay in it", icon: "warning" },
+      { key: "on_track", label: "On track",              sub: "Stay consistent", icon: "check" },
+      { key: "room",     label: "This week has room",    sub: "Lean in", icon: "bounce2" },
+    ];
+
+    return (
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+        {hdr}
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", flex: 1 }}>
+          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+            <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.5rem" }}>
+              How is this week shaping up?
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
+            {outlookOptions.map(({ key, label, sub, icon }) => (
+              <button key={key} onClick={() => commitOutlook(key)}
+                style={{
+                  width: "100%", textAlign: "left", cursor: "pointer",
+                  background: "#ffffff08", border: "1.5px solid #ffffff18",
+                  borderRadius: "14px", padding: "1rem 1.2rem",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background="#ffffff14"; e.currentTarget.style.borderColor=accentColor+"88"; }}
+                onMouseLeave={e => { e.currentTarget.style.background="#ffffff08"; e.currentTarget.style.borderColor="#ffffff18"; }}>
+                <div>
+                  <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#fff", marginBottom: "0.15rem" }}>{label}</div>
+                  <div style={{ fontSize: "0.75rem", color: accentColor, fontWeight: "bold", letterSpacing: "0.04em" }}>{sub}</div>
+                </div>
+                <GBSCIcon name={icon} size={22} color={accentColor} strokeWidth={0}/>
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: "0.78rem", color: "#555", textAlign: "center" }}>
+            This helps us guide your week.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── SCREEN 2B: ON TRACK ────────────────────────────────────────────────────
+  if (view === "onTrack" && currentMember) {
+    const allChecks = currentMember.weeklyChecks || [];
+    const dw = getDeclaredWeek(allChecks);
+    const accentColor = dw ? dw.color : G;
+
+    return (
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+        {hdr}
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+          <GBSCIcon name="check" size={52} color={accentColor} strokeWidth={0}/>
+          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginTop: "1rem", marginBottom: "0.8rem" }}>
+            Stay the course
+          </div>
+          <div style={{ fontSize: "1rem", color: "#ddd", lineHeight: 1.7, marginBottom: "0.5rem" }}>
+            You don't need to do more this week.
+          </div>
+          <div style={{ fontSize: "1rem", color: "#ddd", lineHeight: 1.7, marginBottom: "2rem" }}>
+            Just hit your targets and keep momentum.
+          </div>
+          <div style={{ fontSize: "0.82rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.06em", marginBottom: "2rem" }}>
+            CONSISTENCY WINS.
+          </div>
+          <button onClick={() => setView("profile")}
+            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
+            I'm on it →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── SCREEN 2C: OPEN WEEK ───────────────────────────────────────────────────
+  if (view === "openWeek" && currentMember) {
+    const allChecks = currentMember.weeklyChecks || [];
+    const dw = getDeclaredWeek(allChecks);
+    const accentColor = dw ? dw.color : G;
+
+    const leanOptions = [
+      { key: "fitness",   label: "Fitness",   icon: "dumbbell" },
+      { key: "nutrition", label: "Nutrition",  icon: "plate" },
+      { key: "recovery",  label: "Recovery",   icon: "refresh" },
+    ];
+
+    return (
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+        {hdr}
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", flex: 1 }}>
+          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+            <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.5rem" }}>
+              This week has room
+            </div>
+            <div style={{ fontSize: "0.9rem", color: "#aaa", lineHeight: 1.6 }}>
+              Let's use it without overdoing it.
+            </div>
+            <div style={{ fontSize: "0.85rem", color: "#777", marginTop: "0.4rem" }}>
+              Pick ONE way to lean in:
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
+            {leanOptions.map(({ key, label, icon }) => {
+              const selected = leanInChoice === key;
+              const role = dw?.role || "Anchor";
+              const roleKey = role === "Reset" ? "Anchor" : role;
+              const prescription = LEAN_IN_PRESCRIPTIONS[key]?.[roleKey];
+              return (
+                <div key={key}>
+                  <button onClick={() => setLeanInChoice(selected ? null : key)}
+                    style={{
+                      width: "100%", textAlign: "left", cursor: "pointer",
+                      background: selected ? accentColor+"22" : "#ffffff08",
+                      border: "1.5px solid " + (selected ? accentColor : "#ffffff18"),
+                      borderRadius: selected ? "12px 12px 0 0" : "12px",
+                      padding: "0.9rem 1.2rem",
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      transition: "all 0.15s ease",
+                    }}>
+                    <span style={{ fontSize: "1rem", fontWeight: selected ? "bold" : "normal", color: selected ? accentColor : "#ddd" }}>{label}</span>
+                    <GBSCIcon name={icon} size={20} color={selected ? accentColor : "#555"} strokeWidth={0}/>
+                  </button>
+                  {selected && prescription && (
+                    <div style={{ background: "#ffffff06", border: "1.5px solid " + accentColor, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "1rem 1.2rem" }}>
+                      <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.08em", marginBottom: "0.6rem" }}>
+                        LEAN IN: {label.toUpperCase()}
+                      </div>
+                      {prescription.actions.map((action, idx) => (
+                        <div key={idx} style={{ display: "flex", gap: "0.6rem", marginBottom: "0.4rem", alignItems: "flex-start" }}>
+                          <div style={{ color: accentColor, fontWeight: "bold", flexShrink: 0, marginTop: "0.1rem" }}>·</div>
+                          <div style={{ fontSize: "0.85rem", color: "#ccc", lineHeight: 1.4 }}>{action}</div>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: "0.82rem", fontWeight: "bold", color: accentColor, marginTop: "0.8rem", paddingTop: "0.6rem", borderTop: "1px solid #ffffff12" }}>
+                        {prescription.rule}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: "0.78rem", color: "#666", textAlign: "center", marginBottom: "1.2rem" }}>
+            Add 1 thing. Keep everything else steady.
+          </div>
+          {leanInChoice && (() => {
+            const role = dw?.role || "Anchor";
+            const roleKey = role === "Reset" ? "Anchor" : role;
+            const prescription = LEAN_IN_PRESCRIPTIONS[leanInChoice]?.[roleKey];
+            async function commitLeanIn() {
+              const thisWeek = getCurrentWeekCheck(currentMember);
+              if (!thisWeek) { setView("profile"); return; }
+              const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+                c && c.week === thisWeek.week && !c.isBaseline
+                  ? { ...c, weeklyLeanIn: leanInChoice }
+                  : c
+              );
+              const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
+              await saveMember(updatedMember);
+              setCurrentMember(updatedMember);
+              setView("lockedIn");
+            }
+            return (
+              <button onClick={commitLeanIn}
+                style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.8rem" }}>
+                Lean in →
+              </button>
+            );
+          })()}
+          {!leanInChoice && (
+            <button onClick={() => setView("profile")}
+              style={{ width: "100%", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "0.85rem" }}>
+              Skip for now →
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── SCREEN 3C: LOCKED IN ───────────────────────────────────────────────────
+  if (view === "lockedIn" && currentMember) {
+    const allChecks = currentMember.weeklyChecks || [];
+    const dw = getDeclaredWeek(allChecks);
+    const accentColor = dw ? dw.color : G;
+    const thisWeek = getCurrentWeekCheck(currentMember);
+    const leanLabel = { fitness: "Fitness", nutrition: "Nutrition", recovery: "Recovery" }[thisWeek?.weeklyLeanIn] || "";
+
+    return (
+      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
+        {hdr}
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+          <GBSCIcon name="star" size={52} color={accentColor} strokeWidth={0}/>
+          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginTop: "1rem", marginBottom: "0.8rem" }}>
+            Locked in
+          </div>
+          <div style={{ fontSize: "1rem", color: "#ddd", lineHeight: 1.7, marginBottom: "0.5rem" }}>
+            You're building momentum this week.
+          </div>
+          {leanLabel && (
+            <div style={{ fontSize: "0.82rem", color: accentColor, fontWeight: "bold", marginBottom: "0.5rem" }}>
+              Leaning in on: {leanLabel}
+            </div>
+          )}
+          <div style={{ fontSize: "1rem", color: "#ddd", lineHeight: 1.7, marginBottom: "2rem" }}>
+            Keep everything else steady.
+          </div>
+          <div style={{ fontSize: "0.82rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.06em", marginBottom: "2rem" }}>
+            MORE IS NOT BETTER. BETTER IS BETTER.
+          </div>
+          <button onClick={() => setView("profile")}
+            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
+            Let's go →
+          </button>
         </div>
       </div>
     );
@@ -1656,30 +2189,34 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     <span style={{ color: selected ? accentColor : "#555", fontSize: "1rem", transition: "transform 0.2s", display: "inline-block", transform: selected ? "rotate(180deg)" : "none" }}>▾</span>
                   </button>
 
-                  {/* Inline expansion */}
-                  {selected && (
-                    <div style={{
-                      background: "#ffffff06", border: `1.5px solid ${accentColor}`,
-                      borderTop: "none", borderRadius: "0 0 12px 12px",
-                      padding: "1rem 1.2rem",
-                    }}>
-                      <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.08em", marginBottom: "0.6rem" }}>
-                        WHEN THAT HITS (IT WILL), DO THIS:
-                      </div>
-                      {dw && (dw.tightTargets || []).map(({ label: tl, value }) => (
-                        <div key={tl} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.4rem", alignItems: "flex-start" }}>
-                          <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: accentColor, minWidth: "68px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{tl}</div>
-                          <div style={{ fontSize: "0.85rem", color: "#ccc", lineHeight: 1.4 }}>{value}</div>
+                  {/* Inline expansion — role + friction specific */}
+                  {selected && (() => {
+                    const role = dw?.role || "Anchor";
+                    const roleKey = (role === "Reset") ? "Anchor" : role;
+                    const prescription = FRICTION_PRESCRIPTIONS[key]?.[roleKey]
+                      || FRICTION_PRESCRIPTIONS[key]?.Anchor;
+                    if (!prescription) return null;
+                    return (
+                      <div style={{
+                        background: "#ffffff06", border: `1.5px solid ${accentColor}`,
+                        borderTop: "none", borderRadius: "0 0 12px 12px",
+                        padding: "1rem 1.2rem",
+                      }}>
+                        <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.08em", marginBottom: "0.6rem" }}>
+                          WHEN THAT HITS (IT WILL), DO THIS:
                         </div>
-                      ))}
-                      <div style={{ fontSize: "0.82rem", color: "#aaa", marginTop: "0.7rem", fontStyle: "italic" }}>
-                        This keeps your week alive.
+                        {prescription.targets.map(({ label: tl, value }) => (
+                          <div key={tl} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.4rem", alignItems: "flex-start" }}>
+                            <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: accentColor, minWidth: "68px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{tl}</div>
+                            <div style={{ fontSize: "0.85rem", color: "#ccc", lineHeight: 1.4 }}>{value}</div>
+                          </div>
+                        ))}
+                        <div style={{ fontSize: "0.82rem", fontWeight: "bold", color: accentColor, marginTop: "0.8rem", paddingTop: "0.6rem", borderTop: "1px solid #ffffff12" }}>
+                          {prescription.rule}
+                        </div>
                       </div>
-                      <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: accentColor, marginTop: "0.5rem" }}>
-                        {reinforcementLines[key]}
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -1810,7 +2347,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ height: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <style>{`
           @keyframes gbscFadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
           @keyframes gbscTierSlide {
@@ -1819,7 +2356,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           }
           .gbsc-tier-ladder { animation: gbscTierSlide 0.25s ease forwards; }
         `}</style>
-        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+        <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
           <div style={{ display: "flex", justifyContent: "center", gap: "3px", background: "transparent", paddingBottom: "0" }}>
             <button onClick={() => setView("profile")}
@@ -1840,6 +2377,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </button>
           </div>
         </div>
+        <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
           {/* Week progress bar */}
@@ -2431,6 +2969,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <button onClick={() => setView("profile")}
             style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>← Back to Profile</button>
         </div>
+        </div>
       </div>
     );
   }
@@ -2478,11 +3017,17 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
-          {/* Header */}
+          {/* Header — prompt adapts to weekly outlook */}
           <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
             <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.12em", marginBottom: "0.8rem" }}>MID-WEEK CHECK</div>
             <div style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, lineHeight: 1.2, marginBottom: "0.6rem" }}>
-              Are you on track<br/>to win your week?
+              {(() => {
+                const outlook = thisWeek?.weeklyOutlook;
+                if (outlook === "tight")    return "This week got tight — did you stay in it?";
+                if (outlook === "on_track") return "Are you staying consistent?";
+                if (outlook === "room")     return "You had room — did you lean in?";
+                return <>Are you on track<br/>to win your week?</>;
+              })()}
             </div>
             {dw && (
               <div style={{ fontSize: "0.82rem", color: "#ccc", marginTop: "0.4rem" }}>
@@ -2490,6 +3035,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               </div>
             )}
           </div>
+
+          {/* Feature 5: Soft pod sync — ambient awareness, not pressure */}
+          {(() => {
+            const myPod = (pods || []).find(p => p.memberIds?.includes(currentMember.id));
+            if (!myPod) return null;
+            const podSize = (myPod.memberIds || []).length;
+            if (podSize < 2) return null;
+            return (
+              <div style={{ textAlign: "center", fontSize: "0.78rem", color: "#555", marginBottom: "1.2rem", fontStyle: "italic" }}>
+                Your pod is navigating this week too.
+              </div>
+            );
+          })()}
 
           {/* Already done state */}
           {already ? (
@@ -2647,11 +3205,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               body:   "You pulled back instead of dropping out. Smart.",
               mixed:  "Unpredictable week. You showed up anyway.",
             };
-            if (!ft || !carryForward[ft]) return null;
+            const outlook = thisWeek?.weeklyOutlook;
+            const outlookCarry = {
+              on_track: "You stayed consistent. That's how it compounds.",
+              room:     "You had room and you used it. That's momentum.",
+            };
+            const msg = (ft && carryForward[ft]) ? carryForward[ft]
+                      : (outlook && outlookCarry[outlook]) ? outlookCarry[outlook]
+                      : null;
+            if (!msg) return null;
             return (
               <div style={{ background: "#ffffff08", borderRadius: "10px", padding: "0.75rem 1rem", marginTop: "1rem", marginBottom: "0.5rem" }}>
                 <div style={{ fontSize: "0.85rem", color: content.color, fontWeight: "bold", fontStyle: "italic" }}>
-                  {carryForward[ft]}
+                  {msg}
                 </div>
               </div>
             );
@@ -2854,6 +3420,47 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           )}
 
+          {/* Feature 6: End-of-week pod reflection */}
+          {(() => {
+            const myPod = (pods || []).find(p => p.memberIds?.includes(currentMember.id));
+            if (!myPod) return null;
+            const allPodMembers = (members || []).filter(m => myPod.memberIds.includes(m.id));
+            if (allPodMembers.length < 2) return null;
+            // Count who stayed in it this week
+            const stayedIn = allPodMembers.filter(m => {
+              const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+              if (!checks.length) return false;
+              const last = checks[checks.length - 1];
+              return last.weekResult === "won" || last.weekResult === "stayed_in";
+            });
+            const close = allPodMembers.filter(m => {
+              const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+              if (!checks.length) return false;
+              const last = checks[checks.length - 1];
+              return last.weekResult === "reset";
+            });
+            const total = allPodMembers.length;
+            if (stayedIn.length === 0 && close.length === 0) return null;
+            return (
+              <div style={{ background: "#ffffff0a", borderRadius: "12px", padding: "0.9rem 1.4rem", marginBottom: "1.5rem", width: "100%", textAlign: "left" }}>
+                <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#888", letterSpacing: "0.1em", marginBottom: "0.5rem" }}>YOUR POD THIS WEEK</div>
+                {stayedIn.length > 0 && (
+                  <div style={{ fontSize: "0.85rem", color: G, fontWeight: "bold", marginBottom: "0.2rem" }}>
+                    {stayedIn.length === total ? "Everyone stayed in it" : `${stayedIn.length} stayed in it`}
+                  </div>
+                )}
+                {close.length > 0 && (
+                  <div style={{ fontSize: "0.85rem", color: "#aaa", marginBottom: "0.2rem" }}>
+                    {close.length} {close.length === 1 ? "is" : "are"} close
+                  </div>
+                )}
+                <div style={{ fontSize: "0.75rem", color: "#555", marginTop: "0.4rem", fontStyle: "italic" }}>
+                  That's how this works.
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Carry-forward — closes the friction planning loop */}
           {(() => {
             const ft = thisWeek?.weeklyFrictionType;
@@ -2865,11 +3472,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               body:   "You pulled back instead of dropping out. Smart.",
               mixed:  "Unpredictable week. You showed up anyway.",
             };
-            if (!ft || !carryForward[ft]) return null;
+            const outlook = thisWeek?.weeklyOutlook;
+            const outlookCarry = {
+              on_track: "You stayed consistent. That's how it compounds.",
+              room:     "You had room and you used it. That's momentum.",
+            };
+            const msg = (ft && carryForward[ft]) ? carryForward[ft]
+                      : (outlook && outlookCarry[outlook]) ? outlookCarry[outlook]
+                      : null;
+            if (!msg) return null;
             return (
               <div style={{ background: "#ffffff08", borderRadius: "10px", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
                 <div style={{ fontSize: "0.85rem", color: content.color, fontWeight: "bold", fontStyle: "italic" }}>
-                  {carryForward[ft]}
+                  {msg}
                 </div>
               </div>
             );
@@ -2973,8 +3588,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const checkedInThisWeek  = lastCheck && !isEligibleForCheckin(lastCheck.date);
 
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+      <div style={{ height: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
           <div style={{ display: "flex", justifyContent: "center", gap: "3px", background: "transparent", paddingBottom: "0" }}>
             <button onClick={() => setView("profile")}
@@ -2995,6 +3610,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </button>
           </div>
         </div>
+        <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
 
           {/* ── ZONE 1: YOUR WEEK ──────────────────────────────────────────── */}
@@ -3009,7 +3625,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginTop: "1rem", marginBottom: "0.2rem" }}>Habit Score</div>
                   <div style={{ fontSize: "3.5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{latest.score}</div>
                   <div style={{ fontSize: "0.78rem", color: "#888", marginTop: "0.2rem" }}>out of 100 this week</div>
-                  <div style={{ fontSize: "0.68rem", color: "#555", marginTop: "0.9rem", borderTop: "1px solid #ffffff12", paddingTop: "0.8rem", lineHeight: 1.5 }}>
+                  <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.9rem", borderTop: "1px solid #ffffff12", paddingTop: "0.8rem", lineHeight: 1.5 }}>
                     How well your training, recovery, and daily habits landed this week.
                   </div>
                 </>
@@ -3106,7 +3722,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const lastResult = checks.length ? checks[checks.length - 1].weekResult : null;
             if (streak === 0 && !lastResult) return null;
             const badgeMap = {
-              won:        { icon: "flame",   color: G,         label: "🔥 Full Capacity Week" },
+              won:        { icon: "flame",   color: G,         label: "Full Capacity Week" },
               stayed_in:  { icon: "check",   color: "#4a9e38", label: "Won the Week" },
               reset:      { icon: "refresh", color: "#C8C4BC", label: "↻ Stayed in the Game" },
             };
@@ -3129,7 +3745,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                     </div>
                   )}
                 </div>
-                {streak >= 3 && <div style={{ fontSize: "1.8rem", lineHeight: 1 }}>🔥</div>}
+                {streak >= 3 && <GBSCIcon name="flame" size={22} color={G} strokeWidth={0}/>}
               </div>
             );
           })()}
@@ -3146,21 +3762,38 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <GBSCIcon name="check" size={24} color={G} strokeWidth={0}/>
               <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.3rem" }}>Week {lastCheck.week} check-in submitted</div>
               <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.2rem" }}>Next window opens Monday.</div>
-              {lastCheck.weeklyFrictionType && (() => {
+              {(() => {
+                const outlookLabels = { tight: "Tight week", on_track: "On track", room: "Open week" };
                 const frictionLabels = {
-                  time:   "Time / schedule",
-                  energy: "Low energy / poor sleep",
-                  stress: "Stress / life load",
-                  travel: "Travel / disruption",
-                  body:   "Body feels beat up",
-                  mixed:  "Not sure / mixed week",
+                  time:   "Time / schedule", energy: "Low energy / poor sleep",
+                  stress: "Stress / life load", travel: "Travel / disruption",
+                  body:   "Body feels beat up", mixed:  "Not sure / mixed week",
                 };
-                const label = frictionLabels[lastCheck.weeklyFrictionType];
-                if (!label) return null;
+                const leanLabels = { fitness: "Fitness", nutrition: "Nutrition", recovery: "Recovery" };
+                const outlook = lastCheck.weeklyOutlook;
+                const friction = lastCheck.weeklyFrictionType;
+                const lean = lastCheck.weeklyLeanIn;
+                if (!outlook && !friction) return null;
                 return (
                   <div style={{ marginTop: "0.6rem", paddingTop: "0.5rem", borderTop: `1px solid ${G}33` }}>
-                    <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>PLANNING FOR: </span>
-                    <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{label}</span>
+                    {outlook && (
+                      <div style={{ marginBottom: friction || lean ? "0.25rem" : 0 }}>
+                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>THIS WEEK: </span>
+                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{outlookLabels[outlook]}</span>
+                      </div>
+                    )}
+                    {friction && (
+                      <div style={{ marginBottom: lean ? "0.25rem" : 0 }}>
+                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>PLANNING FOR: </span>
+                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{frictionLabels[friction]}</span>
+                      </div>
+                    )}
+                    {lean && (
+                      <div>
+                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>LEANING IN ON: </span>
+                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{leanLabels[lean]}</span>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -3189,6 +3822,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <GBSCIcon name="pencil" size={16} color="#666" strokeWidth={0}/>Edit My Profile
           </button>
 
+        </div>
         </div>
       </div>
     );
@@ -3867,7 +4501,12 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
             </div>
           )}
           <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.15rem" }}>
-            Your support pod {!open && checkedCount > 0 && <span style={{ color: G, fontWeight: "bold" }}>· {checkedCount}/{totalCount} checked in</span>}
+            {(() => {
+              if (open) return "Your support pod";
+              if (checkedCount === 0) return <span>Your support pod · <span style={{ color: "#aaa" }}>Be the first to stay in it this week</span></span>;
+              if (allIn) return <span>Your support pod · <span style={{ color: G, fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.25rem" }}>Your pod is staying in it <GBSCIcon name="flame" size={14} color={G} strokeWidth={0}/></span></span>;
+              return <span>Your support pod · <span style={{ color: G, fontWeight: "bold" }}>{checkedCount} staying in it this week</span></span>;
+            })()}
             {isCaptain && <span style={{ color: "#f0a500", fontWeight: "bold", display:"inline-flex", alignItems:"center", gap:"0.25rem" }}> · <GBSCIcon name="star" size={12} color="#f0a500" strokeWidth={0}/> Captain</span>}
           </div>
         </div>
@@ -3877,16 +4516,35 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
 
       {/* ── Body — collapsible ── */}
       {open && <div style={{ background: allIn ? `${G}0f` : "#f7f7f7", borderRadius: "12px", padding: "0.9rem 1rem" }}>
+        {/* Shared pod identity — Feature 4 */}
+        {(() => {
+          const phrases = [
+            "This pod stays in it.",
+            "This pod shows up.",
+            "This pod keeps it simple.",
+            "This pod stays consistent.",
+            "This pod builds together.",
+          ];
+          // Stable rotation based on pod name so it doesn't change on re-render
+          const idx = (myPod.name || "").split("").reduce((s,c) => s + c.charCodeAt(0), 0) % phrases.length;
+          return (
+            <div style={{ textAlign: "center", fontSize: "0.78rem", fontWeight: "bold", color: G, letterSpacing: "0.04em", marginBottom: "0.8rem", fontStyle: "italic" }}>
+              {phrases[idx]}
+            </div>
+          );
+        })()}
         {/* Header line */}
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.6rem" }}>
           <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em" }}>
-            POD PROGRESS THIS WEEK
+            {allIn ? "YOUR POD IS STAYING IN IT" : "POD PROGRESS THIS WEEK"}
           </div>
           <div style={{ fontSize: "0.85rem", fontWeight: "bold", color: allIn ? G : DARK }}>
-            {checkedCount}
-            <span style={{ color: "#bbb", fontWeight: "normal" }}> / </span>
-            {totalCount}
-            {allIn && <span style={{ color: G, marginLeft: "0.4rem" }}>COMPLETE ✓</span>}
+            {checkedCount === 0
+              ? <span style={{ color: "#aaa", fontSize: "0.78rem", fontWeight: "normal" }}>Be the first to stay in it</span>
+              : allIn
+              ? <span style={{ color: G, display:"inline-flex", alignItems:"center", gap:"0.3rem" }}>Everyone showed up <GBSCIcon name="flame" size={14} color={G} strokeWidth={0}/></span>
+              : <span>{checkedCount} <span style={{ color: "#bbb", fontWeight: "normal" }}>of</span> {totalCount} staying in it</span>
+            }
           </div>
         </div>
 
@@ -3912,18 +4570,20 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
                 <span style={{ fontSize: "0.85rem", fontWeight: isMe ? "bold" : "normal", color: DARK }}>
                   {m.name}
                   {isMe && <span style={{ fontSize: "0.68rem", color: "#aaa", fontWeight: "normal", marginLeft: "0.3rem" }}>you</span>}
-                  {isCap && <span style={{ fontSize: "0.68rem", color: "#f0a500", marginLeft: "0.3rem" }}>⭐</span>}
+                  {isCap && <GBSCIcon name="star" size={12} color="#f0a500" strokeWidth={0}/>}
                 </span>
               </div>
-              <span style={{ fontSize: "1rem" }}>{didCheck ? "✓" : "⏳"}</span>
+              <span style={{ fontSize: "0.75rem", color: didCheck ? G : "#ccc", fontWeight: "bold" }}>
+                {didCheck ? "In it ✓" : isMe ? "Up next" : ""}
+              </span>
             </div>
           );
         })}
 
         {/* All-in celebration banner */}
         {allIn && (
-          <div style={{ marginTop: "0.7rem", textAlign: "center", fontSize: "0.8rem", color: G, fontWeight: "bold" }}>
-            Pod locked in — everyone showed up this week!
+          <div style={{ marginTop: "0.7rem", textAlign: "center", fontSize: "0.8rem", color: G, fontWeight: "bold", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.3rem" }}>
+            Your pod is staying in it <GBSCIcon name="flame" size={14} color={G} strokeWidth={0}/>
           </div>
         )}
 
@@ -3948,7 +4608,7 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
                     <span style={{ fontWeight: isMe ? "bold" : "normal", color: DARK }}>
                       {m.name}
                       {isMe && <span style={{ color: "#aaa", fontWeight: "normal", marginLeft: "0.3rem" }}>you</span>}
-                      {isCap && <span style={{ color: "#f0a500", marginLeft: "0.3rem" }}>⭐</span>}
+                      {isCap && <GBSCIcon name="star" size={12} color="#f0a500" strokeWidth={0}/>}
                     </span>
                     <span style={{ color: "#888" }}>Week {checks.length}/8</span>
                   </div>
