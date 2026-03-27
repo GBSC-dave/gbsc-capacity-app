@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -2357,38 +2356,30 @@ const LEAN_IN_PRESCRIPTIONS = {
           }
           .gbsc-tier-ladder { animation: gbscTierSlide 0.25s ease forwards; }
         `}</style>
-        <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 20 }}>
+        <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 20, isolation: "isolate" }}>
           {hdr}
-          <div style={{ position: "relative" }}>
-            {/* Tab row — transparent sides so gradient shows through */}
-            <div style={{ display: "flex", justifyContent: "center", gap: "3px", background: "transparent", paddingBottom: "0" }}>
-              <button onClick={() => setView("profile")}
-                style={{ border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
-                  borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
-                  background: "rgba(80,80,80,0.6)",
-                  fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)",
-                  position: "relative", zIndex: 1 }}>
-                MY PROFILE
-              </button>
-              <button onClick={() => setView("checkFeedback")}
-                style={{ border: "none", cursor: "pointer",
-                  borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
-                  background: "rgba(45,45,45,0.92)",
-                  fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G,
-                  position: "relative", zIndex: 2, marginTop: "-1px" }}>
-                MY RESULTS
-              </button>
-            </div>
-            {/* Gradient fade strip — softens the hard line between header and content */}
-            <div style={{
-              position: "absolute", left: 0, right: 0, top: "100%", height: "18px",
-              background: "linear-gradient(to bottom, rgba(45,45,45,0.18), transparent)",
-              pointerEvents: "none", zIndex: 10,
-            }}/>
+          {/* Tabs — absolutely positioned below header, centered, transparent sides */}
+          <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
+            <button onClick={() => setView("profile")}
+              style={{ pointerEvents: "auto", border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
+                background: "rgba(60,60,60,0.75)",
+                backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)" }}>
+              MY PROFILE
+            </button>
+            <button onClick={() => setView("checkFeedback")}
+              style={{ pointerEvents: "auto", border: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
+                background: "rgba(45,45,45,0.92)",
+                backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G }}>
+              MY RESULTS
+            </button>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
 
           {/* Week progress bar */}
           {weekNum > 0 && (
@@ -3599,38 +3590,30 @@ const LEAN_IN_PRESCRIPTIONS = {
 
     return (
       <div style={{ height: "100vh", background: "transparent", fontFamily: SANS, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 20 }}>
+        <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 20, isolation: "isolate" }}>
           {hdr}
-          <div style={{ position: "relative" }}>
-            {/* Tab row — transparent sides so gradient shows through */}
-            <div style={{ display: "flex", justifyContent: "center", gap: "3px", background: "transparent", paddingBottom: "0" }}>
-              <button onClick={() => setView("profile")}
-                style={{ border: "none", cursor: "pointer",
-                  borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
-                  background: "rgba(45,45,45,0.92)",
-                  fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G,
-                  position: "relative", zIndex: 2, marginTop: "-1px" }}>
-                MY PROFILE
-              </button>
-              <button onClick={() => setView("checkFeedback")}
-                style={{ border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
-                  borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
-                  background: "rgba(80,80,80,0.6)",
-                  fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)",
-                  position: "relative", zIndex: 1 }}>
-                MY RESULTS
-              </button>
-            </div>
-            {/* Gradient fade strip — softens the hard line between header and content */}
-            <div style={{
-              position: "absolute", left: 0, right: 0, top: "100%", height: "18px",
-              background: "linear-gradient(to bottom, rgba(45,45,45,0.18), transparent)",
-              pointerEvents: "none", zIndex: 10,
-            }}/>
+          {/* Tabs — absolutely positioned below header, centered, transparent sides */}
+          <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
+            <button onClick={() => setView("profile")}
+              style={{ pointerEvents: "auto", border: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
+                background: "rgba(45,45,45,0.92)",
+                backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G }}>
+              MY PROFILE
+            </button>
+            <button onClick={() => setView("checkFeedback")}
+              style={{ pointerEvents: "auto", border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
+                borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
+                background: "rgba(60,60,60,0.75)",
+                backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)" }}>
+              MY RESULTS
+            </button>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
 
           {/* ── ZONE 1: YOUR WEEK ──────────────────────────────────────────── */}
 
@@ -3712,7 +3695,6 @@ const LEAN_IN_PRESCRIPTIONS = {
                     {done ? statusLabels[thisWeekCheck.midweekStatus] : "Are you on track to win your week?"}
                   </div>
                   {!done && <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>}
-                  {done && <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to update</div>}
                 </div>
                 <GBSCIcon name="check" size={28} color={done ? statusColor : G} strokeWidth={0}/>
               </div>
