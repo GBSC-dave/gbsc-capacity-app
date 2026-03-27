@@ -3146,6 +3146,24 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <GBSCIcon name="check" size={24} color={G} strokeWidth={0}/>
               <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.3rem" }}>Week {lastCheck.week} check-in submitted</div>
               <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.2rem" }}>Next window opens Monday.</div>
+              {lastCheck.weeklyFrictionType && (() => {
+                const frictionLabels = {
+                  time:   "Time / schedule",
+                  energy: "Low energy / poor sleep",
+                  stress: "Stress / life load",
+                  travel: "Travel / disruption",
+                  body:   "Body feels beat up",
+                  mixed:  "Not sure / mixed week",
+                };
+                const label = frictionLabels[lastCheck.weeklyFrictionType];
+                if (!label) return null;
+                return (
+                  <div style={{ marginTop: "0.6rem", paddingTop: "0.5rem", borderTop: `1px solid ${G}33` }}>
+                    <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>PLANNING FOR: </span>
+                    <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{label}</span>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             <button onClick={() => setView("checkin")}
