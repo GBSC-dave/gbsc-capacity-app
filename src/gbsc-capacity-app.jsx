@@ -3009,18 +3009,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginTop: "1rem", marginBottom: "0.2rem" }}>Habit Score</div>
                   <div style={{ fontSize: "3.5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{latest.score}</div>
                   <div style={{ fontSize: "0.78rem", color: "#888", marginTop: "0.2rem" }}>out of 100 this week</div>
-                  {tier && (
-                    <div style={{ color: tier.color, fontSize: "0.9rem", fontWeight: "bold", fontFamily: SERIF, display:"flex", alignItems:"center", justifyContent:"center", gap:"0.35rem", marginTop: "0.5rem" }}>
-                      <GBSCIcon name={tier.icon} size={16} color={tier.color} strokeWidth={2}/>
-                      {tier.tier}
-                    </div>
-                  )}
-                  {ci !== null && (
-                    <div style={{ fontSize: "0.68rem", color: "#555", marginTop: "0.9rem", borderTop: "1px solid #ffffff12", paddingTop: "0.8rem" }}>
-                      Capacity Index: <span style={{ color: G, fontWeight: "bold" }}>{ci}</span>
-                      <span style={{ color: "#444", marginLeft: "0.4rem" }}>· See full breakdown in My Results</span>
-                    </div>
-                  )}
+                  <div style={{ fontSize: "0.68rem", color: "#555", marginTop: "0.9rem", borderTop: "1px solid #ffffff12", paddingTop: "0.8rem", lineHeight: 1.5 }}>
+                    How well your training, recovery, and daily habits landed this week.
+                  </div>
                 </>
               )}
               {!latest && baseline && (
