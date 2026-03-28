@@ -474,7 +474,7 @@ function getDeclaredWeek(allChecks) {
         { label: "Option B", value: "Or add 1 short session" },
       ],
       winLine: "Anchor Week: Hit your minimums.",
-      buttonLabel: "Start My Week",
+      buttonLabel: "Shape My Week",
     },
     Builder: {
       color: "#2FBF71", bg: "linear-gradient(180deg, #f5fdf8 0%, #d8f0e4 100%)", accent: "#A7E3C2", textSupport: "#2F6B4A", iconName: "builder",
@@ -496,7 +496,7 @@ function getDeclaredWeek(allChecks) {
         { label: "Option B", value: "Or extend aerobic work" },
       ],
       winLine: "Build Week: Add one layer.",
-      buttonLabel: "Start My Week",
+      buttonLabel: "Shape My Week",
     },
     Expansion: {
       color: "#2C4A6E", bg: "linear-gradient(180deg, #f2f6fa 0%, #d8e4ef 100%)", accent: "#A8BECE", textSupport: "#1E3348", iconName: "performer",
@@ -518,7 +518,7 @@ function getDeclaredWeek(allChecks) {
         { label: "Option B", value: "Or extend duration slightly" },
       ],
       winLine: "Expansion Week: Take it further.",
-      buttonLabel: "Start My Week",
+      buttonLabel: "Shape My Week",
     },
   };
 
@@ -1782,7 +1782,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           </AccordionSection>
 
           <button onClick={() => setView(prevView)}
-            style={{ width: "100%", background: "none", border: "none", color: dw.textSupport, cursor: "pointer", fontSize: "0.85rem", marginTop: "0.6rem", paddingBottom: "2rem" }}>
+            style={{ width: "100%", background: "none", border: "none", color: dw.textSupport, cursor: "pointer", fontSize: "0.85rem", marginTop: "0.4rem", paddingBottom: "2rem", opacity: 0.7 }}>
             {prevView === "profile" ? "← Back to My Profile" : "← Back to My Results"}
           </button>
 
@@ -3567,24 +3567,24 @@ const LEAN_IN_PRESCRIPTIONS = {
       ].sort((a, b) => a.pct - b.pct);
       const weakest = areas[0];
       const tips = {
-        sleep:    { iconName: "ripple",    label: "Sleep",            focus: "Try locking in a consistent bedtime — even 30 minutes earlier makes a meaningful difference this week." },
-        energy:   { iconName: "bounce2",   label: "Energy",           focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
-        recovery: { iconName: "refresh",   label: "Recovery",         focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
-        protein:  { iconName: "plate",     label: "Nutrition",        focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
-        reg:      { iconName: "meditation",label: "Downshift",        focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
-        workouts: { iconName: "dumbbell",  label: "Training",         focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
-        aerobic:  { iconName: "lungs",     label: "Zone 2",           focus: "Aim for at least one 30–60 min Zone 2 session this week." },
-        sleepOpp: { iconName: "ripple",    label: "Sleep Opportunity",focus: "Try to protect 7+ hours in bed at least 4 nights this week." },
+        sleep:    { iconName: "ripple",    label: "Sleep",            articleId: "sleep",              focus: "Try locking in a consistent bedtime — even 30 minutes earlier makes a meaningful difference this week." },
+        energy:   { iconName: "bounce2",   label: "Energy",           articleId: "sleep",              focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
+        recovery: { iconName: "refresh",   label: "Recovery",         articleId: "lifestyle-habits",   focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
+        protein:  { iconName: "plate",     label: "Nutrition",        articleId: "nutrition-recovery", focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
+        reg:      { iconName: "meditation",label: "Downshift",        articleId: "nervous-system",     focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
+        workouts: { iconName: "dumbbell",  label: "Training",         articleId: "weekly-minimums",    focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
+        aerobic:  { iconName: "lungs",     label: "Zone 2",           articleId: "weekly-minimums",    focus: "Aim for at least one 30–60 min Zone 2 session this week." },
+        sleepOpp: { iconName: "ripple",    label: "Sleep Opportunity",articleId: "sleep",              focus: "Try to protect 7+ hours in bed at least 4 nights this week." },
       };
       const lowSleep = sleep <= 2 || (sleepOpp !== null && sleepOpp <= 1);
       const lowRecovery = recovery <= 2;
       const lowWorkouts = workouts < 2;
       const lowDownshift = reg === 0;
       const highPerf = latest.score >= 85;
-      if (lowSleep && lowRecovery)  return { iconName: "ripple",    label: "Recovery Support Day", focus: "Walk, fuel well, and wind down early tonight. Your body needs a reset, not more load." };
-      if (lowWorkouts)              return { iconName: "bounce2",   label: "Stay in Motion",       focus: "Short movement counts today. Any 20–30 minutes of activity keeps the habit alive." };
-      if (lowDownshift && lowSleep) return { iconName: "meditation",label: "Downshift Daily",      focus: "10 quiet minutes today. Walk, breathe, journal, or go screen-free." };
-      if (highPerf)                 return { iconName: "dumbbell",  label: "Push + Recover",       focus: "Train hard today, then protect sleep and protein. Don't outrun your recovery." };
+      if (lowSleep && lowRecovery)  return { iconName: "ripple",    label: "Recovery Support Day", articleId: "lifestyle-habits",   focus: "Walk, fuel well, and wind down early tonight. Your body needs a reset, not more load." };
+      if (lowWorkouts)              return { iconName: "bounce2",   label: "Stay in Motion",       articleId: "weekly-minimums",    focus: "Short movement counts today. Any 20–30 minutes of activity keeps the habit alive." };
+      if (lowDownshift && lowSleep) return { iconName: "meditation",label: "Downshift Daily",      articleId: "nervous-system",     focus: "10 quiet minutes today. Walk, breathe, journal, or go screen-free." };
+      if (highPerf)                 return { iconName: "dumbbell",  label: "Push + Recover",       articleId: "weekly-minimums",    focus: "Train hard today, then protect sleep and protein. Don't outrun your recovery." };
       return tips[weakest.key] || null;
     })();
 
@@ -3671,7 +3671,9 @@ const LEAN_IN_PRESCRIPTIONS = {
 
           {/* This Week's Focus */}
           {focusTipForProfile && (
-            <div style={{ background: CARD, border: `1.5px solid #e8e8e8`, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.1rem 1.3rem", marginBottom: "1.2rem" }}>
+            <div
+              onClick={() => { if (focusTipForProfile.articleId) { setLibraryArticleId(focusTipForProfile.articleId); setView("library"); } }}
+              style={{ background: CARD, border: `1.5px solid #e8e8e8`, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.1rem 1.3rem", marginBottom: "1.2rem", cursor: focusTipForProfile.articleId ? "pointer" : "default" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.7rem" }}>
                 <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em", background: `${G}15`, border: `1px solid ${G}30`, borderRadius: "6px", padding: "0.2rem 0.5rem" }}>This Week's Focus</div>
                 <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#666", letterSpacing: "0.06em", background: "#f0f0f0", borderRadius: "6px", padding: "0.2rem 0.5rem" }}>{focusTipForProfile.label.toUpperCase()}</div>
@@ -3680,18 +3682,26 @@ const LEAN_IN_PRESCRIPTIONS = {
                 <div style={{ width: "40px", height: "40px", flexShrink: 0, background: `${G}12`, borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <GBSCIcon name={focusTipForProfile.iconName} size={24} color={G} strokeWidth={0}/>
                 </div>
-                <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.65, flex: 1 }}>
-                {(() => {
-                  const outlook = getCurrentWeekCheck(currentMember)?.weeklyOutlook;
-                  const leanIn = getCurrentWeekCheck(currentMember)?.weeklyLeanIn;
-                  const prefix = outlook === "tight"    ? "This week is about staying in it — "
-                               : outlook === "on_track" ? "You're on track — "
-                               : outlook === "room" && leanIn === "recovery" ? "You have room — double down on recovery. "
-                               : outlook === "room"     ? "You have room this week — "
-                               : "";
-                  return <>{prefix}{focusTipForProfile.focus}</>;
-                })()}
-              </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.65 }}>
+                    {(() => {
+                      const outlook = getCurrentWeekCheck(currentMember)?.weeklyOutlook;
+                      const leanIn = getCurrentWeekCheck(currentMember)?.weeklyLeanIn;
+                      const prefix = outlook === "tight"    ? "This week is about staying in it — "
+                                   : outlook === "on_track" ? "You're on track — "
+                                   : outlook === "room" && leanIn === "recovery" ? "You have room — double down on recovery. "
+                                   : outlook === "room"     ? "You have room this week — "
+                                   : "";
+                      return <>{prefix}{focusTipForProfile.focus}</>;
+                    })()}
+                  </div>
+                  {focusTipForProfile.articleId && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "0.5rem" }}>
+                      <GBSCIcon name="book" size={12} color={G} strokeWidth={0}/>
+                      <span style={{ fontSize: "0.72rem", color: G, fontWeight: "bold" }}>Read more in the library →</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
