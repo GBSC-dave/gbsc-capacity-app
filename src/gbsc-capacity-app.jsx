@@ -1722,14 +1722,32 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           </div>
 
-          {/* ── CTA (above the fold) ── */}
-          <div style={{ fontSize: "0.82rem", color: dw.textSupport, textAlign: "center", marginBottom: "0.6rem", fontStyle: "italic", opacity: 0.85 }}>
-            Plan for a real week, not a perfect one.
-          </div>
-          <button onClick={() => { setOutlookChoice(null); setFrictionChoice(null); setLeanInChoice(null); setView("weekOutlook"); }}
-            style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.6rem" }}>
-            {dw.buttonLabel} →
-          </button>
+          {/* ── CTA (above the fold) — adapts if outlook already set ── */}
+          {dwOutlook ? (
+            <div style={{ background: `${dw.color}18`, border: `1.5px solid ${dw.color}44`, borderRadius: "12px", padding: "0.9rem 1.2rem", marginBottom: "1.6rem", textAlign: "center" }}>
+              <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: dw.color, letterSpacing: "0.08em", marginBottom: "0.3rem" }}>WEEK SHAPED</div>
+              <div style={{ fontSize: "0.9rem", fontWeight: "bold", color: dw.textSupport }}>
+                {dwOutlook === "tight"    ? "Staying in it this week" 
+                 : dwOutlook === "on_track" ? "Staying consistent"
+                 : dwLeanIn ? `Leaning in on ${dwLeanIn}`
+                 : "Open week — leaning in"}
+              </div>
+              <button onClick={() => { setOutlookChoice(null); setFrictionChoice(null); setLeanInChoice(null); setView("weekOutlook"); }}
+                style={{ background: "none", border: "none", color: dw.color, cursor: "pointer", fontSize: "0.75rem", marginTop: "0.4rem", textDecoration: "underline" }}>
+                Update →
+              </button>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: "0.82rem", color: dw.textSupport, textAlign: "center", marginBottom: "0.6rem", fontStyle: "italic", opacity: 0.85 }}>
+                Plan for a real week, not a perfect one.
+              </div>
+              <button onClick={() => { setOutlookChoice(null); setFrictionChoice(null); setLeanInChoice(null); setView("weekOutlook"); }}
+                style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.6rem" }}>
+                {dw.buttonLabel} →
+              </button>
+            </>
+          )}
 
           {/* ── Expandable sections (below the fold) ── */}
           <AccordionSection label="If the week gets tight" open={tightOpen} onToggle={() => setTightOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
@@ -3496,8 +3514,12 @@ const LEAN_IN_PRESCRIPTIONS = {
           })()}
 
           <button onClick={() => setView("profile")}
-            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
+            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.6rem" }}>
             Back to My Week →
+          </button>
+          <button onClick={() => setView("checkFeedback")}
+            style={{ width: "100%", background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: "0.85rem", paddingBottom: "1rem" }}>
+            View My Results →
           </button>
         </div>
       </div>
