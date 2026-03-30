@@ -1346,6 +1346,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [frictionChoice, setFrictionChoice] = useState(null); // friction planning selection
   const [outlookChoice, setOutlookChoice] = useState(null);   // week outlook: tight/on_track/room
   const [leanInChoice, setLeanInChoice] = useState(null);     // lean-in domain: fitness/nutrition/recovery
+  const [shapeOpen, setShapeOpen] = useState(false);          // shape my week accordion open state
+  const [weekendOpen, setWeekendOpen] = useState(false);      // weekend plan accordion open state
+  const [weekendChoice, setWeekendChoice] = useState(null);   // pending weekend type selection
 
 
   function startEdit() {
@@ -1481,6 +1484,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         weeklyFrictionType: null,
         weeklyOutlook: null,
         weeklyLeanIn: null,
+        weekendType: null,
+        weekendLockedIn: false,
       }]
     };
     await saveMember(updatedMember);
@@ -1722,32 +1727,138 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           </div>
 
-          {/* ── CTA (above the fold) — adapts if outlook already set ── */}
-          {dwOutlook ? (
-            <div style={{ background: `${dw.color}18`, border: `1.5px solid ${dw.color}44`, borderRadius: "12px", padding: "0.9rem 1.2rem", marginBottom: "1.6rem", textAlign: "center" }}>
-              <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: dw.color, letterSpacing: "0.08em", marginBottom: "0.3rem" }}>WEEK SHAPED</div>
-              <div style={{ fontSize: "0.9rem", fontWeight: "bold", color: dw.textSupport }}>
-                {dwOutlook === "tight"    ? "Staying in it this week" 
-                 : dwOutlook === "on_track" ? "Staying consistent"
-                 : dwLeanIn ? `Leaning in on ${dwLeanIn}`
-                 : "Open week — leaning in"}
-              </div>
-              <button onClick={() => { setOutlookChoice(null); setFrictionChoice(null); setLeanInChoice(null); setView("weekOutlook"); }}
-                style={{ background: "none", border: "none", color: dw.color, cursor: "pointer", fontSize: "0.75rem", marginTop: "0.4rem", textDecoration: "underline" }}>
-                Update →
-              </button>
+          {/* ── Shape My Week — accordion-style, inline on declared week page ── */}
+          <AccordionSection
+            label={dwOutlook ? `Week shaped — ${dwOutlook === "tight" ? "Staying in it" : dwOutlook === "on_track" ? "On track" : dwLeanIn ? `Leaning in on ${dwLeanIn}` : "Open week"}` : "Shape My Week"}
+            open={shapeOpen}
+            onToggle={() => setShapeOpen(o => !o)}
+            accentColor={dw.color}
+            textColor={dw.textSupport}>
+            <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginBottom: "1rem", lineHeight: 1.5, fontStyle: "italic" }}>
+              Plan for a real week, not a perfect one. What does this week look like?
             </div>
-          ) : (
-            <>
-              <div style={{ fontSize: "0.82rem", color: dw.textSupport, textAlign: "center", marginBottom: "0.6rem", fontStyle: "italic", opacity: 0.85 }}>
-                Plan for a real week, not a perfect one.
-              </div>
-              <button onClick={() => { setOutlookChoice(null); setFrictionChoice(null); setLeanInChoice(null); setView("weekOutlook"); }}
-                style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.6rem" }}>
-                {dw.buttonLabel} →
+            {/* Outlook selector */}
+            {[
+              { key: "tight",    label: "Tight / unpredictable", sub: "Stay in it" },
+              { key: "on_track", label: "On track",              sub: "Stay consistent" },
+              { key: "room",     label: "This week has room",    sub: "Lean in" },
+            ].map(({ key, label, sub }) => {
+              const selected = outlookChoice === key || (!outlookChoice && dwOutlook === key);
+              return (
+                <div key={key} style={{ marginBottom: "0.5rem" }}>
+                  <button onClick={() => setOutlookChoice(selected ? null : key)}
+                    style={{
+                      width: "100%", textAlign: "left", cursor: "pointer",
+                      background: selected ? `${dw.color}18` : "#f7f7f7",
+                      border: `1.5px solid ${selected ? dw.color : "#e8e8e8"}`,
+                      borderRadius: selected && key === "tight" && frictionChoice ? "10px 10px 0 0" : selected && key === "room" && leanInChoice ? "10px 10px 0 0" : "10px",
+                      padding: "0.75rem 1rem",
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      transition: "all 0.15s ease",
+                    }}>
+                    <div>
+                      <div style={{ fontSize: "0.9rem", fontWeight: selected ? "bold" : "normal", color: selected ? dw.color : DARK }}>{label}</div>
+                      <div style={{ fontSize: "0.72rem", color: selected ? dw.color : "#aaa", marginTop: "0.1rem" }}>{sub}</div>
+                    </div>
+                    {selected && <GBSCIcon name="check" size={16} color={dw.color} strokeWidth={0}/>}
+                  </button>
+                  {/* Tight — friction sub-selector */}
+                  {selected && key === "tight" && (
+                    <div style={{ background: "#f0f0f0", border: `1.5px solid ${dw.color}`, borderTop: "none", borderRadius: "0 0 10px 10px", padding: "0.75rem 1rem" }}>
+                      <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: "#888", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>WHERE MIGHT IT GET TIGHT?</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                        {[
+                          { key: "time", label: "Time" },
+                          { key: "energy", label: "Energy" },
+                          { key: "stress", label: "Stress" },
+                          { key: "travel", label: "Travel" },
+                          { key: "body", label: "Body" },
+                          { key: "mixed", label: "Mixed" },
+                        ].map(({ key: fk, label: fl }) => (
+                          <button key={fk} onClick={() => setFrictionChoice(frictionChoice === fk ? null : fk)}
+                            style={{
+                              padding: "0.3rem 0.75rem", borderRadius: "999px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "bold",
+                              background: frictionChoice === fk ? dw.color : "#fff",
+                              color: frictionChoice === fk ? "#fff" : "#666",
+                              border: `1.5px solid ${frictionChoice === fk ? dw.color : "#ddd"}`,
+                            }}>{fl}</button>
+                        ))}
+                      </div>
+                      {frictionChoice && (() => {
+                        const role = dw?.role || "Anchor";
+                        const roleKey = role === "Reset" ? "Anchor" : role;
+                        const p = FRICTION_PRESCRIPTIONS[frictionChoice]?.[roleKey];
+                        if (!p) return null;
+                        return (
+                          <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #e0e0e0" }}>
+                            <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>WHEN THAT HITS — DO THIS:</div>
+                            {p.targets.map(({ label: tl, value }) => (
+                              <div key={tl} style={{ display: "flex", gap: "0.6rem", marginBottom: "0.3rem" }}>
+                                <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: dw.color, minWidth: "60px", textTransform: "uppercase" }}>{tl}</div>
+                                <div style={{ fontSize: "0.78rem", color: DARK }}>{value}</div>
+                              </div>
+                            ))}
+                            <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: dw.color, marginTop: "0.5rem" }}>{p.rule}</div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  {/* Room — lean-in sub-selector */}
+                  {selected && key === "room" && (
+                    <div style={{ background: "#f0f0f0", border: `1.5px solid ${dw.color}`, borderTop: "none", borderRadius: "0 0 10px 10px", padding: "0.75rem 1rem" }}>
+                      <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: "#888", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>LEAN IN ON:</div>
+                      <div style={{ display: "flex", gap: "0.4rem" }}>
+                        {["fitness", "nutrition", "recovery"].map(li => (
+                          <button key={li} onClick={() => setLeanInChoice(leanInChoice === li ? null : li)}
+                            style={{
+                              flex: 1, padding: "0.4rem 0", borderRadius: "8px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "bold", textTransform: "capitalize",
+                              background: leanInChoice === li ? dw.color : "#fff",
+                              color: leanInChoice === li ? "#fff" : "#666",
+                              border: `1.5px solid ${leanInChoice === li ? dw.color : "#ddd"}`,
+                            }}>{li}</button>
+                        ))}
+                      </div>
+                      {leanInChoice && (() => {
+                        const role = dw?.role || "Anchor";
+                        const roleKey = role === "Reset" ? "Anchor" : role;
+                        const p = LEAN_IN_PRESCRIPTIONS[leanInChoice]?.[roleKey];
+                        if (!p) return null;
+                        return (
+                          <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #e0e0e0" }}>
+                            {p.actions.map((a, idx) => (
+                              <div key={idx} style={{ fontSize: "0.78rem", color: DARK, marginBottom: "0.2rem" }}>· {a}</div>
+                            ))}
+                            <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: dw.color, marginTop: "0.4rem" }}>{p.rule}</div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {/* Save button */}
+            {(outlookChoice || dwOutlook) && (
+              <button onClick={async () => {
+                const outlook = outlookChoice || dwOutlook;
+                const thisWeek = getCurrentWeekCheck(currentMember);
+                if (!thisWeek) return;
+                const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+                  c && c.week === thisWeek.week && !c.isBaseline
+                    ? { ...c, weeklyOutlook: outlook, weeklyFrictionType: frictionChoice || c.weeklyFrictionType, weeklyLeanIn: leanInChoice || c.weeklyLeanIn }
+                    : c
+                );
+                const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
+                await saveMember(updatedMember);
+                setCurrentMember(updatedMember);
+                setShapeOpen(false);
+              }}
+                style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "10px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.75rem" }}>
+                {dwOutlook ? "Update →" : "Lock it in →"}
               </button>
-            </>
-          )}
+            )}
+          </AccordionSection>
 
           {/* ── Expandable sections (below the fold) ── */}
           <AccordionSection label="If the week gets tight" open={tightOpen} onToggle={() => setTightOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
@@ -1884,255 +1995,88 @@ const LEAN_IN_PRESCRIPTIONS = {
 };
 
   // ── SCREEN 1: WEEK OUTLOOK ────────────────────────────────────────────────
-  if (view === "weekOutlook" && currentMember) {
-    const allChecks = currentMember.weeklyChecks || [];
-    const dw = getDeclaredWeek(allChecks);
-    const accentColor = dw ? dw.color : G;
-    const thisWeek = getCurrentWeekCheck(currentMember);
-
-    async function commitOutlook(outlook) {
-      if (!thisWeek) { setView("profile"); return; }
-      // Save outlook to current week
-      const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
-        c && c.week === thisWeek.week && !c.isBaseline
-          ? { ...c, weeklyOutlook: outlook }
-          : c
-      );
-      const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
-      await saveMember(updatedMember);
-      setCurrentMember(updatedMember);
-      setOutlookChoice(outlook);
-      // Route to appropriate next screen
-      if (outlook === "tight") {
-        setFrictionChoice(null);
-        setView("frictionPlanning");
-      } else if (outlook === "on_track") {
-        setView("onTrack");
-      } else if (outlook === "room") {
-        setLeanInChoice(null);
-        setView("openWeek");
-      }
-    }
-
-    const outlookOptions = [
-      { key: "tight",    label: "Tight / unpredictable", sub: "Stay in it", icon: "warning" },
-      { key: "on_track", label: "On track",              sub: "Stay consistent", icon: "check" },
-      { key: "room",     label: "This week has room",    sub: "Lean in", icon: "bounce2" },
-    ];
-
-    return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
-        {hdr}
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", flex: 1 }}>
-          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-            <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.5rem" }}>
-              How is this week shaping up?
-            </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
-            {outlookOptions.map(({ key, label, sub, icon }) => (
-              <button key={key} onClick={() => commitOutlook(key)}
-                style={{
-                  width: "100%", textAlign: "left", cursor: "pointer",
-                  background: "#ffffff08", border: "1.5px solid #ffffff18",
-                  borderRadius: "14px", padding: "1rem 1.2rem",
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background="#ffffff14"; e.currentTarget.style.borderColor=accentColor+"88"; }}
-                onMouseLeave={e => { e.currentTarget.style.background="#ffffff08"; e.currentTarget.style.borderColor="#ffffff18"; }}>
-                <div>
-                  <div style={{ fontSize: "1rem", fontWeight: "bold", color: "#fff", marginBottom: "0.15rem" }}>{label}</div>
-                  <div style={{ fontSize: "0.75rem", color: accentColor, fontWeight: "bold", letterSpacing: "0.04em" }}>{sub}</div>
-                </div>
-                <GBSCIcon name={icon} size={22} color={accentColor} strokeWidth={0}/>
-              </button>
-            ))}
-          </div>
-          <div style={{ fontSize: "0.78rem", color: "#555", textAlign: "center" }}>
-            This helps us guide your week.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── SCREEN 2B: ON TRACK ────────────────────────────────────────────────────
-  if (view === "onTrack" && currentMember) {
-    const allChecks = currentMember.weeklyChecks || [];
-    const dw = getDeclaredWeek(allChecks);
-    const accentColor = dw ? dw.color : G;
-
-    return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
-        {hdr}
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-          <GBSCIcon name="check" size={52} color={accentColor} strokeWidth={0}/>
-          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginTop: "1rem", marginBottom: "0.8rem" }}>
-            Stay the course
-          </div>
-          <div style={{ fontSize: "1rem", color: "#ddd", lineHeight: 1.7, marginBottom: "0.5rem" }}>
-            You don't need to do more this week.
-          </div>
-          <div style={{ fontSize: "1rem", color: "#ddd", lineHeight: 1.7, marginBottom: "2rem" }}>
-            Just hit your targets and keep momentum.
-          </div>
-          <div style={{ fontSize: "0.82rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.06em", marginBottom: "2rem" }}>
-            CONSISTENCY WINS.
-          </div>
-          <button onClick={() => setView("profile")}
-            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
-            I'm on it →
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── SCREEN 2C: OPEN WEEK ───────────────────────────────────────────────────
-  if (view === "openWeek" && currentMember) {
-    const allChecks = currentMember.weeklyChecks || [];
-    const dw = getDeclaredWeek(allChecks);
-    const accentColor = dw ? dw.color : G;
-
-    const leanOptions = [
-      { key: "fitness",   label: "Fitness",   icon: "dumbbell" },
-      { key: "nutrition", label: "Nutrition",  icon: "plate" },
-      { key: "recovery",  label: "Recovery",   icon: "refresh" },
-    ];
-
-    return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
-        {hdr}
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", flex: 1 }}>
-          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-            <div style={{ fontSize: "1.6rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.5rem" }}>
-              This week has room
-            </div>
-            <div style={{ fontSize: "0.9rem", color: "#aaa", lineHeight: 1.6 }}>
-              Let's use it without overdoing it.
-            </div>
-            <div style={{ fontSize: "0.85rem", color: "#777", marginTop: "0.4rem" }}>
-              Pick ONE way to lean in:
-            </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
-            {leanOptions.map(({ key, label, icon }) => {
-              const selected = leanInChoice === key;
-              const role = dw?.role || "Anchor";
-              const roleKey = role === "Reset" ? "Anchor" : role;
-              const prescription = LEAN_IN_PRESCRIPTIONS[key]?.[roleKey];
-              return (
-                <div key={key}>
-                  <button onClick={() => setLeanInChoice(selected ? null : key)}
-                    style={{
-                      width: "100%", textAlign: "left", cursor: "pointer",
-                      background: selected ? accentColor+"22" : "#ffffff08",
-                      border: "1.5px solid " + (selected ? accentColor : "#ffffff18"),
-                      borderRadius: selected ? "12px 12px 0 0" : "12px",
-                      padding: "0.9rem 1.2rem",
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      transition: "all 0.15s ease",
-                    }}>
-                    <span style={{ fontSize: "1rem", fontWeight: selected ? "bold" : "normal", color: selected ? accentColor : "#ddd" }}>{label}</span>
-                    <GBSCIcon name={icon} size={20} color={selected ? accentColor : "#555"} strokeWidth={0}/>
-                  </button>
-                  {selected && prescription && (
-                    <div style={{ background: "#ffffff06", border: "1.5px solid " + accentColor, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "1rem 1.2rem" }}>
-                      <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.08em", marginBottom: "0.6rem" }}>
-                        LEAN IN: {label.toUpperCase()}
-                      </div>
-                      {prescription.actions.map((action, idx) => (
-                        <div key={idx} style={{ display: "flex", gap: "0.6rem", marginBottom: "0.4rem", alignItems: "flex-start" }}>
-                          <div style={{ color: accentColor, fontWeight: "bold", flexShrink: 0, marginTop: "0.1rem" }}>·</div>
-                          <div style={{ fontSize: "0.85rem", color: "#ccc", lineHeight: 1.4 }}>{action}</div>
-                        </div>
-                      ))}
-                      <div style={{ fontSize: "0.82rem", fontWeight: "bold", color: accentColor, marginTop: "0.8rem", paddingTop: "0.6rem", borderTop: "1px solid #ffffff12" }}>
-                        {prescription.rule}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: "0.78rem", color: "#666", textAlign: "center", marginBottom: "1.2rem" }}>
-            Add 1 thing. Keep everything else steady.
-          </div>
-          {leanInChoice && (() => {
-            const role = dw?.role || "Anchor";
-            const roleKey = role === "Reset" ? "Anchor" : role;
-            const prescription = LEAN_IN_PRESCRIPTIONS[leanInChoice]?.[roleKey];
-            async function commitLeanIn() {
-              const thisWeek = getCurrentWeekCheck(currentMember);
-              if (!thisWeek) { setView("profile"); return; }
-              const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
-                c && c.week === thisWeek.week && !c.isBaseline
-                  ? { ...c, weeklyLeanIn: leanInChoice }
-                  : c
-              );
-              const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
-              await saveMember(updatedMember);
-              setCurrentMember(updatedMember);
-              setView("lockedIn");
-            }
-            return (
-              <button onClick={commitLeanIn}
-                style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.8rem" }}>
-                Lean in →
-              </button>
-            );
-          })()}
-          {!leanInChoice && (
-            <button onClick={() => setView("profile")}
-              style={{ width: "100%", background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "0.85rem" }}>
-              Skip for now →
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── SCREEN 3C: LOCKED IN ───────────────────────────────────────────────────
-  if (view === "lockedIn" && currentMember) {
-    const allChecks = currentMember.weeklyChecks || [];
-    const dw = getDeclaredWeek(allChecks);
-    const accentColor = dw ? dw.color : G;
-    const thisWeek = getCurrentWeekCheck(currentMember);
-    const leanLabel = { fitness: "Fitness", nutrition: "Nutrition", recovery: "Recovery" }[thisWeek?.weeklyLeanIn] || "";
-
-    return (
-      <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
-        {hdr}
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-          <GBSCIcon name="star" size={52} color={accentColor} strokeWidth={0}/>
-          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginTop: "1rem", marginBottom: "0.8rem" }}>
-            Locked in
-          </div>
-          <div style={{ fontSize: "1rem", color: "#ddd", lineHeight: 1.7, marginBottom: "0.5rem" }}>
-            You're building momentum this week.
-          </div>
-          {leanLabel && (
-            <div style={{ fontSize: "0.82rem", color: accentColor, fontWeight: "bold", marginBottom: "0.5rem" }}>
-              Leaning in on: {leanLabel}
-            </div>
-          )}
-          <div style={{ fontSize: "1rem", color: "#ddd", lineHeight: 1.7, marginBottom: "2rem" }}>
-            Keep everything else steady.
-          </div>
-          <div style={{ fontSize: "0.82rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.06em", marginBottom: "2rem" }}>
-            MORE IS NOT BETTER. BETTER IS BETTER.
-          </div>
-          <button onClick={() => setView("profile")}
-            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
-            Let's go →
-          </button>
-        </div>
-      </div>
-    );
-  }
+// ── Weekend Game Plan Prescriptions ──────────────────────────────────────────
+// Eric's identity × weekend type plans. Each has 3 anchors and a win statement.
+const WEEKEND_PLANS = {
+  social: {
+    Anchor: {
+      anchors: [
+        { time: "When you're out", actions: ["Be intentional, not automatic", "Eat first, hydrate", "Avoid the late spiral"] },
+        { time: "Next day", actions: ["10–20 min walk", "Protein + water", "Optional: light sweat"] },
+        { time: "End of weekend", actions: ["Reset: walk + prep", "Early night"] },
+      ],
+      win: "Stayed in it, not perfect.",
+    },
+    Builder: {
+      anchors: [
+        { time: "Before going out", actions: ["Move first if possible", "Decide your approach ahead of time"] },
+        { time: "Next day", actions: ["Train OR long walk", "One solid meal"] },
+        { time: "End of weekend", actions: ["Light movement + prep"] },
+      ],
+      win: "Handled the weekend + kept momentum.",
+    },
+    Expansion: {
+      anchors: [
+        { time: "Before going out", actions: ["Train before going out", "Decide your approach ahead of time"] },
+        { time: "Next day", actions: ["Primary training or quality session", "Prioritize recovery"] },
+        { time: "End of weekend", actions: ["Zone 2 / long walk", "Full reset"] },
+      ],
+      win: "Didn't lose momentum.",
+    },
+  },
+  busy: {
+    Anchor: {
+      anchors: [
+        { time: "When you have a window", actions: ["Do something small (5–10 min counts)"] },
+        { time: "During the weekend", actions: ["Find a window — walk, move, or reset", "Keep meals simple when possible"] },
+        { time: "End of weekend", actions: ["Reset: short walk + prep next week"] },
+      ],
+      win: "Didn't fall off.",
+    },
+    Builder: {
+      anchors: [
+        { time: "When you have time", actions: ["Take the best available option, not the perfect one", "Look for 20–30 min anywhere"] },
+        { time: "During the weekend", actions: ["Get ahead where possible"] },
+        { time: "End of weekend", actions: ["Light movement + prep", "Re-anchor for the week"] },
+      ],
+      win: "Stayed in it despite the chaos.",
+    },
+    Expansion: {
+      anchors: [
+        { time: "When possible", actions: ["Front-load something (training or longer session)"] },
+        { time: "During the weekend", actions: ["Adapt: shorten, shift, or split sessions", "Stay flexible, not rigid"] },
+        { time: "End of weekend", actions: ["Zone 2 or longer walk if possible", "Full reset"] },
+      ],
+      win: "Adjusted without losing momentum.",
+    },
+  },
+  low_key: {
+    Anchor: {
+      anchors: [
+        { time: "This weekend", actions: ["Keep your basics in place", "Get one good walk or training session", "Don't disappear just because structure is lighter"] },
+        { time: "If you have extra room", actions: ["Add a little movement, not a lot"] },
+        { time: "End of weekend", actions: ["Reset: prep, walk, early night"] },
+      ],
+      win: "Stayed consistent.",
+    },
+    Builder: {
+      anchors: [
+        { time: "This weekend", actions: ["Use the extra space well", "Get your training in", "Keep meals simple and solid"] },
+        { time: "If you have extra room", actions: ["Add a walk, recovery work, or another small win"] },
+        { time: "End of weekend", actions: ["Prep and set up Monday"] },
+      ],
+      win: "Built momentum.",
+    },
+    Expansion: {
+      anchors: [
+        { time: "This weekend", actions: ["Use the open space", "Hit your primary training", "Recover well between efforts"] },
+        { time: "If you have extra room", actions: ["Add zone 2, extra movement, or prep work"] },
+        { time: "End of weekend", actions: ["Full reset and get ahead for the week"] },
+      ],
+      win: "Used the weekend well without drifting.",
+    },
+  },
+};
 
   if (view === "frictionPlanning" && currentMember) {
     const allChecks = currentMember.weeklyChecks || [];
@@ -3282,9 +3226,9 @@ const LEAN_IN_PRESCRIPTIONS = {
     }
 
     const responses = {
-      won:        { label: "Yes — I hit it",       desc: "You did what you set out to do." },
-      stayed_in:  { label: "Close — stayed in it", desc: "You showed up. That's what counts." },
-      reset:      { label: "No — reset next week", desc: "Next week starts fresh." },
+      won:       { label: "Won it",       desc: "You did what you set out to do." },
+      stayed_in: { label: "Stayed in it", desc: "You showed up. That's what counts." },
+      reset:     { label: "Reset",        desc: "Done is done. Next week starts fresh." },
     };
 
     return (
@@ -3294,11 +3238,14 @@ const LEAN_IN_PRESCRIPTIONS = {
 
           <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
             <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.12em", marginBottom: "0.8rem" }}>END OF WEEK</div>
-            <div style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, lineHeight: 1.2, marginBottom: "0.6rem" }}>
-              Did you win<br/>your week?
+            <div style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, lineHeight: 1.2, marginBottom: "0.4rem" }}>
+              Close the week
+            </div>
+            <div style={{ fontSize: "0.9rem", color: "#aaa", marginBottom: "0.4rem" }}>
+              Real life happened. Did you stay in it?
             </div>
             {dw && (
-              <div style={{ fontSize: "0.82rem", color: "#888", marginTop: "0.4rem" }}>
+              <div style={{ fontSize: "0.82rem", color: "#888", marginTop: "0.2rem" }}>
                 Goal was: <span style={{ color: accentColor, fontWeight: "bold" }}>{dw.winLine}</span>
               </div>
             )}
@@ -3407,6 +3354,13 @@ const LEAN_IN_PRESCRIPTIONS = {
       <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+
+          {/* Inline micro-reinforcement — Eric's tone setter */}
+          <div style={{ fontSize: "0.82rem", color: content.color, fontWeight: "bold", letterSpacing: "0.04em", marginBottom: "1.5rem", opacity: 0.9 }}>
+            {result === "won"        ? "Nice. Keep it rolling."
+             : result === "stayed_in" ? "All good. Reset and move forward."
+             : "Done is done. Let's get back in it."}
+          </div>
 
           <div style={{ marginBottom: "1.5rem" }}>
             <GBSCIcon name={content.icon} size={52} color={content.color} strokeWidth={0}/>
@@ -3848,11 +3802,22 @@ const LEAN_IN_PRESCRIPTIONS = {
                       </div>
                     )}
                     {lean && (
-                      <div>
+                      <div style={{ marginBottom: weekend ? "0.25rem" : 0 }}>
                         <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>LEANING IN ON: </span>
                         <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{leanLabels[lean]}</span>
                       </div>
                     )}
+                    {(() => {
+                      const weekend = lastCheck.weekendType;
+                      const weekendLabels = { low_key: "Low key weekend", social: "Social weekend", busy: "Busy weekend" };
+                      if (!weekend) return null;
+                      return (
+                        <div>
+                          <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>WEEKEND PLAN: </span>
+                          <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{weekendLabels[weekend]}{lastCheck.weekendLockedIn ? " ✓" : ""}</span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })()}
@@ -3864,6 +3829,102 @@ const LEAN_IN_PRESCRIPTIONS = {
             </button>
           )}
 
+
+          {/* ── Weekend Game Plan accordion — Thursday through Sunday ── */}
+          {(() => {
+            const day = new Date().getDay(); // 0=Sun,1=Mon,...,4=Thu,5=Fri,6=Sat
+            const isWeekendWindow = day >= 4 || day === 0; // Thu, Fri, Sat, Sun
+            const thisWeek = getCurrentWeekCheck(currentMember);
+            const lockedIn = thisWeek?.weekendLockedIn;
+            const lockedType = thisWeek?.weekendType;
+            if (!isWeekendWindow && !lockedIn) return null;
+            const weekendOptions = [
+              { key: "low_key", label: "Low key / staying close to routine" },
+              { key: "social",  label: "Social plans / going out" },
+              { key: "busy",    label: "Busy / off routine weekend" },
+            ];
+            const typeLabels = { low_key: "Low key weekend", social: "Social weekend", busy: "Busy weekend" };
+            const role = dw?.role || "Anchor";
+            const roleKey = role === "Reset" ? "Anchor" : role;
+            const plan = lockedType ? WEEKEND_PLANS[lockedType]?.[roleKey] : weekendChoice ? WEEKEND_PLANS[weekendChoice]?.[roleKey] : null;
+            return (
+              <AccordionSection
+                label={lockedIn ? `Weekend plan — ${typeLabels[lockedType]} ✓` : "Weekend coming up"}
+                open={weekendOpen}
+                onToggle={() => setWeekendOpen(o => !o)}
+                accentColor={G}
+                textColor={DARK}>
+                {!lockedIn && (
+                  <>
+                    <div style={{ fontSize: "0.78rem", color: "#666", marginBottom: "0.8rem", lineHeight: 1.5 }}>
+                      Stay in it with a quick plan. What's your weekend look like?
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "0.8rem" }}>
+                      {weekendOptions.map(({ key, label }) => (
+                        <button key={key} onClick={() => setWeekendChoice(weekendChoice === key ? null : key)}
+                          style={{
+                            width: "100%", textAlign: "left", cursor: "pointer",
+                            background: weekendChoice === key ? `${G}12` : "#f7f7f7",
+                            border: `1.5px solid ${weekendChoice === key ? G : "#e8e8e8"}`,
+                            borderRadius: "8px", padding: "0.6rem 0.9rem",
+                            fontSize: "0.85rem", fontWeight: weekendChoice === key ? "bold" : "normal",
+                            color: weekendChoice === key ? G : DARK,
+                          }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {/* Show plan */}
+                {plan && (
+                  <div style={{ marginBottom: "0.8rem" }}>
+                    {lockedIn && <div style={{ fontSize: "0.68rem", color: G, fontWeight: "bold", letterSpacing: "0.06em", marginBottom: "0.6rem" }}>YOUR WEEKEND PLAN</div>}
+                    {plan.anchors.map(({ time, actions }) => (
+                      <div key={time} style={{ marginBottom: "0.6rem" }}>
+                        <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: G, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{time}</div>
+                        {actions.map((a, i) => (
+                          <div key={i} style={{ fontSize: "0.78rem", color: DARK, marginBottom: "0.15rem" }}>· {a}</div>
+                        ))}
+                      </div>
+                    ))}
+                    <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: G, marginTop: "0.4rem" }}>
+                      Win: {plan.win}
+                    </div>
+                  </div>
+                )}
+                {/* Lock it in / locked state */}
+                {!lockedIn && weekendChoice && (
+                  <button onClick={async () => {
+                    if (!thisWeek) return;
+                    const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+                      c && c.week === thisWeek.week && !c.isBaseline
+                        ? { ...c, weekendType: weekendChoice, weekendLockedIn: true }
+                        : c
+                    );
+                    const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
+                    await saveMember(updatedMember);
+                    setCurrentMember(updatedMember);
+                    setWeekendChoice(null);
+                    setWeekendOpen(false);
+                  }}
+                    style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "10px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer" }}>
+                    Lock this in →
+                  </button>
+                )}
+                {lockedIn && (
+                  <div style={{ textAlign: "center", fontSize: "0.78rem", color: G, fontWeight: "bold" }}>
+                    Locked in. Stay in it.
+                  </div>
+                )}
+                {lockedIn && (
+                  <div style={{ textAlign: "center", fontSize: "0.72rem", color: "#aaa", marginTop: "0.3rem" }}>
+                    Your pod can see you're locked in.
+                  </div>
+                )}
+              </AccordionSection>
+            );
+          })()}
 
           {/* Pod card */}
           {(pods || []).find(pod => pod.memberIds?.includes(currentMember.id)) && (
@@ -4646,6 +4707,40 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
         )}
 
         {/* ── Detail toggle ── */}
+        {/* Weekend plans visibility — ambient pod accountability */}
+        {(() => {
+          const weekendLabels = { low_key: "Low key", social: "Social", busy: "Busy" };
+          const withWeekend = allPodMembers.filter(m => {
+            const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+            return checks.length && checks[checks.length-1].weekendLockedIn;
+          });
+          const withoutWeekend = allPodMembers.filter(m => {
+            const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+            return !checks.length || !checks[checks.length-1].weekendLockedIn;
+          });
+          if (withWeekend.length === 0 && withoutWeekend.length === allPodMembers.length) return null;
+          return (
+            <div style={{ marginTop: "0.8rem", paddingTop: "0.7rem", borderTop: "1px solid #e8e8e8" }}>
+              <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: "#888", letterSpacing: "0.07em", marginBottom: "0.4rem" }}>WEEKEND PLANS</div>
+              {allPodMembers.map(m => {
+                const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+                const latest = checks[checks.length-1];
+                const locked = latest?.weekendLockedIn;
+                const type = latest?.weekendType;
+                const isMe = m.id === currentMember.id;
+                return (
+                  <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.2rem 0", fontSize: "0.78rem" }}>
+                    <span style={{ color: DARK, fontWeight: isMe ? "bold" : "normal" }}>{m.name}{isMe ? " (you)" : ""}</span>
+                    <span style={{ color: locked ? G : "#ccc", fontSize: "0.72rem", fontWeight: locked ? "bold" : "normal" }}>
+                      {locked ? `${weekendLabels[type] || "Locked in"} ✓` : "Not set"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         <button onClick={() => setDetailOpen(d => !d)}
           style={{ background: "none", border: "none", color: "#aaa", cursor: "pointer", fontSize: "0.75rem", marginTop: "0.6rem", padding: 0, display: "flex", alignItems: "center", gap: "0.3rem" }}>
           {detailOpen ? "▴ less" : "▾ program progress"}
