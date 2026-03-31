@@ -933,7 +933,7 @@ export default function GBSCApp() {
         saveMember={saveMember}
         pods={pods}
         setPods={setPods}
-        onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView(dw ? "declaredWeek" : "checkFeedback"); }}
+        onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView("profile"); }}
         onCoachAccess={() => setView("coachPin")}
       />
       </ErrorBoundary>
@@ -953,7 +953,7 @@ export default function GBSCApp() {
         saveMember={saveMember}
         pods={pods}
         setPods={setPods}
-        onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView(dw ? "declaredWeek" : "checkFeedback"); }}
+        onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView("profile"); }}
         onCoachAccess={() => setView("coachPin")}
       />
       </ErrorBoundary>
@@ -1573,7 +1573,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             return (
               <div style={{ position: "sticky", top: 0, zIndex: 10, background: LIGHT_BG, paddingTop: "1rem", paddingBottom: "0.8rem", marginBottom: "0.5rem" }}>
                 <div style={{ textAlign: "center", marginBottom: "0.6rem" }}>
-                  <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>This week's habits</div>
+                  <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>Last 7 days</div>
                   <div style={{ color: "#666", fontSize: "0.88rem" }}>First instinct is fine — ~45 seconds.</div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
@@ -1589,10 +1589,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             );
           })()}
           {[
-            { label: "Workouts this week", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
+            { label: "Workouts in the last 7 days", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
             { label: "Challenging strength session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
             { label: "Daily movement outside workouts", field: "dailyMovement", options: ["High","Moderate","Low"], hints: ["High (8k+ steps/day or very active job)", "Moderate (5–8k/day)", "Low (<5k/day)"] },
-            { label: "Zone 2 aerobic work this week", field: "zone2", options: ["0–30 min","30–60 min","60–90 min","90+ min"], hint: "Steady effort — breathing elevated but sustainable" },
+            { label: "Zone 2 aerobic work in the last 7 days", field: "zone2", options: ["0–30 min","30–60 min","60–90 min","90+ min"], hint: "Steady effort — breathing elevated but sustainable" },
             { label: "Protein in 3+ meals per day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal" },
             { label: "Sleep opportunity", field: "sleepOpportunity", options: ["5+ nights","3–4 nights","1–2 nights","Rarely"], hint: "How many nights did you have 7+ hours available for sleep?" },
             { label: "Intentional downshift (10+ min)", field: "downshift", options: ["3+ times","1–2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
@@ -1624,7 +1624,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor most nights","Restless several nights","Mixed sleep","Good most nights","Consistently deep"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Energy this week</div>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Energy — last 7 days</div>
             <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Exhausted often","Low most days","Mixed energy","Steady most days","High and stable"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
@@ -4170,7 +4170,7 @@ const WEEKEND_PLANS = {
             <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor most nights","Restless several nights","Mixed sleep","Good most nights","Consistently deep"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Energy this week</div>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Energy — last 7 days</div>
             <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Exhausted often","Low most days","Mixed energy","Steady most days","High and stable"]} />
           </div>
           <div style={{ marginBottom: "1.5rem" }}>
