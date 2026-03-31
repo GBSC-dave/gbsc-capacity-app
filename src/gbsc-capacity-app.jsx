@@ -3901,7 +3901,7 @@ const WEEKEND_PLANS = {
           {(() => {
             const streak = calcStreak(currentMember);
             const lastResult = checks.length ? checks[checks.length - 1].weekResult : null;
-            if (streak === 0 && !lastResult) return null;
+            if (streak === 0) return null;
             const badgeMap = {
               won:        { icon: "flame",   color: G,         label: "Full Capacity Week" },
               stayed_in:  { icon: "check",   color: "#4a9e38", label: "Won the Week" },
