@@ -1680,7 +1680,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2rem 1.5rem", flex: 1 }}>
 
-          {/* ── Role reveal (above the fold) ── */}
+          {/* ── Role reveal ── */}
           <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
             <div style={{ display: "inline-block", background: dw.color, color: "#fff", borderRadius: "999px", padding: "0.3rem 1.1rem", fontSize: "0.72rem", fontWeight: "bold", letterSpacing: "0.08em", marginBottom: "1.2rem" }}>
               YOUR WEEK IS SET
@@ -1693,199 +1693,255 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ fontSize: "2.4rem", fontWeight: "bold", color: dw.color, letterSpacing: "-0.01em", lineHeight: 1.1, marginBottom: "0.4rem", fontFamily: SERIF }}>
               {dw.role} Week
             </div>
-            <div style={{ fontSize: "1.1rem", color: dw.textSupport, fontStyle: "italic", marginBottom: "1rem", fontFamily: SERIF }}>
-              {dwOutlook === "tight"    ? "Stay in it this week."
-               : dwOutlook === "on_track" ? "Stay consistent."
-               : dwOutlook === "room" && dwLeanIn ? `Lean in on ${dwLeanIn}.`
-               : dwOutlook === "room"     ? "Use the room wisely."
-               : dw.subtext}
-            </div>
             <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6 }}>
               {dw.reasonLine}
             </div>
           </div>
 
-          {/* ── What to do (above the fold) ── */}
-          <div style={{ background: "#fff", borderRadius: "16px", padding: "1.3rem 1.4rem", marginBottom: "1.1rem", boxShadow: `0 2px 12px ${dw.color}18` }}>
-            <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.06em", marginBottom: "0.9rem", fontWeight: "bold" }}>WHAT TO DO THIS WEEK</div>
-            {(dw.targets || []).map(({ label, value }) => (
-              <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.65rem", alignItems: "flex-start" }}>
-                <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
-                <div style={{ fontSize: "0.88rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
-              </div>
-            ))}
-          </div>
+          {/* ── Week start decision — Start Your Week ── */}
+          {(() => {
+            const activeOutlook = outlookChoice || dwOutlook;
+            const role = dw?.role || "Anchor";
+            const roleKey = role === "Reset" ? "Anchor" : role;
 
-          {/* ── Win condition (above the fold) ── */}
-          <div style={{ background: `${dw.color}18`, border: `1.5px solid ${dw.color}44`, borderRadius: "12px", padding: "0.9rem 1.2rem", marginBottom: "1.4rem", textAlign: "center" }}>
-            <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6, fontStyle: "italic", fontFamily: SERIF }}>
-              {dwOutlook === "tight"    ? `${dw.role} Week: Stay in it.`
-               : dwOutlook === "on_track" ? `${dw.role} Week: Hit your targets.`
-               : dwOutlook === "room" && dwLeanIn ? `${dw.role} Week: Lean in on ${dwLeanIn}.`
-               : dwOutlook === "room"     ? `${dw.role} Week: Use the room wisely.`
-               : dw.winLine}
-            </div>
-          </div>
+            // Weakest driver for On Track "Keep this steady" line
+            const latest = (currentMember.weeklyChecks || []).filter(c => c && !c.isBaseline).slice(-1)[0];
+            const getKeepSteady = () => {
+              if (!latest) return "Consistency";
+              const recovery = parseInt(latest.physicalRecovery) || 0;
+              const sleep = parseInt(latest.sleepQuality) || 0;
+              const protein = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 }[latest.protein] ?? 1;
+              if (recovery <= 2 || sleep <= 2) return "Sleep";
+              if (protein <= 1) return "Nutrition";
+              return "Consistency";
+            };
 
-          {/* ── Shape My Week — accordion-style, inline on declared week page ── */}
-          <AccordionSection
-            label={dwOutlook ? `Week shaped — ${dwOutlook === "tight" ? "Staying in it" : dwOutlook === "on_track" ? "On track" : dwLeanIn ? `Leaning in on ${dwLeanIn}` : "Open week"}` : "Shape My Week"}
-            open={shapeOpen}
-            onToggle={() => setShapeOpen(o => !o)}
-            accentColor={dw.color}
-            textColor={dw.textSupport}>
-            <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginBottom: "1rem", lineHeight: 1.5, fontStyle: "italic" }}>
-              Plan for a real week, not a perfect one. What does this week look like?
-            </div>
-            {/* Outlook selector */}
-            {[
-              { key: "tight",    label: "Tight / unpredictable", sub: "Stay in it" },
-              { key: "on_track", label: "On track",              sub: "Stay consistent" },
-              { key: "room",     label: "This week has room",    sub: "Lean in" },
-            ].map(({ key, label, sub }) => {
-              const selected = outlookChoice === key || (!outlookChoice && dwOutlook === key);
-              return (
-                <div key={key} style={{ marginBottom: "0.5rem" }}>
-                  <button onClick={() => setOutlookChoice(selected ? null : key)}
-                    style={{
-                      width: "100%", textAlign: "left", cursor: "pointer",
-                      background: selected ? `${dw.color}18` : "#f7f7f7",
-                      border: `1.5px solid ${selected ? dw.color : "#e8e8e8"}`,
-                      borderRadius: selected && key === "tight" && frictionChoice ? "10px 10px 0 0" : selected && key === "room" && leanInChoice ? "10px 10px 0 0" : "10px",
-                      padding: "0.75rem 1rem",
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      transition: "all 0.15s ease",
-                    }}>
-                    <div>
-                      <div style={{ fontSize: "0.9rem", fontWeight: selected ? "bold" : "normal", color: selected ? dw.color : DARK }}>{label}</div>
-                      <div style={{ fontSize: "0.72rem", color: selected ? dw.color : "#aaa", marginTop: "0.1rem" }}>{sub}</div>
-                    </div>
-                    {selected && <GBSCIcon name="check" size={16} color={dw.color} strokeWidth={0}/>}
-                  </button>
-                  {/* Tight — friction sub-selector */}
-                  {selected && key === "tight" && (
-                    <div style={{ background: "#f0f0f0", border: `1.5px solid ${dw.color}`, borderTop: "none", borderRadius: "0 0 10px 10px", padding: "0.75rem 1rem" }}>
-                      <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: "#888", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>WHERE MIGHT IT GET TIGHT?</div>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                        {[
-                          { key: "time", label: "Time" },
-                          { key: "energy", label: "Energy" },
-                          { key: "stress", label: "Stress" },
-                          { key: "travel", label: "Travel" },
-                          { key: "body", label: "Body" },
-                          { key: "mixed", label: "Mixed" },
-                        ].map(({ key: fk, label: fl }) => (
-                          <button key={fk} onClick={() => setFrictionChoice(frictionChoice === fk ? null : fk)}
-                            style={{
-                              padding: "0.3rem 0.75rem", borderRadius: "999px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "bold",
-                              background: frictionChoice === fk ? dw.color : "#fff",
-                              color: frictionChoice === fk ? "#fff" : "#666",
-                              border: `1.5px solid ${frictionChoice === fk ? dw.color : "#ddd"}`,
-                            }}>{fl}</button>
-                        ))}
-                      </div>
-                      {frictionChoice && (() => {
-                        const role = dw?.role || "Anchor";
-                        const roleKey = role === "Reset" ? "Anchor" : role;
-                        const p = FRICTION_PRESCRIPTIONS[frictionChoice]?.[roleKey];
-                        if (!p) return null;
-                        return (
-                          <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #e0e0e0" }}>
-                            <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>WHEN THAT HITS — DO THIS:</div>
-                            {p.targets.map(({ label: tl, value }) => (
-                              <div key={tl} style={{ display: "flex", gap: "0.6rem", marginBottom: "0.3rem" }}>
-                                <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: dw.color, minWidth: "60px", textTransform: "uppercase" }}>{tl}</div>
-                                <div style={{ fontSize: "0.78rem", color: DARK }}>{value}</div>
-                              </div>
-                            ))}
-                            <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: dw.color, marginTop: "0.5rem" }}>{p.rule}</div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                  {/* Room — lean-in sub-selector */}
-                  {selected && key === "room" && (
-                    <div style={{ background: "#f0f0f0", border: `1.5px solid ${dw.color}`, borderTop: "none", borderRadius: "0 0 10px 10px", padding: "0.75rem 1rem" }}>
-                      <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: "#888", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>LEAN IN ON:</div>
-                      <div style={{ display: "flex", gap: "0.4rem" }}>
-                        {["fitness", "nutrition", "recovery"].map(li => (
-                          <button key={li} onClick={() => setLeanInChoice(leanInChoice === li ? null : li)}
-                            style={{
-                              flex: 1, padding: "0.4rem 0", borderRadius: "8px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "bold", textTransform: "capitalize",
-                              background: leanInChoice === li ? dw.color : "#fff",
-                              color: leanInChoice === li ? "#fff" : "#666",
-                              border: `1.5px solid ${leanInChoice === li ? dw.color : "#ddd"}`,
-                            }}>{li}</button>
-                        ))}
-                      </div>
-                      {leanInChoice && (() => {
-                        const role = dw?.role || "Anchor";
-                        const roleKey = role === "Reset" ? "Anchor" : role;
-                        const p = LEAN_IN_PRESCRIPTIONS[leanInChoice]?.[roleKey];
-                        if (!p) return null;
-                        return (
-                          <div style={{ marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid #e0e0e0" }}>
-                            {p.actions.map((a, idx) => (
-                              <div key={idx} style={{ fontSize: "0.78rem", color: DARK, marginBottom: "0.2rem" }}>· {a}</div>
-                            ))}
-                            <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: dw.color, marginTop: "0.4rem" }}>{p.rule}</div>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-                </div>
+            // Save outlook immediately on tap — no button needed
+            const handleOutlookTap = async (key) => {
+              if (activeOutlook === key) return; // already set
+              const thisWeek = getCurrentWeekCheck(currentMember);
+              if (!thisWeek) return;
+              // Clear dependent fields when switching paths
+              const newFriction = key === "tight" ? (frictionChoice || dwThisWeek?.weeklyFrictionType || null) : null;
+              const newLeanIn   = key === "room"  ? (leanInChoice  || dwThisWeek?.weeklyLeanIn  || null) : null;
+              const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+                c && c.week === thisWeek.week && !c.isBaseline
+                  ? { ...c, weeklyOutlook: key, weeklyFrictionType: newFriction, weeklyLeanIn: newLeanIn }
+                  : c
               );
-            })}
-            {/* Save button */}
-            {(outlookChoice || dwOutlook) && (
-              <button onClick={async () => {
-                const outlook = outlookChoice || dwOutlook;
-                const thisWeek = getCurrentWeekCheck(currentMember);
-                if (!thisWeek) return;
-                const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
-                  c && c.week === thisWeek.week && !c.isBaseline
-                    ? { ...c, weeklyOutlook: outlook, weeklyFrictionType: frictionChoice || c.weeklyFrictionType, weeklyLeanIn: leanInChoice || c.weeklyLeanIn }
-                    : c
-                );
-                const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
-                await saveMember(updatedMember);
-                setCurrentMember(updatedMember);
-                setShapeOpen(false);
-              }}
-                style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "10px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.75rem" }}>
-                {dwOutlook ? "Update →" : "Lock it in →"}
-              </button>
-            )}
-          </AccordionSection>
+              const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
+              setOutlookChoice(key);
+              if (key !== "tight") setFrictionChoice(null);
+              if (key !== "room")  setLeanInChoice(null);
+              await saveMember(updatedMember);
+              setCurrentMember(updatedMember);
+            };
 
-          {/* ── Expandable sections (below the fold) ── */}
-          <AccordionSection label="If the week gets tight" open={tightOpen} onToggle={() => setTightOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
-            <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginBottom: "0.7rem", lineHeight: 1.5 }}>
-              If life shifts, here's how to stay in the game:
-            </div>
-            {(dw.tightTargets || []).map(({ label, value }) => (
-              <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.5rem", alignItems: "flex-start" }}>
-                <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
-                <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
+            const handleFrictionTap = async (fk) => {
+              const thisWeek = getCurrentWeekCheck(currentMember);
+              if (!thisWeek) return;
+              const newFk = frictionChoice === fk ? null : fk;
+              setFrictionChoice(newFk);
+              const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+                c && c.week === thisWeek.week && !c.isBaseline
+                  ? { ...c, weeklyFrictionType: newFk }
+                  : c
+              );
+              const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
+              await saveMember(updatedMember);
+              setCurrentMember(updatedMember);
+            };
+
+            const handleLeanInTap = async (li) => {
+              const thisWeek = getCurrentWeekCheck(currentMember);
+              if (!thisWeek) return;
+              const newLi = leanInChoice === li ? null : li;
+              setLeanInChoice(newLi);
+              const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+                c && c.week === thisWeek.week && !c.isBaseline
+                  ? { ...c, weeklyLeanIn: newLi }
+                  : c
+              );
+              const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
+              await saveMember(updatedMember);
+              setCurrentMember(updatedMember);
+            };
+
+            return (
+              <div style={{ marginBottom: "1.5rem" }}>
+                {/* Prompt */}
+                <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: dw.textSupport, marginBottom: "0.9rem", textAlign: "center", fontFamily: SERIF }}>
+                  How's your week shaping up?
+                </div>
+
+                {/* Three options */}
+                {[
+                  { key: "tight",    label: "Tight",          sub: "Stay in it" },
+                  { key: "on_track", label: "On Track",       sub: "Stay consistent" },
+                  { key: "room",     label: "Room to Push",   sub: "Use it" },
+                ].map(({ key, label, sub }) => {
+                  const selected = activeOutlook === key;
+                  return (
+                    <div key={key} style={{ marginBottom: "0.5rem" }}>
+                      <button onClick={() => handleOutlookTap(key)}
+                        style={{
+                          width: "100%", textAlign: "left", cursor: "pointer",
+                          background: selected ? `${dw.color}` : "#ffffff18",
+                          border: `1.5px solid ${selected ? dw.color : dw.color + "44"}`,
+                          borderRadius: "12px",
+                          padding: "0.85rem 1.1rem",
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          transition: "all 0.15s ease",
+                        }}>
+                        <div>
+                          <div style={{ fontSize: "1rem", fontWeight: "bold", color: selected ? "#fff" : dw.textSupport }}>{label}</div>
+                          <div style={{ fontSize: "0.72rem", color: selected ? "rgba(255,255,255,0.8)" : dw.textSupport, opacity: selected ? 1 : 0.7, marginTop: "0.1rem" }}>{sub}</div>
+                        </div>
+                        {selected && <GBSCIcon name="check" size={18} color="#fff" strokeWidth={0}/>}
+                      </button>
+
+                      {/* ── TIGHT path — inline plan + friction ── */}
+                      {selected && key === "tight" && (
+                        <div style={{ background: "#fff", border: `1.5px solid ${dw.color}44`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "1rem 1.1rem" }}>
+                          <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: dw.color, letterSpacing: "0.06em", marginBottom: "0.5rem" }}>TIGHT WEEK — STAY IN IT</div>
+                          <div style={{ fontSize: "0.78rem", color: "#666", marginBottom: "0.7rem" }}>Hit this and you still win the week:</div>
+                          {[
+                            { l: "Training",  v: "2 strength sessions" },
+                            { l: "Engine",    v: "2 zone 2 blocks" },
+                            { l: "Nutrition", v: "Protein floor" },
+                            { l: "Recovery",  v: "1 recovery anchor" },
+                          ].map(({ l, v }) => (
+                            <div key={l} style={{ display: "flex", gap: "0.6rem", marginBottom: "0.3rem" }}>
+                              <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: dw.color, minWidth: "64px", textTransform: "uppercase", paddingTop: "0.1rem" }}>{l}</div>
+                              <div style={{ fontSize: "0.82rem", color: DARK }}>{v}</div>
+                            </div>
+                          ))}
+                          {/* Friction selector */}
+                          <div style={{ marginTop: "0.9rem", paddingTop: "0.8rem", borderTop: "1px solid #f0f0f0" }}>
+                            <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: "#888", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>WHERE DOES THIS USUALLY GET TIGHT?</div>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                              {[
+                                { key: "time",   label: "Time / schedule" },
+                                { key: "energy", label: "Low energy" },
+                                { key: "stress", label: "Stress" },
+                                { key: "travel", label: "Travel" },
+                                { key: "body",   label: "Body feels beat up" },
+                              ].map(({ key: fk, label: fl }) => (
+                                <button key={fk} onClick={() => handleFrictionTap(fk)}
+                                  style={{
+                                    padding: "0.35rem 0.8rem", borderRadius: "999px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "bold",
+                                    background: frictionChoice === fk ? dw.color : "#f5f5f5",
+                                    color: frictionChoice === fk ? "#fff" : "#666",
+                                    border: `1.5px solid ${frictionChoice === fk ? dw.color : "#e0e0e0"}`,
+                                  }}>{fl}</button>
+                              ))}
+                            </div>
+                            {/* Friction prescription — immediate inline */}
+                            {frictionChoice && (() => {
+                              const p = FRICTION_PRESCRIPTIONS[frictionChoice]?.[roleKey];
+                              if (!p) return null;
+                              return (
+                                <div style={{ marginTop: "0.8rem", background: `${dw.color}0a`, borderRadius: "8px", padding: "0.75rem 0.9rem" }}>
+                                  <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, letterSpacing: "0.06em", marginBottom: "0.5rem" }}>WHEN THAT HITS (IT WILL), DO THIS:</div>
+                                  {p.targets.map(({ label: tl, value }) => (
+                                    <div key={tl} style={{ display: "flex", gap: "0.6rem", marginBottom: "0.3rem" }}>
+                                      <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: dw.color, minWidth: "60px", textTransform: "uppercase" }}>{tl}</div>
+                                      <div style={{ fontSize: "0.78rem", color: DARK }}>{value}</div>
+                                    </div>
+                                  ))}
+                                  <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: dw.color, marginTop: "0.5rem" }}>{p.rule}</div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          <div style={{ fontSize: "0.78rem", color: dw.textSupport, fontWeight: "bold", marginTop: "0.8rem", fontStyle: "italic" }}>
+                            This is enough. Stay in it.
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── ON TRACK path — solid plan + keep this steady ── */}
+                      {selected && key === "on_track" && (
+                        <div style={{ background: "#fff", border: `1.5px solid ${dw.color}44`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "1rem 1.1rem" }}>
+                          <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: dw.color, letterSpacing: "0.06em", marginBottom: "0.5rem" }}>SOLID WEEK — KEEP IT CLEAN</div>
+                          <div style={{ fontSize: "0.78rem", color: "#666", marginBottom: "0.7rem" }}>If you hit this, you win the week:</div>
+                          {[
+                            { l: "Training",  v: "Full training schedule" },
+                            { l: "Nutrition", v: "Protein target" },
+                            { l: "Recovery",  v: "Sleep consistency" },
+                          ].map(({ l, v }) => (
+                            <div key={l} style={{ display: "flex", gap: "0.6rem", marginBottom: "0.3rem" }}>
+                              <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: dw.color, minWidth: "64px", textTransform: "uppercase", paddingTop: "0.1rem" }}>{l}</div>
+                              <div style={{ fontSize: "0.82rem", color: DARK }}>{v}</div>
+                            </div>
+                          ))}
+                          <div style={{ marginTop: "0.8rem", paddingTop: "0.7rem", borderTop: "1px solid #f0f0f0" }}>
+                            <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: "#888", letterSpacing: "0.06em", marginBottom: "0.3rem" }}>KEEP THIS STEADY:</div>
+                            <div style={{ fontSize: "0.88rem", fontWeight: "bold", color: dw.color }}>{getKeepSteady()}</div>
+                          </div>
+                          <div style={{ fontSize: "0.78rem", color: dw.textSupport, fontWeight: "bold", marginTop: "0.8rem", fontStyle: "italic" }}>
+                            Midweek is where this shifts. Stay sharp.
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ── ROOM TO PUSH path — expansion plan + lean-in ── */}
+                      {selected && key === "room" && (
+                        <div style={{ background: "#fff", border: `1.5px solid ${dw.color}44`, borderTop: "none", borderRadius: "0 0 12px 12px", padding: "1rem 1.1rem" }}>
+                          <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: dw.color, letterSpacing: "0.06em", marginBottom: "0.5rem" }}>ROOM TO PUSH — USE IT</div>
+                          <div style={{ fontSize: "0.78rem", color: "#666", marginBottom: "0.7rem" }}>Use this week to move forward:</div>
+                          {[
+                            { l: "Training",  v: "+1 training session" },
+                            { l: "Strength",  v: "Push one lift" },
+                            { l: "Engine",    v: "Extend one conditioning piece" },
+                          ].map(({ l, v }) => (
+                            <div key={l} style={{ display: "flex", gap: "0.6rem", marginBottom: "0.3rem" }}>
+                              <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: dw.color, minWidth: "64px", textTransform: "uppercase", paddingTop: "0.1rem" }}>{l}</div>
+                              <div style={{ fontSize: "0.82rem", color: DARK }}>{v}</div>
+                            </div>
+                          ))}
+                          {/* Lean-in selector */}
+                          <div style={{ marginTop: "0.9rem", paddingTop: "0.8rem", borderTop: "1px solid #f0f0f0" }}>
+                            <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: "#888", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>WHERE DO YOU WANT TO PUSH?</div>
+                            <div style={{ display: "flex", gap: "0.5rem" }}>
+                              {["fitness", "nutrition", "recovery"].map(li => (
+                                <button key={li} onClick={() => handleLeanInTap(li)}
+                                  style={{
+                                    flex: 1, padding: "0.4rem 0", borderRadius: "8px", cursor: "pointer", fontSize: "0.75rem", fontWeight: "bold", textTransform: "capitalize",
+                                    background: leanInChoice === li ? dw.color : "#f5f5f5",
+                                    color: leanInChoice === li ? "#fff" : "#666",
+                                    border: `1.5px solid ${leanInChoice === li ? dw.color : "#e0e0e0"}`,
+                                  }}>{li}</button>
+                              ))}
+                            </div>
+                            {leanInChoice && (() => {
+                              const p = LEAN_IN_PRESCRIPTIONS[leanInChoice]?.[roleKey];
+                              if (!p) return null;
+                              return (
+                                <div style={{ marginTop: "0.8rem", background: `${dw.color}0a`, borderRadius: "8px", padding: "0.75rem 0.9rem" }}>
+                                  {p.actions.map((a, idx) => (
+                                    <div key={idx} style={{ fontSize: "0.82rem", color: DARK, marginBottom: "0.25rem" }}>· {a}</div>
+                                  ))}
+                                  <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: dw.color, marginTop: "0.4rem" }}>{p.rule}</div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                          <div style={{ fontSize: "0.78rem", color: dw.textSupport, fontWeight: "bold", marginTop: "0.8rem", fontStyle: "italic" }}>
+                            Make the most of the room you have.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-            <div style={{ fontSize: "0.75rem", color: dw.textSupport, marginTop: "0.7rem", fontStyle: "italic", opacity: 0.85 }}>
-              Staying in motion beats stopping completely.
-            </div>
-            <button onClick={() => { setView("library"); }}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: "0.5rem 0 0", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-              <GBSCIcon name="book" size={13} color={dw.color} strokeWidth={0}/>
-              <span style={{ fontSize: "0.75rem", color: dw.color, fontWeight: "bold" }}>Browse protocols in the library →</span>
-            </button>
-          </AccordionSection>
+            );
+          })()}
 
-          <AccordionSection label="If you have more to give" open={moreOpen} onToggle={() => setMoreOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
-            <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginBottom: "0.7rem", lineHeight: 1.5 }}>
-              Your prescribed week is the right target. If the week opens up:
-            </div>
-            {(dw.moreTargets || []).map(({ label, value }) => (
+          {/* ── Below the fold: reference sections ── */}
+          <AccordionSection label="This week's targets" open={tightOpen} onToggle={() => setTightOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
+            {(dw.targets || []).map(({ label, value }) => (
               <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.5rem", alignItems: "flex-start" }}>
                 <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
                 <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
@@ -2024,7 +2080,7 @@ const WEEKEND_PLANS = {
       win: "Didn't lose momentum.",
     },
   },
-  busy: {
+  extra_time: {
     Anchor: {
       anchors: [
         { time: "When you have a window", actions: ["Do something small (5–10 min counts)"] },
@@ -2050,7 +2106,7 @@ const WEEKEND_PLANS = {
       win: "Adjusted without losing momentum.",
     },
   },
-  low_key: {
+  normal: {
     Anchor: {
       anchors: [
         { time: "This weekend", actions: ["Keep your basics in place", "Get one good walk or training session", "Don't disappear just because structure is lighter"] },
@@ -2950,6 +3006,9 @@ const WEEKEND_PLANS = {
     const already = thisWeek.midweekStatus;
     const dw = declaredWeek || getDeclaredWeek(allChecks);
     const accentColor = dw?.color || G;
+    const outlook = thisWeek?.weeklyOutlook;
+    const role = dw?.role || "Anchor";
+    const roleKey = role === "Reset" ? "Anchor" : role;
 
     async function handleMidweek(status) {
       const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
@@ -2963,20 +3022,10 @@ const WEEKEND_PLANS = {
       setView("midweekResult");
     }
 
-    const frictionCopy = {
-      time:   "You planned for a busy week. Stay in it.",
-      energy: "Low energy was expected. Keep it simple.",
-      stress: "This is the week that matters most.",
-      travel: "You planned for disruption. Adapt and keep going.",
-      body:   "Pull back, don't drop out.",
-      mixed:  "Unpredictable week. Minimums win.",
-    };
-    const frictionType = thisWeek?.weeklyFrictionType;
-
-    const responses = {
-      on_track:    { label: "On Track",     desc: "You're moving in the right direction." },
-      slightly_off:{ label: "Slightly Off", desc: "A small adjustment can still win the week." },
-      off_track:   { label: "Off Track",    desc: "Reset and simplify — you can still finish strong." },
+    // Already-done label map — internal status → display
+    const statusLabels = {
+      on_track:    "Yes — on track",
+      slightly_off:"Needs a reset",
     };
 
     return (
@@ -2984,39 +3033,26 @@ const WEEKEND_PLANS = {
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
-          {/* Header — prompt adapts to weekly outlook */}
-          <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
             <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.12em", marginBottom: "0.8rem" }}>MID-WEEK CHECK</div>
-            <div style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, lineHeight: 1.2, marginBottom: "0.6rem" }}>
-              {(() => {
-                const outlook = thisWeek?.weeklyOutlook;
-                if (outlook === "tight")    return "This week got tight — did you stay in it?";
-                if (outlook === "on_track") return "Are you staying consistent?";
-                if (outlook === "room")     return "You had room — did you lean in?";
-                return <>Are you on track<br/>to win your week?</>;
-              })()}
+            <div style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, lineHeight: 1.2, marginBottom: "0.4rem" }}>
+              Are you still on track?
             </div>
-            {dw && (
-              <div style={{ fontSize: "0.82rem", color: "#ccc", marginTop: "0.4rem" }}>
-                Your goal: <span style={{ color: accentColor, fontWeight: "bold" }}>{dw.winLine}</span>
-              </div>
-            )}
           </div>
 
-          {/* Feature 5: Soft pod sync — ambient awareness, not pressure */}
+          {/* Pod soft sync */}
           {(() => {
             const myPod = (pods || []).find(p => p.memberIds?.includes(currentMember.id));
-            if (!myPod) return null;
-            const podSize = (myPod.memberIds || []).length;
-            if (podSize < 2) return null;
+            if (!myPod || (myPod.memberIds || []).length < 2) return null;
             return (
-              <div style={{ textAlign: "center", fontSize: "0.78rem", color: "#555", marginBottom: "1.2rem", fontStyle: "italic" }}>
+              <div style={{ textAlign: "center", fontSize: "0.78rem", color: "#555", marginBottom: "1.5rem", fontStyle: "italic" }}>
                 Your pod is navigating this week too.
               </div>
             );
           })()}
 
-          {/* Already done state */}
+          {/* Already done */}
           {already ? (
             <div style={{ background: "#ffffff10", borderRadius: "16px", padding: "1.5rem", textAlign: "center" }}>
               <GBSCIcon name="check" size={32} color={accentColor} strokeWidth={0}/>
@@ -3024,28 +3060,41 @@ const WEEKEND_PLANS = {
                 Already checked in
               </div>
               <div style={{ color: "#ccc", fontSize: "0.82rem", marginTop: "0.4rem" }}>
-                Status: <span style={{ color: accentColor }}>{responses[already]?.label}</span>
+                {statusLabels[already] || already}
               </div>
-
             </div>
           ) : (
-            /* Response buttons */
             <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-              {Object.entries(responses).map(([key, { label, desc }]) => (
-                <button key={key} onClick={() => handleMidweek(key)}
-                  style={{
-                    background: "#ffffff08", border: `1.5px solid #ffffff18`,
-                    borderRadius: "14px", padding: "1.1rem 1.4rem",
-                    textAlign: "left", cursor: "pointer",
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background="#ffffff14"; e.currentTarget.style.borderColor=accentColor+"88"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background="#ffffff08"; e.currentTarget.style.borderColor="#ffffff18"; }}
-                >
-                  <div style={{ fontWeight: "bold", color: "#fff", fontSize: "1rem", marginBottom: "0.2rem" }}>{label}</div>
-                  <div style={{ fontSize: "0.78rem", color: "#bbb" }}>{desc}</div>
-                </button>
-              ))}
+
+              {/* YES button */}
+              <button onClick={() => handleMidweek("on_track")}
+                style={{
+                  background: "#ffffff08", border: `1.5px solid #ffffff18`,
+                  borderRadius: "14px", padding: "1.1rem 1.4rem",
+                  textAlign: "left", cursor: "pointer", transition: "all 0.15s ease",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background="#ffffff14"; e.currentTarget.style.borderColor=accentColor+"88"; }}
+                onMouseLeave={e => { e.currentTarget.style.background="#ffffff08"; e.currentTarget.style.borderColor="#ffffff18"; }}>
+                <div style={{ fontWeight: "bold", color: "#fff", fontSize: "1rem", marginBottom: "0.2rem" }}>Yes</div>
+                <div style={{ fontSize: "0.78rem", color: "#bbb" }}>
+                  {outlook === "tight"    ? "Good. Stay with the floor."
+                   : outlook === "room"   ? "You've got more here."
+                   : "Finish it clean."}
+                </div>
+              </button>
+
+              {/* NEEDS A RESET button */}
+              <button onClick={() => handleMidweek("slightly_off")}
+                style={{
+                  background: "#ffffff08", border: `1.5px solid #ffffff18`,
+                  borderRadius: "14px", padding: "1.1rem 1.4rem",
+                  textAlign: "left", cursor: "pointer", transition: "all 0.15s ease",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background="#ffffff14"; e.currentTarget.style.borderColor=accentColor+"88"; }}
+                onMouseLeave={e => { e.currentTarget.style.background="#ffffff08"; e.currentTarget.style.borderColor="#ffffff18"; }}>
+                <div style={{ fontWeight: "bold", color: "#fff", fontSize: "1rem", marginBottom: "0.2rem" }}>Needs a reset</div>
+                <div style={{ fontSize: "0.78rem", color: "#bbb" }}>Good catch. Reset here.</div>
+              </button>
             </div>
           )}
 
@@ -3065,103 +3114,154 @@ const WEEKEND_PLANS = {
     const status = thisWeek?.midweekStatus;
     const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || []);
     const accentColor = dw?.color || G;
+    const outlook = thisWeek?.weeklyOutlook;
+    const role = dw?.role || "Anchor";
+    const roleKey = role === "Reset" ? "Anchor" : role;
+    const isReset = status === "slightly_off";
 
-    // Rotating message banks — pick one at random each render
-    const midweekMessages = {
-      on_track: [
-        "Keep stacking wins.",
-        "You're building momentum.",
-        "This is how progress compounds.",
-        "Consistency compounds.",
-        "Stay in it.",
-      ],
-      slightly_off: [
-        "Small adjustments work.",
-        "You're still in it.",
-        "Reset the day, not the week.",
-        "Small days add up.",
-        "Momentum beats motivation.",
-      ],
-      off_track: [
-        "A small win today matters.",
-        "Don't chase perfect.",
-        "Keep the week alive.",
-        "Showing up counts.",
-        "Stay in it.",
-      ],
+    // Yes path — branch by outlook
+    const yesContent = {
+      tight:    { headline: "Good. Stay with the floor.", icon: "check",   color: accentColor },
+      on_track: { headline: "Finish it clean.",           icon: "bounce2", color: accentColor },
+      room:     { headline: "You've got more here.",      icon: "flame",   color: accentColor },
     };
-    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-
-    const resultContent = {
-      on_track: {
-        headline: "Keep going.",
-        reframe: "You're building consistency.",
-        reframeSub: "That's what actually drives results.",
-        rotatingMsg: pick(midweekMessages.on_track),
-        icon: "bounce2",
-        color: G,
-        bullets: null,
-      },
-      slightly_off: {
-        headline: "Small adjustment.",
-        reframe: "Small adjustments beat perfect plans.",
-        reframeSub: "You're still in it.",
-        rotatingMsg: pick(midweekMessages.slightly_off),
-        icon: "ripple",
-        color: "#e09020",
-        bullets: ["Engine work", "Sleep tonight", "Protein at your next meal"],
-      },
-      off_track: {
-        headline: "Missing days is normal.",
-        reframe: "Staying in it is what matters.",
-        reframeSub: null,
-        rotatingMsg: pick(midweekMessages.off_track),
-        icon: "refresh",
-        color: "#C8C4BC",
-        bullets: ["1 workout", "30 min movement", "Protein today"],
-      },
-    };
-
-    const content = resultContent[status] || resultContent.on_track;
+    const yesResult = yesContent[outlook] || yesContent.on_track;
 
     return (
       <div style={{ minHeight: "100vh", background: DARK_BG, fontFamily: SANS, display: "flex", flexDirection: "column" }}>
         {hdr}
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "2.5rem 1.5rem", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
-          <div style={{ marginBottom: "1.5rem" }}>
-            <GBSCIcon name={content.icon} size={52} color={content.color} strokeWidth={0}/>
-          </div>
-
-          <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.5rem" }}>
-            {content.headline}
-          </div>
-
-          {/* Reframe lines */}
-          <div style={{ marginBottom: "1.2rem" }}>
-            <div style={{ fontSize: "1rem", color: "#ddd", lineHeight: 1.6 }}>{content.reframe}</div>
-            {content.reframeSub && (
-              <div style={{ fontSize: "0.9rem", color: "#aaa", lineHeight: 1.6 }}>{content.reframeSub}</div>
-            )}
-          </div>
-
-          {content.bullets && (
-            <div style={{ background: "#ffffff0a", borderRadius: "12px", padding: "1rem 1.4rem", marginBottom: "1.2rem", textAlign: "left", width: "100%" }}>
-              {content.bullets.map(b => (
-                <div key={b} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.35rem 0", borderBottom: "1px solid #ffffff0a" }}>
-                  <GBSCIcon name="check" size={14} color={content.color} strokeWidth={0}/>
-                  <span style={{ fontSize: "0.9rem", color: "#ddd" }}>{b}</span>
+          {isReset ? (
+            /* ── RESET PATH ── */
+            <div>
+              <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
+                <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.12em", marginBottom: "0.8rem" }}>MID-WEEK RESET</div>
+                <div style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, lineHeight: 1.2 }}>
+                  Good catch. Reset here.
                 </div>
-              ))}
+              </div>
+
+              {/* Friction selector if none exists, or show existing prescription */}
+              {(() => {
+                const existingFriction = thisWeek?.weeklyFrictionType;
+                const [mwFriction, setMwFriction] = React.useState(existingFriction || null);
+
+                const handleMwFrictionTap = async (fk) => {
+                  const newFk = mwFriction === fk ? null : fk;
+                  setMwFriction(newFk);
+                  const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+                    c && c.week === thisWeek.week && !c.isBaseline
+                      ? { ...c, weeklyFrictionType: newFk }
+                      : c
+                  );
+                  const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
+                  await saveMember(updatedMember);
+                  setCurrentMember(updatedMember);
+                };
+
+                const prescription = mwFriction ? FRICTION_PRESCRIPTIONS[mwFriction]?.[roleKey] : null;
+
+                return (
+                  <div>
+                    {!existingFriction && (
+                      <div style={{ marginBottom: "1rem" }}>
+                        <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: "#888", letterSpacing: "0.06em", marginBottom: "0.6rem", textAlign: "center" }}>
+                          WHERE IS IT GETTING TIGHT?
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", justifyContent: "center" }}>
+                          {[
+                            { key: "time",   label: "Time / schedule" },
+                            { key: "energy", label: "Low energy" },
+                            { key: "stress", label: "Stress" },
+                            { key: "travel", label: "Travel" },
+                            { key: "body",   label: "Body feels beat up" },
+                          ].map(({ key: fk, label: fl }) => (
+                            <button key={fk} onClick={() => handleMwFrictionTap(fk)}
+                              style={{
+                                padding: "0.4rem 0.9rem", borderRadius: "999px", cursor: "pointer", fontSize: "0.78rem", fontWeight: "bold",
+                                background: mwFriction === fk ? accentColor : "#ffffff0f",
+                                color: mwFriction === fk ? "#fff" : "#bbb",
+                                border: `1.5px solid ${mwFriction === fk ? accentColor : "#ffffff18"}`,
+                              }}>{fl}</button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reduced plan */}
+                    {(mwFriction || existingFriction) && prescription && (
+                      <div style={{ background: "#ffffff0a", borderRadius: "14px", padding: "1.1rem 1.3rem", marginBottom: "1rem" }}>
+                        <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.06em", marginBottom: "0.6rem" }}>
+                          DO THIS THE REST OF THE WEEK:
+                        </div>
+                        {prescription.targets.map(({ label: tl, value }) => (
+                          <div key={tl} style={{ display: "flex", gap: "0.6rem", marginBottom: "0.3rem" }}>
+                            <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: accentColor, minWidth: "60px", textTransform: "uppercase" }}>{tl}</div>
+                            <div style={{ fontSize: "0.82rem", color: "#ddd" }}>{value}</div>
+                          </div>
+                        ))}
+                        <div style={{ fontSize: "0.82rem", fontWeight: "bold", color: accentColor, marginTop: "0.5rem" }}>{prescription.rule}</div>
+                      </div>
+                    )}
+
+                    <div style={{ textAlign: "center", fontSize: "0.88rem", fontWeight: "bold", color: accentColor, fontStyle: "italic", marginBottom: "1.5rem" }}>
+                      You're still in this.
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            /* ── YES PATH ── */
+            <div style={{ textAlign: "center" }}>
+              <div style={{ marginBottom: "1.2rem" }}>
+                <GBSCIcon name={yesResult.icon} size={52} color={yesResult.color} strokeWidth={0}/>
+              </div>
+              <div style={{ fontSize: "2rem", fontWeight: "bold", color: "#fff", fontFamily: SERIF, marginBottom: "0.5rem" }}>
+                {yesResult.headline}
+              </div>
+              <div style={{ fontSize: "0.95rem", color: "#ccc", lineHeight: 1.6, marginBottom: "1.5rem" }}>
+                {outlook === "tight"    ? "You're navigating a tight week and staying in it."
+                 : outlook === "room"   ? "The room is there — use it."
+                 : "Keep the momentum going through the end of the week."}
+              </div>
+
+              {/* Room to Push — surface lean-in if not yet selected */}
+              {outlook === "room" && !thisWeek?.weeklyLeanIn && (() => {
+                const [mwLeanIn, setMwLeanIn] = React.useState(null);
+                const handleMwLeanIn = async (li) => {
+                  const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
+                    c && c.week === thisWeek.week && !c.isBaseline
+                      ? { ...c, weeklyLeanIn: li }
+                      : c
+                  );
+                  const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
+                  setMwLeanIn(li);
+                  await saveMember(updatedMember);
+                  setCurrentMember(updatedMember);
+                };
+                return (
+                  <div style={{ marginBottom: "1.5rem" }}>
+                    <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: "#888", letterSpacing: "0.06em", marginBottom: "0.6rem" }}>WHERE DO YOU WANT TO PUSH?</div>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      {["fitness", "nutrition", "recovery"].map(li => (
+                        <button key={li} onClick={() => handleMwLeanIn(li)}
+                          style={{
+                            flex: 1, padding: "0.5rem 0", borderRadius: "8px", cursor: "pointer", fontSize: "0.78rem", fontWeight: "bold", textTransform: "capitalize",
+                            background: mwLeanIn === li ? accentColor : "#ffffff0f",
+                            color: mwLeanIn === li ? "#fff" : "#bbb",
+                            border: `1.5px solid ${mwLeanIn === li ? accentColor : "#ffffff18"}`,
+                          }}>{li}</button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
-          {/* Rotating message */}
-          <div style={{ fontSize: "0.78rem", color: content.color, fontWeight: "bold", letterSpacing: "0.04em", marginBottom: "0.5rem", opacity: 0.9 }}>
-            {content.rotatingMsg}
-          </div>
-
-          {/* Carry-forward — closes the friction planning loop */}
+          {/* Carry-forward — closes the friction loop */}
           {(() => {
             const ft = thisWeek?.weeklyFrictionType;
             const carryForward = {
@@ -3170,33 +3270,32 @@ const WEEKEND_PLANS = {
               stress: "Stress showed up. You didn't disappear.",
               travel: "You adapted. That's the whole skill.",
               body:   "You pulled back instead of dropping out. Smart.",
-              mixed:  "Unpredictable week. You showed up anyway.",
             };
-            const outlook = thisWeek?.weeklyOutlook;
             const outlookCarry = {
               on_track: "You stayed consistent. That's how it compounds.",
               room:     "You had room and you used it. That's momentum.",
             };
+            if (isReset) return null; // reset path has its own close
             const msg = (ft && carryForward[ft]) ? carryForward[ft]
                       : (outlook && outlookCarry[outlook]) ? outlookCarry[outlook]
                       : null;
             if (!msg) return null;
             return (
-              <div style={{ background: "#ffffff08", borderRadius: "10px", padding: "0.75rem 1rem", marginTop: "1rem", marginBottom: "0.5rem" }}>
-                <div style={{ fontSize: "0.85rem", color: content.color, fontWeight: "bold", fontStyle: "italic" }}>
+              <div style={{ background: "#ffffff08", borderRadius: "10px", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+                <div style={{ fontSize: "0.85rem", color: accentColor, fontWeight: "bold", fontStyle: "italic" }}>
                   {msg}
                 </div>
               </div>
             );
           })()}
 
-          <button onClick={() => setView("checkFeedback")}
-            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginTop: "1rem" }}>
-            Back to My Results →
-          </button>
           <button onClick={() => setView("profile")}
+            style={{ width: "100%", background: accentColor, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.5rem" }}>
+            Back to My Week →
+          </button>
+          <button onClick={() => setView("checkFeedback")}
             style={{ width: "100%", background: "none", border: "none", color: "#aaa", cursor: "pointer", marginTop: "0.5rem", fontSize: "0.85rem" }}>
-            Go to My Profile
+            View My Results →
           </button>
         </div>
       </div>
@@ -3688,8 +3787,8 @@ const WEEKEND_PLANS = {
             if (!thisWeekCheck) return null;
             const done = !!thisWeekCheck.midweekStatus;
             if (!done && !isMidweekWindow()) return null;
-            const statusColors = { on_track: G, slightly_off: "#8A94A6", off_track: "#888580" };
-            const statusLabels = { on_track: "On Track ✓", slightly_off: "Slightly Off", off_track: "At Risk" };
+            const statusColors = { on_track: G, slightly_off: "#e09020" };
+            const statusLabels = { on_track: "On track ✓", slightly_off: "Needs a reset" };
             const statusColor = done ? (statusColors[thisWeekCheck.midweekStatus] || G) : G;
             return (
               <div style={{
@@ -3809,7 +3908,7 @@ const WEEKEND_PLANS = {
                     )}
                     {(() => {
                       const weekend = lastCheck.weekendType;
-                      const weekendLabels = { low_key: "Low key weekend", social: "Social weekend", busy: "Busy weekend" };
+                      const weekendLabels = { social: "Social weekend", normal: "Normal weekend", extra_time: "Extra time weekend" };
                       if (!weekend) return null;
                       return (
                         <div>
@@ -3839,11 +3938,11 @@ const WEEKEND_PLANS = {
             const lockedType = thisWeek?.weekendType;
             if (!isWeekendWindow && !lockedIn) return null;
             const weekendOptions = [
-              { key: "low_key", label: "Low key / staying close to routine" },
-              { key: "social",  label: "Social plans / going out" },
-              { key: "busy",    label: "Busy / off routine weekend" },
+              { key: "social",     label: "Social weekend (stay in control)" },
+              { key: "normal",     label: "Normal weekend (stay consistent)" },
+              { key: "extra_time", label: "Extra time (use it)" },
             ];
-            const typeLabels = { low_key: "Low key weekend", social: "Social weekend", busy: "Busy weekend" };
+            const typeLabels = { social: "Social weekend", normal: "Normal weekend", extra_time: "Extra time weekend" };
             const role = dw?.role || "Anchor";
             const roleKey = role === "Reset" ? "Anchor" : role;
             const plan = lockedType ? WEEKEND_PLANS[lockedType]?.[roleKey] : weekendChoice ? WEEKEND_PLANS[weekendChoice]?.[roleKey] : null;
@@ -3915,6 +4014,11 @@ const WEEKEND_PLANS = {
                 {lockedIn && (
                   <div style={{ textAlign: "center", fontSize: "0.78rem", color: G, fontWeight: "bold" }}>
                     Locked in. Stay in it.
+                  </div>
+                )}
+                {lockedIn && (
+                  <div style={{ textAlign: "center", fontSize: "0.78rem", color: "#888", marginTop: "0.3rem", fontStyle: "italic" }}>
+                    This is where most people lose it.
                   </div>
                 )}
                 {lockedIn && (
@@ -4709,7 +4813,7 @@ function PodCard({ myPod, members, currentMember, pods, setPods }) {
         {/* ── Detail toggle ── */}
         {/* Weekend plans visibility — ambient pod accountability */}
         {(() => {
-          const weekendLabels = { low_key: "Low key", social: "Social", busy: "Busy" };
+          const weekendLabels = { social: "Social", normal: "Normal", extra_time: "Extra time" };
           const withWeekend = allPodMembers.filter(m => {
             const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
             return checks.length && checks[checks.length-1].weekendLockedIn;
@@ -4969,6 +5073,9 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       "week","date","is_baseline","habit_score",
       "workouts","zone2_minutes","strength_rpe","daily_movement","protein","sleep_opportunity","downshift",
       "sleep_quality","energy_level","physical_recovery","disruption",
+      "weekly_outlook","weekly_friction_type","weekly_lean_in",
+      "midweek_status","week_result",
+      "weekend_type","weekend_locked_in",
       "capacity_index","tier"
     ];
 
@@ -4993,6 +5100,9 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
             c.week ?? 0, c.date, c.isBaseline ? "YES" : "NO", c.score,
             c.workouts, c.zone2 ?? "", c.strengthRPE, c.dailyMovement ?? "", c.protein ?? "", c.sleepOpportunity ?? "", c.downshift ?? "",
             c.sleepQuality, c.energyLevel, c.physicalRecovery, c.disruption ?? "",
+            c.weeklyOutlook ?? "", c.weeklyFrictionType ?? "", c.weeklyLeanIn ?? "",
+            c.midweekStatus ?? "", c.weekResult ?? "",
+            c.weekendType ?? "", c.weekendLockedIn ? "YES" : "",
             ci, tier.tier
           ]);
         }
@@ -5037,7 +5147,27 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     URL.revokeObjectURL(url);
   }
 
-  const filtered = members.filter(m => m.name?.toLowerCase().includes(search.toLowerCase()) || m.email?.toLowerCase().includes(search.toLowerCase()));
+  const [filterTier, setFilterTier] = useState("all");
+  const [filterWeek, setFilterWeek] = useState("all");
+  const [filterMidweek, setFilterMidweek] = useState("all");
+
+  const filtered = members.filter(m => {
+    const nameMatch = m.name?.toLowerCase().includes(search.toLowerCase()) || m.email?.toLowerCase().includes(search.toLowerCase());
+    if (!nameMatch) return false;
+    const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
+    const latest = checks[checks.length - 1];
+    const habitAvg = checks.length ? Math.round(checks.reduce((s,c) => s+c.score,0)/checks.length) : null;
+    const ci = habitAvg !== null ? calcCapacityIndex(m.vo2Score_pre, m.gripScore_pre, habitAvg) : null;
+    const tier = ci !== null ? getCapacityTier(ci) : null;
+    if (filterTier !== "all" && tier?.tier !== filterTier) return false;
+    if (filterWeek === "early" && checks.length > 2) return false;
+    if (filterWeek === "mid" && (checks.length <= 2 || checks.length > 6)) return false;
+    if (filterWeek === "late" && checks.length <= 6) return false;
+    if (filterWeek === "none" && checks.length > 0) return false;
+    if (filterMidweek === "reset" && latest?.midweekStatus !== "slightly_off") return false;
+    if (filterMidweek === "on_track" && latest?.midweekStatus !== "on_track") return false;
+    return true;
+  });
 
   // Gym-wide averages
   const withCI = members.filter(m => (m.weeklyChecks || []).filter(c => c && !c.isBaseline).length > 0);
@@ -5102,7 +5232,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
               const latestCheck = checks.length ? checks[checks.length - 1] : null;
               const midweekStatus = latestCheck?.midweekStatus;
               const weekResult = latestCheck?.weekResult;
-              const midweekLabels = { on_track: { label: "On Track ✓", color: G }, slightly_off: { label: "Slightly Off", color: "#e09020" }, off_track: { label: "Off Track", color: "#e05030" } };
+              const midweekLabels = { on_track: { label: "Yes — on track", color: G }, slightly_off: { label: "Needs a reset", color: "#e09020" } };
               const resultLabels = { won: { label: "Won the Week 🔥", color: G }, stayed_in: { label: "Stayed in It ✅", color: "#4a9e38" }, reset: { label: "Reset ↻", color: "#C8C4BC" } };
               return (
                 <div style={{ marginTop: "1rem", display: "flex", gap: "0.8rem", flexWrap: "wrap" }}>
@@ -5194,22 +5324,16 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
     const activeMembers = members.filter(m => (m.weeklyChecks || []).filter(c => c && !c.isBaseline).length >= 2);
 
     // ── Win the Week Loop filters ─────────────────────────────────────────────
-    // Off Track: midweekStatus === "off_track" this week
+    // Needs a reset: midweekStatus === "slightly_off" this week
     const offTrack = members.filter(m => {
       const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
       if (!checks.length) return false;
       const last = checks[checks.length - 1];
-      return last.midweekStatus === "off_track" && !isEligibleForCheckin(last.date);
+      return last.midweekStatus === "slightly_off" && !isEligibleForCheckin(last.date);
     });
 
-    // At Risk: midweekStatus === "slightly_off" or "off_track" this week
-    const atRisk = members.filter(m => {
-      const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
-      if (!checks.length) return false;
-      const last = checks[checks.length - 1];
-      return (last.midweekStatus === "slightly_off" || last.midweekStatus === "off_track")
-        && !isEligibleForCheckin(last.date);
-    });
+    // At Risk: same as above (compressed to two states)
+    const atRisk = offTrack;
 
     // Streak Leaders: top 5 by consecutive won/stayed_in weeks
     const streakLeaders = members
@@ -5312,8 +5436,8 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
               atRisk.map(m => {
                 const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
                 const last = checks[checks.length - 1];
-                const statusLabel = last.midweekStatus === "off_track" ? "Off Track" : "Slightly Off";
-                const statusColor = last.midweekStatus === "off_track" ? "#e05030" : "#e09020";
+                const statusLabel = "Needs a reset";
+                const statusColor = "#e09020";
                 return (
                   <div key={m.id} onClick={() => setSelected(m)}
                     style={{ display: "flex", alignItems: "center", gap: "0.9rem", padding: "0.75rem 0.9rem",
@@ -6230,7 +6354,43 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         </div>
 
         <input placeholder="🔍 Search members..." value={search} onChange={e => setSearch(e.target.value)}
-          style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box", marginBottom: "1rem" }} />
+          style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box", marginBottom: "0.6rem" }} />
+
+        {/* Filter row */}
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+          <select value={filterTier} onChange={e => setFilterTier(e.target.value)}
+            style={{ padding: "0.4rem 0.7rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "0.78rem", background: "#fff", cursor: "pointer", color: DARK }}>
+            <option value="all">All tiers</option>
+            <option value="Peak Capacity">Peak Capacity</option>
+            <option value="Durable Capacity">Durable Capacity</option>
+            <option value="Building Capacity">Building Capacity</option>
+            <option value="Emerging Capacity">Emerging Capacity</option>
+            <option value="Foundation Capacity">Foundation Capacity</option>
+          </select>
+          <select value={filterWeek} onChange={e => setFilterWeek(e.target.value)}
+            style={{ padding: "0.4rem 0.7rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "0.78rem", background: "#fff", cursor: "pointer", color: DARK }}>
+            <option value="all">All weeks</option>
+            <option value="none">No check-ins yet</option>
+            <option value="early">Early (wks 1–2)</option>
+            <option value="mid">Mid (wks 3–6)</option>
+            <option value="late">Late (wks 7–8)</option>
+          </select>
+          <select value={filterMidweek} onChange={e => setFilterMidweek(e.target.value)}
+            style={{ padding: "0.4rem 0.7rem", border: "1.5px solid #ddd", borderRadius: "8px", fontSize: "0.78rem", background: "#fff", cursor: "pointer", color: DARK }}>
+            <option value="all">All mid-week</option>
+            <option value="on_track">On track</option>
+            <option value="reset">Needs a reset</option>
+          </select>
+          {(filterTier !== "all" || filterWeek !== "all" || filterMidweek !== "all") && (
+            <button onClick={() => { setFilterTier("all"); setFilterWeek("all"); setFilterMidweek("all"); }}
+              style={{ padding: "0.4rem 0.8rem", border: "1.5px solid #e0e0e0", borderRadius: "8px", fontSize: "0.78rem", background: "#fff", cursor: "pointer", color: "#888" }}>
+              Clear filters
+            </button>
+          )}
+          <div style={{ marginLeft: "auto", fontSize: "0.78rem", color: "#888", alignSelf: "center" }}>
+            {filtered.length} of {members.length}
+          </div>
+        </div>
 
         {/* ── Export panel ── */}
         <div style={{ background: CARD, borderRadius: "14px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.4rem", marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
