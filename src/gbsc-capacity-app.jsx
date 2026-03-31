@@ -3855,7 +3855,7 @@ const WEEKEND_PLANS = {
             const thisWeekCheck = getCurrentWeekCheck(currentMember);
             if (!thisWeekCheck) return null;
             const done = !!thisWeekCheck.midweekStatus;
-            if (!done && !isMidweekWindow()) return null;
+            if (!isMidweekWindow()) return null;
             const statusColors = { on_track: G, slightly_off: "#e09020" };
             const statusLabels = { on_track: "On track ✓", slightly_off: "Needs a reset" };
             const statusColor = done ? (statusColors[thisWeekCheck.midweekStatus] || G) : G;
