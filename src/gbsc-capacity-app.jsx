@@ -3744,6 +3744,75 @@ const WEEKEND_PLANS = {
             )}
           </div>
 
+
+          {/* Action button — the primary CTA for the week */}
+          {completedProgram ? (
+            <div style={{ background: CARD, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "1rem", textAlign: "center", marginBottom: "1.2rem" }}>
+              <GBSCIcon name="trophy" size={28} color={G} strokeWidth={0}/>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.4rem" }}>Program Complete</div>
+              <div style={{ fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }}>You've finished all 8 weeks. Outstanding work.</div>
+            </div>
+          ) : checkedInThisWeek ? (
+            <div style={{ background: "#f0f7ec", border: `1.5px solid ${G}`, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "1.2rem" }}>
+              <GBSCIcon name="check" size={24} color={G} strokeWidth={0}/>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.3rem" }}>Week {lastCheck.week} check-in submitted</div>
+              <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.2rem" }}>Next window opens Monday.</div>
+              {(() => {
+                const outlookLabels = { tight: "Tight week", on_track: "On track", room: "Open week" };
+                const frictionLabels = {
+                  time:   "Time / schedule", energy: "Low energy / poor sleep",
+                  stress: "Stress / life load", travel: "Travel / disruption",
+                  body:   "Body feels beat up", mixed:  "Not sure / mixed week",
+                };
+                const leanLabels = { fitness: "Fitness", nutrition: "Nutrition", recovery: "Recovery" };
+                const outlook = lastCheck.weeklyOutlook;
+                const friction = lastCheck.weeklyFrictionType;
+                const lean = lastCheck.weeklyLeanIn;
+                if (!outlook && !friction) return null;
+                return (
+                  <div style={{ marginTop: "0.6rem", paddingTop: "0.5rem", borderTop: `1px solid ${G}33` }}>
+                    {outlook && (
+                      <div style={{ marginBottom: friction || lean ? "0.25rem" : 0 }}>
+                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>THIS WEEK: </span>
+                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{outlookLabels[outlook]}</span>
+                      </div>
+                    )}
+                    {friction && (
+                      <div style={{ marginBottom: lean ? "0.25rem" : 0 }}>
+                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>PLANNING FOR: </span>
+                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{frictionLabels[friction]}</span>
+                      </div>
+                    )}
+                    {lean && (
+                      <div style={{ marginBottom: weekend ? "0.25rem" : 0 }}>
+                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>LEANING IN ON: </span>
+                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{leanLabels[lean]}</span>
+                      </div>
+                    )}
+                    {(() => {
+                      const weekend = lastCheck.weekendType;
+                      const weekendLabels = { social: "Social weekend", normal: "Normal weekend", extra_time: "Extra time weekend" };
+                      if (!weekend) return null;
+                      return (
+                        <div>
+                          <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>WEEKEND PLAN: </span>
+                          <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{weekendLabels[weekend]}{lastCheck.weekendLockedIn ? " ✓" : ""}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <button onClick={() => setView("checkin")}
+              style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.2rem" }}>
+              + Log This Week's Check-In
+            </button>
+          )}
+
+
+
           {/* This Week's Focus */}
           {focusTipForProfile && (
             <div
@@ -3861,73 +3930,6 @@ const WEEKEND_PLANS = {
               </div>
             );
           })()}
-
-          {/* Action button — the primary CTA for the week */}
-          {completedProgram ? (
-            <div style={{ background: CARD, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "1rem", textAlign: "center", marginBottom: "1.2rem" }}>
-              <GBSCIcon name="trophy" size={28} color={G} strokeWidth={0}/>
-              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.4rem" }}>Program Complete</div>
-              <div style={{ fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }}>You've finished all 8 weeks. Outstanding work.</div>
-            </div>
-          ) : checkedInThisWeek ? (
-            <div style={{ background: "#f0f7ec", border: `1.5px solid ${G}`, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "1.2rem" }}>
-              <GBSCIcon name="check" size={24} color={G} strokeWidth={0}/>
-              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.3rem" }}>Week {lastCheck.week} check-in submitted</div>
-              <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.2rem" }}>Next window opens Monday.</div>
-              {(() => {
-                const outlookLabels = { tight: "Tight week", on_track: "On track", room: "Open week" };
-                const frictionLabels = {
-                  time:   "Time / schedule", energy: "Low energy / poor sleep",
-                  stress: "Stress / life load", travel: "Travel / disruption",
-                  body:   "Body feels beat up", mixed:  "Not sure / mixed week",
-                };
-                const leanLabels = { fitness: "Fitness", nutrition: "Nutrition", recovery: "Recovery" };
-                const outlook = lastCheck.weeklyOutlook;
-                const friction = lastCheck.weeklyFrictionType;
-                const lean = lastCheck.weeklyLeanIn;
-                if (!outlook && !friction) return null;
-                return (
-                  <div style={{ marginTop: "0.6rem", paddingTop: "0.5rem", borderTop: `1px solid ${G}33` }}>
-                    {outlook && (
-                      <div style={{ marginBottom: friction || lean ? "0.25rem" : 0 }}>
-                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>THIS WEEK: </span>
-                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{outlookLabels[outlook]}</span>
-                      </div>
-                    )}
-                    {friction && (
-                      <div style={{ marginBottom: lean ? "0.25rem" : 0 }}>
-                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>PLANNING FOR: </span>
-                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{frictionLabels[friction]}</span>
-                      </div>
-                    )}
-                    {lean && (
-                      <div style={{ marginBottom: weekend ? "0.25rem" : 0 }}>
-                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>LEANING IN ON: </span>
-                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{leanLabels[lean]}</span>
-                      </div>
-                    )}
-                    {(() => {
-                      const weekend = lastCheck.weekendType;
-                      const weekendLabels = { social: "Social weekend", normal: "Normal weekend", extra_time: "Extra time weekend" };
-                      if (!weekend) return null;
-                      return (
-                        <div>
-                          <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>WEEKEND PLAN: </span>
-                          <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{weekendLabels[weekend]}{lastCheck.weekendLockedIn ? " ✓" : ""}</span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                );
-              })()}
-            </div>
-          ) : (
-            <button onClick={() => setView("checkin")}
-              style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.2rem" }}>
-              + Log This Week's Check-In
-            </button>
-          )}
-
 
           {/* ── Weekend Game Plan accordion — Thursday through Sunday ── */}
           {(() => {
