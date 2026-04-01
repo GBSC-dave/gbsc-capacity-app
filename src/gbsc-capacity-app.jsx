@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -3796,7 +3794,7 @@ const WEEKEND_PLANS = {
                       </div>
                     )}
                     {lean && (
-                      <div style={{ marginBottom: weekend ? "0.25rem" : 0 }}>
+                      <div style={{ marginBottom: lastCheck.weekendType ? "0.25rem" : 0 }}>
                         <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>LEANING IN ON: </span>
                         <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{leanLabels[lean]}</span>
                       </div>
