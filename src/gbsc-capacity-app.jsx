@@ -1312,6 +1312,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       setWhyOpen(false);
       setFocusOpen(false);
     }
+    if (view !== "midweekResult") {
+      setMwFriction(null);
+      setMwLeanIn(null);
+    }
     if (view === "profile") {
       setThisWeekOpen(false);
       setTierProgressOpen(false);
@@ -1349,6 +1353,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [shapeOpen, setShapeOpen] = useState(false);          // shape my week accordion open state
   const [weekendOpen, setWeekendOpen] = useState(false);      // weekend plan accordion open state
   const [weekendChoice, setWeekendChoice] = useState(null);   // pending weekend type selection
+  const [mwFriction, setMwFriction] = useState(null);         // midweek result: friction type selection
+  const [mwLeanIn, setMwLeanIn] = useState(null);             // midweek result: lean-in selection
 
 
   function startEdit() {
@@ -3118,6 +3124,10 @@ const WEEKEND_PLANS = {
     const role = dw?.role || "Anchor";
     const roleKey = role === "Reset" ? "Anchor" : role;
     const isReset = status === "slightly_off";
+    // existingFriction = already saved to DB; mwFriction = newly selected this session
+    // activeFriction merges both so the prescription shows regardless of which path set it
+    const existingFriction = thisWeek?.weeklyFrictionType;
+    const activeFriction = mwFriction || existingFriction || null;
 
     // Yes path — branch by outlook
     const yesContent = {
@@ -3144,9 +3154,6 @@ const WEEKEND_PLANS = {
 
               {/* Friction selector if none exists, or show existing prescription */}
               {(() => {
-                const existingFriction = thisWeek?.weeklyFrictionType;
-                const [mwFriction, setMwFriction] = React.useState(existingFriction || null);
-
                 const handleMwFrictionTap = async (fk) => {
                   const newFk = mwFriction === fk ? null : fk;
                   setMwFriction(newFk);
@@ -3160,7 +3167,7 @@ const WEEKEND_PLANS = {
                   setCurrentMember(updatedMember);
                 };
 
-                const prescription = mwFriction ? FRICTION_PRESCRIPTIONS[mwFriction]?.[roleKey] : null;
+                const prescription = activeFriction ? FRICTION_PRESCRIPTIONS[activeFriction]?.[roleKey] : null;
 
                 return (
                   <div>
@@ -3180,9 +3187,9 @@ const WEEKEND_PLANS = {
                             <button key={fk} onClick={() => handleMwFrictionTap(fk)}
                               style={{
                                 padding: "0.4rem 0.9rem", borderRadius: "999px", cursor: "pointer", fontSize: "0.78rem", fontWeight: "bold",
-                                background: mwFriction === fk ? accentColor : "#ffffff0f",
-                                color: mwFriction === fk ? "#fff" : "#bbb",
-                                border: `1.5px solid ${mwFriction === fk ? accentColor : "#ffffff18"}`,
+                                background: activeFriction === fk ? accentColor : "#ffffff0f",
+                                color: activeFriction === fk ? "#fff" : "#bbb",
+                                border: `1.5px solid ${activeFriction === fk ? accentColor : "#ffffff18"}`,
                               }}>{fl}</button>
                           ))}
                         </div>
@@ -3190,7 +3197,7 @@ const WEEKEND_PLANS = {
                     )}
 
                     {/* Reduced plan */}
-                    {(mwFriction || existingFriction) && prescription && (
+                    {activeFriction && prescription && (
                       <div style={{ background: "#ffffff0a", borderRadius: "14px", padding: "1.1rem 1.3rem", marginBottom: "1rem" }}>
                         <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: accentColor, letterSpacing: "0.06em", marginBottom: "0.6rem" }}>
                           DO THIS THE REST OF THE WEEK:
@@ -3229,7 +3236,6 @@ const WEEKEND_PLANS = {
 
               {/* Room to Push — surface lean-in if not yet selected */}
               {outlook === "room" && !thisWeek?.weeklyLeanIn && (() => {
-                const [mwLeanIn, setMwLeanIn] = React.useState(null);
                 const handleMwLeanIn = async (li) => {
                   const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
                     c && c.week === thisWeek.week && !c.isBaseline
@@ -3392,6 +3398,7 @@ const WEEKEND_PLANS = {
   // ── END-OF-WEEK RESULT ─────────────────────────────────────────────────────
   if (view === "weekReflectionResult" && currentMember) {
     const thisWeek = getCurrentWeekCheck(currentMember);
+    if (!thisWeek) { setView("profile"); return null; }
     const result = thisWeek?.weekResult;
     const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || []);
     const accentColor = dw?.color || G;
@@ -3421,27 +3428,30 @@ const WEEKEND_PLANS = {
         "Consistency compounds.",
       ],
     };
-    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    // Pick once from the correct bank — stable for this render, won't re-roll on re-renders
+    const resultKey = (result === "won" || result === "stayed_in" || result === "reset") ? result : "stayed_in";
+    const msgBank = eowMessages[resultKey];
+    const rotatingMsg = msgBank[Math.floor(Math.random() * msgBank.length)];
 
     const resultContent = {
       won: {
         headline: "You followed through.",
         reframe: "That's how capacity builds over time.",
-        rotatingMsg: pick(eowMessages.won),
+        rotatingMsg,
         icon: "flame",
         color: G,
       },
       stayed_in: {
         headline: "You didn't fall off.",
         reframe: "That's real consistency.",
-        rotatingMsg: pick(eowMessages.stayed_in),
+        rotatingMsg,
         icon: "bounce2",
         color: "#e09020",
       },
       reset: {
         headline: "One week doesn't define you.",
         reframe: "What matters is coming back.",
-        rotatingMsg: pick(eowMessages.reset),
+        rotatingMsg,
         icon: "refresh",
         color: "#C8C4BC",
       },
