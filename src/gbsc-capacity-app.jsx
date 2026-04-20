@@ -43,7 +43,7 @@ function isEligibleForCheckin(lastCheckDateStr) {
   // lastCheckDateStr is YYYY-MM-DD — compare as a date at start of day
   // If the check date is before the boundary's date, they're eligible.
   // If same date as Sunday boundary, only eligible if boundary has passed (noon check above handles this).
-  const checkDate = new Date(lastCheckDateStr + "T00:00:00");
+  const checkDate = new Date(lastCheckDateStr + "T23:59:59");
   return checkDate < boundary;
 }
 
