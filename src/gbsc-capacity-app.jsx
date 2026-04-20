@@ -15,25 +15,36 @@ function localDateStr(d = new Date()) {
 
 // Returns the date string (YYYY-MM-DD) of the most recent Monday (or today if today is Monday)
 // Uses local date to stay consistent with how check-in dates are stored.
-function getThisMondayStr() {
-  const today = new Date();
-  const day = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  const daysBack = day === 0 ? 6 : day - 1; // roll back to Monday
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - daysBack);
-  // Use local YYYY-MM-DD (not UTC) so it matches how dates are stored
-  const y = monday.getFullYear();
-  const m = String(monday.getMonth() + 1).padStart(2, "0");
-  const d = String(monday.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+// Returns a Date object representing the most recent Sunday at noon (local time)
+// that has already passed. This is the open boundary for the current week window.
+// If today IS Sunday but before noon, we step back to the previous Sunday at noon
+// (last week's window is still current until noon today).
+function getThisWeekOpenBoundary() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  // How many days back to the most recent Sunday
+  const daysBack = day === 0 ? 0 : day; // Sun=0 days back, Mon=1, Tue=2, ...
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate() - daysBack);
+  sunday.setHours(12, 0, 0, 0); // noon local time
+  // If we're on Sunday but before noon, step back one more week
+  if (sunday > now) {
+    sunday.setDate(sunday.getDate() - 7);
+  }
+  return sunday;
 }
 
-// Returns true if the check-in date string is before this week's Sunday-noon open
-// Week windows open Sunday at noon, so a check submitted last week (before this Sunday noon)
-// is eligible. We treat "this week's open boundary" as the Sunday before this Monday at noon.
+// Returns true if the member is eligible for a new check-in.
+// They are eligible if their last check-in was submitted before the current
+// week's open boundary (most recent Sunday at noon).
 function isEligibleForCheckin(lastCheckDateStr) {
   if (!lastCheckDateStr) return true;
-  return lastCheckDateStr < getThisMondayStr();
+  const boundary = getThisWeekOpenBoundary();
+  // lastCheckDateStr is YYYY-MM-DD — compare as a date at start of day
+  // If the check date is before the boundary's date, they're eligible.
+  // If same date as Sunday boundary, only eligible if boundary has passed (noon check above handles this).
+  const checkDate = new Date(lastCheckDateStr + "T00:00:00");
+  return checkDate < boundary;
 }
 
 // ── Program schedule ──────────────────────────────────────────────────────────
