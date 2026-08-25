@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = "https://kosuhljlzzzjrbuzgmdr.supabase.co";
-const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtvc3VobGpsenp6anJidXpnbWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NDM4NTEsImV4cCI6MjA4ODMxOTg1MX0.P4tyb_ggRfagvCGA1DgRphuSZQgjNatyirab-3W5d_Y";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON;
+if (!SUPABASE_URL || !SUPABASE_ANON) {
+  throw new Error("Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON — set them in .env (local) or the Vercel project's Environment Variables.");
+}
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // Returns today's local date as YYYY-MM-DD (avoids UTC offset issues with toISOString)
@@ -849,7 +852,7 @@ function calcWeeklyScore(check) {
   score += check.strengthRPE === "Yes" ? 12 : 0;
   score += check.dailyMovement === "High" ? 12 : check.dailyMovement === "Moderate" ? 7 : 0;
   score += check.protein === "Yes (most days)" ? 14 : check.protein === "Most days" ? 10 : check.protein === "Some days" ? 5 : 0;
-  score += check.downshift === "3+ times" ? 8 : check.downshift === "1-2 times" ? 4 : 0;
+  score += check.downshift === "3+ times" ? 8 : (check.downshift === "1–2 times" || check.downshift === "1-2 times") ? 4 : 0;
   score += check.sleepOpportunity === "5+ nights" ? 10 : (check.sleepOpportunity === "3–4 nights" || check.sleepOpportunity === "3-4 nights") ? 7 : (check.sleepOpportunity === "1–2 nights" || check.sleepOpportunity === "1-2 nights") ? 3 : 0;
   // Consistency Multiplier: cap at 65 if fewer than 2 workouts
   const workoutsNum = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[check.workouts] ?? 0;
@@ -2839,7 +2842,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const workoutMap  = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 };
             const zone2Map    = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 };
             const proteinMap  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 };
-            const downshiftMap = { "None": 0, "1-2 times": 1, "3+ times": 2 };
+            const downshiftMap = { "None": 0, "1-2 times": 1, "1–2 times": 1, "3+ times": 2 };
             const movementMap = { "Low": 0, "Moderate": 1, "High": 2 };
             const sleepOppMap = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 };
             const rows = [
