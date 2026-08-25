@@ -4,26 +4,13 @@
 // resulting object straight into the existing, untouched calcWeeklyScore()), plus the
 // 3 required Move questions with conditional one-tap friction.
 //
-// MERGE NOTE: self-contained for standalone review, same pattern as the other fall-*-ui
-// files. Delete the duplicated style constants/helpers below once pasted into
-// gbsc-capacity-app.jsx and reuse what's already there (G, DARK, SANS, LIGHT_BG, ScaleGroup).
-//
-// IMPORTANT DISCOVERED BUG (Spring, not Fall): v60's own weekly check-in view labels the
-// downshift option "1–2 times" (en dash) but calcWeeklyScore()/downshiftMap both test for
-// "1-2 times" (regular hyphen) — so that option currently scores 0 instead of 4 in the live
-// Spring app. This file stores the hyphen value so Fall scores correctly regardless; the
-// Spring bug itself is untouched here since fixing it wasn't asked for and touches frozen
-// Spring code. Worth a separate, deliberate fix in Spring — flagging, not fixing.
+// NOTE: v60's downshift scoring/label mismatch (en dash vs hyphen) was fixed directly in
+// calcWeeklyScore()/downshiftMap (both variants now accepted). This file stores the hyphen
+// value regardless, so it scores correctly either way.
 
 import React, { useState } from "react";
 import { Q7_OPTIONS } from "./fall-reflection-data.js";
-
-// ─── duplicated from main app — delete on merge, use the real ones instead ───
-const G = "#5DC842";
-const DARK = "#2D2D2D";
-const SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #c2bfc8 100%)";
-// ─── end duplicated block ─────────────────────────────────────────────────
+import { G, DARK, SANS, LIGHT_BG } from "../theme.jsx";
 
 // The 7 Spring-compatible Capacity Signals (Section 13.1). Field names/option strings match
 // calcWeeklyScore()'s existing switch exactly — this is what keeps longitudinal Capacity

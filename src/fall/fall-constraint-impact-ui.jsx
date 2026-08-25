@@ -9,18 +9,8 @@
 // composite scoring is separately deferred to v2 per the handoff doc; adding raw Margin
 // collection here without being asked would be scope creep in the wrong direction.
 //
-// MERGE NOTE: self-contained for standalone review, same pattern as the other fall-*-ui files.
-// Delete the duplicated style constants below once pasted into gbsc-capacity-app.jsx.
-
 import React, { useState } from "react";
-
-// ─── duplicated from main app — delete on merge, use the real ones instead ───
-const G = "#5DC842";
-const DARK = "#2D2D2D";
-const CARD = "#fdfcfb";
-const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.05)";
-const SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-// ─── end duplicated block ─────────────────────────────────────────────────
+import { G, DARK, CARD, CARD_SHADOW, SANS } from "../theme.jsx";
 
 export const CONSTRAINT_IMPACT_PROMPT = "How much is this currently getting in the way?";
 export const CONSTRAINT_IMPACT_LABELS = { 1: "Barely at all", 5: "A lot" };

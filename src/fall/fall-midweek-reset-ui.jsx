@@ -1,18 +1,8 @@
 // Fall 2026 — Midweek Reset (Section 16)
 // "5-10 seconds." One question, at most one follow-up. No make-up requirement ever offered.
 //
-// MERGE NOTE: self-contained for standalone review, same pattern as the other fall-*-ui files.
-// Delete the duplicated style constants below once pasted into gbsc-capacity-app.jsx.
-
 import React, { useState } from "react";
-
-// ─── duplicated from main app — delete on merge, use the real ones instead ───
-const G = "#5DC842";
-const DARK = "#2D2D2D";
-const CARD = "#fdfcfb";
-const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.05)";
-const SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-// ─── end duplicated block ─────────────────────────────────────────────────
+import { G, DARK, CARD, CARD_SHADOW, SANS } from "../theme.jsx";
 
 const STATUS_OPTIONS = [
   { id: "on_track", label: "On track" },

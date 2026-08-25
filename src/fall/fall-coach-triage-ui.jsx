@@ -1,22 +1,13 @@
 // Fall 2026 — Coach Triage Dashboard (Section 18)
 // "Do not make the coach scroll 125 profiles." Summary counts up top, Priority members first.
 //
-// MERGE NOTE: self-contained for standalone review, same pattern as the other fall-*-ui files.
-// Delete the duplicated style constants below once pasted into gbsc-capacity-app.jsx — this
-// is meant to slot in as a new tab alongside CoachDashboard's existing Members/Insights/
+// This slots in as a new tab alongside CoachDashboard's existing Members/Insights/
 // Analytics/Pods tabs, reusing its search input and CARD row style rather than inventing a
 // new one.
 
 import React, { useState } from "react";
 import { deriveTriageState, TRIAGE_ORDER, TRIAGE_LABELS, TRIAGE_COLORS, summarizeTriage } from "./fall-triage-data.js";
-
-// ─── duplicated from main app — delete on merge, use the real ones instead ───
-const G = "#5DC842";
-const DARK = "#2D2D2D";
-const CARD = "#fdfcfb";
-const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.05)";
-const SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-// ─── end duplicated block ─────────────────────────────────────────────────
+import { G, DARK, CARD, CARD_SHADOW, SANS } from "../theme.jsx";
 
 /**
  * @param {{

@@ -1,12 +1,6 @@
 // Fall 2026 — Capacity Reflection UI flow (Q1-Q8, Section 4)
 // Target: ~5 min typical, under 7 min hard ceiling (Section 4 TIME TARGET).
 //
-// MERGE NOTE: this file is self-contained so it can be reviewed/tested on its own.
-// When pasted into gbsc-capacity-app.jsx, DELETE the "duplicated from main app" block
-// below and rely on the G / DARK / SANS / PAGE_BG / LIGHT_BG constants and the F
-// component that already exist there — only MultiSelect is genuinely new and needs
-// adding alongside the existing RadioGroup/ScaleGroup helpers.
-
 import React, { useState } from "react";
 import {
   Q1_OPTIONS,
@@ -29,23 +23,7 @@ import {
   REFLECTION_OPENING,
 } from "./fall-reflection-data.js";
 import { matchCandidateMove } from "./fall-matching-data.js";
-
-// ─── duplicated from main app — delete on merge, use the real ones instead ───
-const G = "#5DC842";
-const DARK = "#2D2D2D";
-const SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-const PAGE_BG = "#f9f7f4";
-const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #c2bfc8 100%)";
-
-function F({ label, children }) {
-  return (
-    <div style={{ marginBottom: "1.2rem" }}>
-      <label style={{ display: "block", fontWeight: "bold", marginBottom: "0.3rem", color: DARK, fontSize: "0.9rem" }}>{label}</label>
-      {children}
-    </div>
-  );
-}
-// ─── end duplicated block ─────────────────────────────────────────────────
+import { G, DARK, SANS, LIGHT_BG, F } from "../theme.jsx";
 
 // New — single-select over {id, label} option objects (existing RadioGroup only takes plain strings).
 function SingleSelect({ options, value, onChange }) {

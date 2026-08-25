@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { G, DARK, CARD, CARD_SHADOW, PAGE_BG, LIGHT_BG, SANS, F } from "./theme.jsx";
+import { FallReflection } from "./fall/fall-reflection-ui.jsx";
+import { FallCoachSnapshot } from "./fall/fall-coach-snapshot-ui.jsx";
+import { FallWeeklyCheckIn } from "./fall/fall-weekly-checkin-ui.jsx";
+import { FallMidweekReset } from "./fall/fall-midweek-reset-ui.jsx";
+import { FallCoachTriageDashboard } from "./fall/fall-coach-triage-ui.jsx";
+import { FALL_CAPACITY_MOVES, getMoveCard } from "./fall/fall-moves-data.js";
+import { matchCandidateMove } from "./fall/fall-matching-data.js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON;
 if (!SUPABASE_URL || !SUPABASE_ANON) {
   throw new Error("Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON — set them in .env (local) or the Vercel project's Environment Variables.");
 }
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // Returns today's local date as YYYY-MM-DD (avoids UTC offset issues with toISOString)
 function localDateStr(d = new Date()) {
@@ -131,15 +139,8 @@ const POD_NAMES = [
   { name: "The Long Game", emoji: "♟️" },
 ];
 
-const G = "#5DC842";
-const DARK = "#2D2D2D";
-const CARD = "#fdfcfb";
-const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.05)";
-const PAGE_BG = "#f9f7f4";
 const DARK_BG  = "linear-gradient(180deg, #363636 0%, #222222 100%)";
-const LIGHT_BG = "linear-gradient(180deg, #fdfcfb 0%, #c2bfc8 100%)";
 const SERIF = "'Georgia', serif";
-const SANS  = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
 // ─── Capacity Index Calculators ───────────────────────────────────────────────
 // VO2 Max 12-Tier System (Eric's updated table — age + sex adjusted, ml/kg/min)
@@ -864,7 +865,254 @@ function calcWeeklyScore(check) {
 const COACH_PIN = "12345";
 
 // Shared animation helper — used across multiple views
-const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
+export const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
+
+// ─── Fall 2026 ──────────────────────────────────────────────────────────────
+const FALL_SEASON = "fall_2026";
+const FALL_START_DATE = new Date(2026, 8, 20); // Sept 20 2026 — confirmed with Eric, revisable
+
+// Staging-only override so time-sensitive Fall windows (Week 4/8) can be tested without
+// waiting for the real date. MUST be null before this ships to production.
+const FALL_TEST_DATE_OVERRIDE = null;
+const fallNow = () => FALL_TEST_DATE_OVERRIDE || new Date();
+
+// Section 42 — date-based week logic, never count-based.
+function getFallSeasonWeek() {
+  const diffMs = fallNow() - FALL_START_DATE;
+  const week = Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+  return Math.min(8, Math.max(1, week));
+}
+function getFallWeekKey(seasonWeek) {
+  return `${FALL_SEASON}_w${seasonWeek}`;
+}
+
+async function loadFallMemberState(memberId) {
+  const { data } = await supabase.from("fall_member_state").select("*").eq("member_id", memberId).eq("season", FALL_SEASON).maybeSingle();
+  return data || null;
+}
+async function loadFallActiveMove(moveId) {
+  if (!moveId) return null;
+  const { data } = await supabase.from("fall_moves").select("*").eq("id", moveId).maybeSingle();
+  return data || null;
+}
+
+// Member-facing Fall flow: Reflection (once) → pending coach review → active Move card,
+// with Weekly Check-In and Midweek Reset reachable from the Move card.
+function FallMemberFlow({ member, onBack }) {
+  const [loading, setLoading] = useState(true);
+  const [fallState, setFallState] = useState(null);
+  const [activeMove, setActiveMove] = useState(null);
+  const [subView, setSubView] = useState("move"); // move | checkin | midweek
+
+  async function refresh() {
+    setLoading(true);
+    const state = await loadFallMemberState(member.id);
+    setFallState(state);
+    setActiveMove(state?.active_move_id ? await loadFallActiveMove(state.active_move_id) : null);
+    setLoading(false);
+  }
+  useEffect(() => { refresh(); }, []);
+
+  async function handleReflectionComplete({ answers, stopFlagged }) {
+    await supabase.from("fall_member_state").upsert(
+      {
+        member_id: member.id, season: FALL_SEASON,
+        reflection_answers: answers, stop_flagged: stopFlagged,
+        baseline_constraint_impact: answers.baselineImpact ? parseInt(answers.baselineImpact, 10) : null,
+      },
+      { onConflict: "member_id,season" }
+    );
+    await refresh();
+  }
+
+  async function handleCheckinSubmit(payload) {
+    const habitScore = calcWeeklyScore(payload.signals);
+    const seasonWeek = getFallSeasonWeek();
+    await supabase.rpc("fall_submit_weekly_checkin", {
+      p_member_id: member.id, p_season: FALL_SEASON, p_week_key: getFallWeekKey(seasonWeek), p_season_week: seasonWeek,
+      p_move_id: activeMove?.id || null, p_signals: payload.signals, p_habit_score: habitScore,
+      p_move_level_reached: payload.moveLevelReached, p_helpfulness: parseInt(payload.helpfulness, 10),
+      p_difficulty: parseInt(payload.difficulty, 10), p_friction_reason: payload.frictionReason, p_help_requested: payload.helpRequested,
+    });
+    setSubView("move");
+  }
+
+  async function handleMidweekComplete({ status, shiftToAnchor }) {
+    const seasonWeek = getFallSeasonWeek();
+    await supabase.rpc("fall_upsert_midweek", {
+      p_member_id: member.id, p_season: FALL_SEASON, p_week_key: getFallWeekKey(seasonWeek), p_season_week: seasonWeek,
+      p_status: status, p_shift_to_anchor: shiftToAnchor,
+    });
+    setSubView("move");
+  }
+
+  if (loading) {
+    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SANS, color: "#888" }}>Loading…</div>;
+  }
+
+  if (!fallState || !fallState.reflection_answers) {
+    return <FallReflection onComplete={handleReflectionComplete} onBack={onBack} />;
+  }
+
+  if (!fallState.pathway) {
+    return (
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}>
+        <div style={{ maxWidth: "400px", textAlign: "center" }}>
+          <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Reflection submitted</div>
+          <div style={{ color: "#666", marginBottom: "1.5rem", lineHeight: 1.6 }}>Your coach is reviewing it and will confirm your Fall Move soon. Check back shortly.</div>
+          <button onClick={onBack} style={{ background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "0.8rem 1.6rem", fontWeight: "bold", cursor: "pointer" }}>Back to Profile</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (subView === "checkin") {
+    const card = activeMove ? getMoveCard(activeMove.move_key, activeMove.dose) : null;
+    return <FallWeeklyCheckIn moveTitle={card?.title} onSubmit={handleCheckinSubmit} onRequestHelp={() => {}} onBack={() => setSubView("move")} />;
+  }
+  if (subView === "midweek") {
+    const card = activeMove ? getMoveCard(activeMove.move_key, activeMove.dose) : null;
+    return <FallMidweekReset moveTitle={card?.title} onComplete={handleMidweekComplete} />;
+  }
+
+  // Non-Move pathways (Programming Adjustment / Deeper Look / Refer / No Move) have no active Move card.
+  if (!activeMove) {
+    return (
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}>
+        <div style={{ maxWidth: "400px", textAlign: "center" }}>
+          <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>No active Move right now</div>
+          <div style={{ color: "#666", marginBottom: "1.5rem" }}>Your coach has you on a different path this season. Check with them for what's next.</div>
+          <button onClick={onBack} style={{ background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "0.8rem 1.6rem", fontWeight: "bold", cursor: "pointer" }}>Back to Profile</button>
+        </div>
+      </div>
+    );
+  }
+
+  const card = getMoveCard(activeMove.move_key, activeMove.dose);
+  return (
+    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
+        <button onClick={onBack} style={{ background: "none", border: "none", color: G, cursor: "pointer", marginBottom: "1rem", fontWeight: "bold" }}>← Back to Profile</button>
+        <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
+          <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: G, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>YOUR CAPACITY MOVE · {activeMove.dose?.toUpperCase()}</div>
+          <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>{card.title}</div>
+          <div style={{ color: "#666", marginBottom: "1rem", lineHeight: 1.6 }}>{card.thisMightBeYourMoveIf}</div>
+          <div style={{ background: "#f0f7ec", borderRadius: "10px", padding: "0.9rem 1rem", marginBottom: "1rem", fontWeight: "600", color: DARK }}>{card.activeDoseText}</div>
+          <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "0.4rem" }}><strong>Make it easier:</strong> {card.makeItEasier}</div>
+          <div style={{ fontSize: "0.85rem", color: "#888" }}><strong>Watch for:</strong> {card.watchFor}</div>
+        </div>
+        <button onClick={() => setSubView("checkin")}
+          style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.6rem" }}>
+          Weekly Check-In
+        </button>
+        <button onClick={() => setSubView("midweek")}
+          style={{ width: "100%", background: "#fff", color: DARK, border: "1.5px solid #e0e0e0", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "600", cursor: "pointer" }}>
+          Midweek Reset
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Coach-facing Fall tab: queue of members needing Snapshot review + confirmation, plus the Triage dashboard.
+function FallCoachTab({ members }) {
+  const [subTab, setSubTab] = useState("queue"); // queue | triage
+  const [statesByMember, setStatesByMember] = useState({});
+  const [checksByMember, setChecksByMember] = useState({});
+  const [selectedMemberId, setSelectedMemberId] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  async function refresh() {
+    setLoading(true);
+    const [{ data: states }, { data: checks }] = await Promise.all([
+      supabase.from("fall_member_state").select("*").eq("season", FALL_SEASON),
+      supabase.from("fall_weekly_checks").select("*").eq("season", FALL_SEASON).order("season_week", { ascending: true }),
+    ]);
+    const byMember = {};
+    for (const s of states || []) byMember[s.member_id] = s;
+    setStatesByMember(byMember);
+    const checksMap = {};
+    for (const c of checks || []) {
+      if (!checksMap[c.member_id]) checksMap[c.member_id] = [];
+      if (c.move_level_reached) checksMap[c.member_id].push(c); // only count rows with a real submitted check-in
+    }
+    setChecksByMember(checksMap);
+    setLoading(false);
+  }
+  useEffect(() => { refresh(); }, []);
+
+  async function handleConfirm(memberId, decision) {
+    if (decision.pathway === "capacity_move") {
+      const answers = statesByMember[memberId]?.reflection_answers;
+      const match = answers ? matchCandidateMove({ q5: answers.q5, q6: answers.q6, q8: answers.q8 }) : null;
+      await supabase.rpc("fall_confirm_move", {
+        p_member_id: memberId, p_season: FALL_SEASON, p_move_key: decision.moveId, p_dose: decision.dose,
+        p_candidate_primary: match?.primary || null, p_candidate_alternate: match?.alternate || null, p_coach_note: decision.coachNote || null,
+      });
+    } else {
+      await supabase.rpc("fall_set_pathway", { p_member_id: memberId, p_season: FALL_SEASON, p_pathway: decision.pathway });
+    }
+    setSelectedMemberId(null);
+    await refresh();
+  }
+
+  if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "#aaa" }}>Loading…</div>;
+
+  if (selectedMemberId) {
+    const member = members.find((m) => m.id === selectedMemberId);
+    const state = statesByMember[selectedMemberId];
+    const match = matchCandidateMove({ q5: state.reflection_answers.q5, q6: state.reflection_answers.q6, q8: state.reflection_answers.q8 });
+    return (
+      <FallCoachSnapshot
+        member={member}
+        reflection={{ answers: state.reflection_answers, stopFlagged: state.stop_flagged, match: state.stop_flagged ? null : match }}
+        onConfirm={(decision) => handleConfirm(selectedMemberId, decision)}
+        onBack={() => setSelectedMemberId(null)}
+      />
+    );
+  }
+
+  if (subTab === "triage") {
+    const triageMembers = members
+      .filter((m) => statesByMember[m.id]?.pathway)
+      .map((m) => ({ id: m.id, name: m.name, fallRecentChecks: checksByMember[m.id] || [], scopeConcernFlag: statesByMember[m.id]?.scope_concern_flag }));
+    return (
+      <div>
+        <div style={{ display: "flex", gap: "0.5rem", padding: "1rem 1.5rem 0" }}>
+          {[["queue", "Pending Review"], ["triage", "Triage"]].map(([tab, label]) => (
+            <button key={tab} onClick={() => setSubTab(tab)}
+              style={{ background: subTab === tab ? G : "none", color: subTab === tab ? "#fff" : "#888", border: "1.5px solid " + (subTab === tab ? G : "#ddd"), borderRadius: "999px", padding: "0.4rem 1rem", fontSize: "0.82rem", fontWeight: "bold", cursor: "pointer" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <FallCoachTriageDashboard members={triageMembers} onSelectMember={setSelectedMemberId} />
+      </div>
+    );
+  }
+
+  const pending = members.filter((m) => statesByMember[m.id]?.reflection_answers && !statesByMember[m.id]?.pathway);
+  return (
+    <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.2rem" }}>
+        {[["queue", "Pending Review"], ["triage", "Triage"]].map(([tab, label]) => (
+          <button key={tab} onClick={() => setSubTab(tab)}
+            style={{ background: subTab === tab ? G : "none", color: subTab === tab ? "#fff" : "#888", border: "1.5px solid " + (subTab === tab ? G : "#ddd"), borderRadius: "999px", padding: "0.4rem 1rem", fontSize: "0.82rem", fontWeight: "bold", cursor: "pointer" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {pending.length === 0 && <div style={{ textAlign: "center", color: "#aaa", padding: "3rem" }}>No Reflections waiting on review.</div>}
+      {pending.map((m) => (
+        <div key={m.id} onClick={() => setSelectedMemberId(m.id)}
+          style={{ background: CARD, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "1rem 1.2rem", marginBottom: "0.7rem", cursor: "pointer" }}>
+          <div style={{ fontWeight: "bold", color: DARK }}>{m.name}</div>
+          <div style={{ fontSize: "0.8rem", color: "#888" }}>Reflection submitted — needs Snapshot review</div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function GBSCApp() {
   const [view, setView] = useState("loading"); // loading | member | register | coach | coachPin
@@ -1179,14 +1427,7 @@ export default function GBSCApp() {
 }
 
 // ─── SHARED UI COMPONENTS (must be at module scope to avoid re-mount on re-render) ───
-function F({ label, children }) {
-  return (
-    <div style={{ marginBottom: "1.2rem" }}>
-      <label style={{ display: "block", fontWeight: "bold", marginBottom: "0.3rem", color: DARK, fontSize: "0.9rem" }}>{label}</label>
-      {children}
-    </div>
-  );
-}
+// F moved to ./theme.jsx (imported at top of file) to break a circular import with src/fall/*.jsx
 function RadioGroup({ options, value, onChange }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
@@ -1727,11 +1968,17 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const hdr = (
     <div style={{ background: "rgba(45,45,45,0.82)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", padding: "0.5rem 1.2rem", display: "flex", alignItems: "center" }}>
       {/* Left third — Library, quieter secondary chrome */}
-      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-start", gap: "0.3rem" }}>
         <button onClick={() => setView("library")}
           style={{ background: "none", border: "none", color: G, borderRadius: "6px", padding: "0.3rem 0.5rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600", display:"flex", alignItems:"center", gap:"0.35rem", opacity: 0.85 }}>
           <GBSCIcon name="book" size={15} color={G} strokeWidth={0}/>Library
         </button>
+        {currentMember && (
+          <button onClick={() => setView("fall")}
+            style={{ background: "none", border: "none", color: G, borderRadius: "6px", padding: "0.3rem 0.5rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600", opacity: 0.85 }}>
+            Fall 2026
+          </button>
+        )}
       </div>
       {/* Center — Logo mark, 40px, glow halo to signal hierarchy */}
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
@@ -4387,6 +4634,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     );
   }
 
+  // ── FALL 2026 ────────────────────────────────────────────────────────────
+  if (view === "fall" && currentMember) {
+    return <FallMemberFlow member={currentMember} onBack={() => setView("profile")} />;
+  }
+
   // ── LIBRARY ──────────────────────────────────────────────────────────────
   if (view === "library") {
     const hasChecks = (currentMember?.weeklyChecks || []).filter(c => c && !c.isBaseline).length > 0;
@@ -5334,7 +5586,7 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
         </button>
       </div>
       <div style={{ display: "flex", borderTop: "1px solid #3a3a3a", padding: "0 1.5rem" }}>
-        {[["members", "Members"], ["insights", "Insights"], ["analytics", "Analytics"], ["pods", "Pods"]].map(([tab, label]) => (
+        {[["members", "Members"], ["insights", "Insights"], ["analytics", "Analytics"], ["pods", "Pods"], ["fall", "Fall"]].map(([tab, label]) => (
           <button key={tab} onClick={() => { setCoachTab(tab); setSelected(null); setEditingPod(null); setPodDraft(null); }}
             style={{ background: "none", border: "none", color: coachTab === tab ? G : "#aaa",
               borderBottom: coachTab === tab ? `2.5px solid ${G}` : "2.5px solid transparent",
@@ -5461,6 +5713,16 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
             </button>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // ── FALL TAB ──────────────────────────────────────────────────────────────
+  if (coachTab === "fall") {
+    return (
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+        {hdr}
+        <FallCoachTab members={members} />
       </div>
     );
   }

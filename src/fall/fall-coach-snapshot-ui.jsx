@@ -3,24 +3,11 @@
 // a hypothesis, not a blank slate. The algorithm never assigns a Move on its own — this
 // screen is where the coach confirms (or overrides) the pathway, Move, and A/B/E dose.
 //
-// MERGE NOTE: self-contained for standalone review, same as fall-reflection-ui.jsx.
-// Delete the duplicated style constants/helpers below once pasted into gbsc-capacity-app.jsx
-// and use the ones already defined there (G, DARK, CARD, CARD_SHADOW, SANS, LOGO_ICON,
-// GBSCIcon). SingleSelect is imported from fall-reflection-ui.jsx — if that file has already
-// been merged, just reuse its SingleSelect instead of re-declaring it.
-
 import React, { useState } from "react";
 import { Q1_OPTIONS, Q3_OPTIONS, Q4_OPTIONS, Q5_OPTIONS, Q6_BRANCHES, Q7_OPTIONS, Q8_OPTIONS, BASELINE_IMPACT_LABELS } from "./fall-reflection-data.js";
 import { FALL_CAPACITY_MOVES, FALL_MOVE_IDS } from "./fall-moves-data.js";
 import { PATHWAYS } from "./fall-matching-data.js";
-
-// ─── duplicated from main app — delete on merge, use the real ones instead ───
-const G = "#5DC842";
-const DARK = "#2D2D2D";
-const CARD = "#fdfcfb";
-const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.07), 0 4px 14px rgba(0,0,0,0.05)";
-const SANS = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-// ─── end duplicated block ─────────────────────────────────────────────────
+import { G, DARK, CARD, CARD_SHADOW, SANS } from "../theme.jsx";
 
 function labelFor(options, id) {
   if (!id) return null;
