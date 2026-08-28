@@ -867,6 +867,39 @@ const COACH_PIN = "12345";
 // Shared animation helper — used across multiple views
 export const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease forwards`, animationDelay: `${delay}ms` });
 
+// Shared three-tab switcher — My Profile / My Results / My Move — used at the top of every
+// screen in the member's "home area" so the Fall Move conversation sits at the same level as
+// Profile/Results instead of behind a separate nav link.
+function ProfileTabs({ setView, active }) {
+  const tabs = [
+    { key: "profile", label: "MY PROFILE", view: "profile" },
+    { key: "results", label: "MY RESULTS", view: "checkFeedback" },
+    { key: "move", label: "MY MOVE", view: "fall" },
+  ];
+  return (
+    <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
+      {tabs.map((tab) => {
+        const isActive = tab.key === active;
+        return (
+          <button key={tab.key} onClick={() => setView(tab.view)}
+            style={{
+              pointerEvents: "auto", cursor: "pointer", borderRadius: "0 0 10px 10px",
+              backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+              fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em",
+              border: isActive ? "none" : "1px solid rgba(255,255,255,0.15)",
+              borderTop: "none",
+              padding: isActive ? "0.3rem 1.1rem 0.5rem" : "0.25rem 1rem 0.4rem",
+              background: isActive ? "rgba(45,45,45,0.92)" : "rgba(60,60,60,0.75)",
+              color: isActive ? G : "rgba(255,255,255,0.5)",
+            }}>
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Fall 2026 ──────────────────────────────────────────────────────────────
 const FALL_SEASON = "fall_2026";
 const FALL_START_DATE = new Date(2026, 8, 20); // Sept 20 2026 — confirmed with Eric, revisable
@@ -898,7 +931,7 @@ async function loadFallActiveMove(moveId) {
 
 // Member-facing Fall flow: Reflection (once) → pending coach review → active Move card,
 // with Weekly Check-In and Midweek Reset reachable from the Move card.
-function FallMemberFlow({ member, onBack }) {
+function FallMemberFlow({ member, setView, hdr, onBack }) {
   const [loading, setLoading] = useState(true);
   const [fallState, setFallState] = useState(null);
   const [activeMove, setActiveMove] = useState(null);
@@ -956,11 +989,14 @@ function FallMemberFlow({ member, onBack }) {
 
   if (!fallState.pathway) {
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}>
-        <div style={{ maxWidth: "400px", textAlign: "center" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+          {hdr}
+          <ProfileTabs setView={setView} active="move" />
+        </div>
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
           <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Reflection submitted</div>
-          <div style={{ color: "#666", marginBottom: "1.5rem", lineHeight: 1.6 }}>Your coach is reviewing it and will confirm your Fall Move soon. Check back shortly.</div>
-          <button onClick={onBack} style={{ background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "0.8rem 1.6rem", fontWeight: "bold", cursor: "pointer" }}>Back to Profile</button>
+          <div style={{ color: "#666", lineHeight: 1.6 }}>Your coach is reviewing it and will confirm your Fall Move soon. Check back shortly.</div>
         </div>
       </div>
     );
@@ -978,11 +1014,14 @@ function FallMemberFlow({ member, onBack }) {
   // Non-Move pathways (Programming Adjustment / Deeper Look / Refer / No Move) have no active Move card.
   if (!activeMove) {
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}>
-        <div style={{ maxWidth: "400px", textAlign: "center" }}>
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+          {hdr}
+          <ProfileTabs setView={setView} active="move" />
+        </div>
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
           <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>No active Move right now</div>
-          <div style={{ color: "#666", marginBottom: "1.5rem" }}>Your coach has you on a different path this season. Check with them for what's next.</div>
-          <button onClick={onBack} style={{ background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "0.8rem 1.6rem", fontWeight: "bold", cursor: "pointer" }}>Back to Profile</button>
+          <div style={{ color: "#666" }}>Your coach has you on a different path this season. Check with them for what's next.</div>
         </div>
       </div>
     );
@@ -991,8 +1030,11 @@ function FallMemberFlow({ member, onBack }) {
   const card = getMoveCard(activeMove.move_key, activeMove.dose);
   return (
     <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
-        <button onClick={onBack} style={{ background: "none", border: "none", color: G, cursor: "pointer", marginBottom: "1rem", fontWeight: "bold" }}>← Back to Profile</button>
+      <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+        {hdr}
+        <ProfileTabs setView={setView} active="move" />
+      </div>
+      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
         <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
           <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: G, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>YOUR CAPACITY MOVE · {activeMove.dose?.toUpperCase()}</div>
           <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>{card.title}</div>
@@ -1973,12 +2015,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           style={{ background: "none", border: "none", color: G, borderRadius: "6px", padding: "0.3rem 0.5rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600", display:"flex", alignItems:"center", gap:"0.35rem", opacity: 0.85 }}>
           <GBSCIcon name="book" size={15} color={G} strokeWidth={0}/>Library
         </button>
-        {currentMember && (
-          <button onClick={() => setView("fall")}
-            style={{ background: "none", border: "none", color: G, borderRadius: "6px", padding: "0.3rem 0.5rem", fontSize: "0.75rem", cursor: "pointer", fontWeight: "600", opacity: 0.85 }}>
-            Fall 2026
-          </button>
-        )}
       </div>
       {/* Center — Logo mark, 40px, glow halo to signal hierarchy */}
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
@@ -2004,7 +2040,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ background: `${G}12`, border: `1.5px solid ${G}44`, borderRadius: "12px", padding: "0.7rem 1rem", marginBottom: "1.2rem", textAlign: "center", fontSize: "0.82rem", color: DARK, fontWeight: "600" }}>
-            🍂 Fall 2026 is live — register below, then look for "Fall 2026" in the top menu.
+            🍂 Fall 2026 is live — register below, then look for the "MY MOVE" tab on your profile.
           </div>
           <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
             <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: DARK, marginBottom: "0.5rem" }}>Welcome to Capacity Season</div>
@@ -2723,25 +2759,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         `}</style>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          {/* Tabs — absolutely positioned below header, centered, transparent sides */}
-          <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
-            <button onClick={() => setView("profile")}
-              style={{ pointerEvents: "auto", border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
-                background: "rgba(60,60,60,0.75)",
-                backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)" }}>
-              MY PROFILE
-            </button>
-            <button onClick={() => setView("checkFeedback")}
-              style={{ pointerEvents: "auto", border: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
-                background: "rgba(45,45,45,0.92)",
-                backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G }}>
-              MY RESULTS
-            </button>
-          </div>
+          <ProfileTabs setView={setView} active="results" />
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
 
@@ -4016,25 +4034,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          {/* Tabs — absolutely positioned below header, centered, transparent sides */}
-          <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
-            <button onClick={() => setView("profile")}
-              style={{ pointerEvents: "auto", border: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.3rem 1.1rem 0.5rem",
-                background: "rgba(45,45,45,0.92)",
-                backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: G }}>
-              MY PROFILE
-            </button>
-            <button onClick={() => setView("checkFeedback")}
-              style={{ pointerEvents: "auto", border: "1px solid rgba(255,255,255,0.15)", borderTop: "none", cursor: "pointer",
-                borderRadius: "0 0 10px 10px", padding: "0.25rem 1rem 0.4rem",
-                background: "rgba(60,60,60,0.75)",
-                backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-                fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em", color: "rgba(255,255,255,0.5)" }}>
-              MY RESULTS
-            </button>
-          </div>
+          <ProfileTabs setView={setView} active="profile" />
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
 
@@ -4639,7 +4639,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   // ── FALL 2026 ────────────────────────────────────────────────────────────
   if (view === "fall" && currentMember) {
-    return <FallMemberFlow member={currentMember} onBack={() => setView("profile")} />;
+    return <FallMemberFlow member={currentMember} setView={setView} hdr={hdr} onBack={() => setView("profile")} />;
   }
 
   // ── LIBRARY ──────────────────────────────────────────────────────────────
