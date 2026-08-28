@@ -2003,6 +2003,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
+          <div style={{ background: `${G}12`, border: `1.5px solid ${G}44`, borderRadius: "12px", padding: "0.7rem 1rem", marginBottom: "1.2rem", textAlign: "center", fontSize: "0.82rem", color: DARK, fontWeight: "600" }}>
+            🍂 Fall 2026 is live — register below, then look for "Fall 2026" in the top menu.
+          </div>
           <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
             <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: DARK, marginBottom: "0.5rem" }}>Welcome to Capacity Season</div>
             <div style={{ fontSize: "0.88rem", color: "#666", lineHeight: 1.65, maxWidth: "360px", margin: "0 auto" }}>
