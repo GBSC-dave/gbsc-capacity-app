@@ -1906,6 +1906,18 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       setValidationMsg("Please fill in your name and email.");
       return;
     }
+
+    // Welcome back an existing member instead of re-registering them — avoids silently
+    // overwriting their Spring history if they lost their bookmarked app and typed their
+    // email in again. No need to re-enter age/weight/grip/VO2 either.
+    const existingId = form.email.trim().replace(/[^a-zA-Z0-9]/g, "_");
+    const { data: existingRow } = await supabase.from("members").select("data").eq("id", existingId).maybeSingle();
+    if (existingRow?.data) {
+      localStorage.setItem("gbsc-this-member", existingId);
+      onRegistered(null, existingRow.data);
+      return;
+    }
+
     const age = parseInt(form.age);
     const weight = parseFloat(form.weight);
     const grip = parseFloat(form.grip);
