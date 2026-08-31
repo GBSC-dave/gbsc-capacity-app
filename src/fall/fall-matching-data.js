@@ -16,6 +16,25 @@ export const PATHWAYS = {
   NO_MOVE_NEEDED: "no_move_needed",
 };
 
+// Section 28 — "Structured Reasons, One Tap Not Notes." Used whenever a coach changes a
+// Move's dose or closes it (graduated/replaced). Values match fall_move_events.structured_reason's
+// check constraint in fall-schema.sql exactly — keep both lists in sync.
+export const STRUCTURED_REASONS = [
+  { id: "wrong_constraint", label: "Wrong constraint" },
+  { id: "constraint_correct_mechanism_wrong", label: "Constraint correct, mechanism wrong" },
+  { id: "constraint_mechanism_correct_move_wrong", label: "Constraint/mechanism correct, Move wrong" },
+  { id: "objective_information_changed", label: "Objective information changed decision" },
+  { id: "member_clarified", label: "Member clarified something important" },
+  { id: "move_not_helping", label: "Move not helping" },
+  { id: "move_too_difficult", label: "Move too difficult" },
+  { id: "constraint_improved", label: "Constraint improved" },
+  { id: "life_circumstances_changed", label: "Life circumstances changed" },
+  { id: "programming_issue", label: "Programming issue" },
+  { id: "safety_scope_concern", label: "Safety/scope concern" },
+  { id: "no_meaningful_problem", label: "No meaningful problem to solve" },
+  { id: "other", label: "Other" },
+];
+
 // Terrains with no locked default in Section 9 — the mechanism is genuinely ambiguous by spec
 // (Section 6.1 SAFE / Section 7: "Constraint/mechanism remains ambiguous... -> Deeper Look First").
 // recovery_depletion mixes several distinct possible root causes (training load, sleep, chronic

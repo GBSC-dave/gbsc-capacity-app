@@ -261,6 +261,38 @@ begin
 end;
 $$ language plpgsql;
 
+-- Coach adds/edits the note on an already-active Move (Section 5 Coach Snapshot follow-up).
+-- Patches fall_moves.coach_note directly (so the member's My Move tab picks it up on next
+-- load) and logs a coach_note_added event for the audit trail.
+create or replace function fall_add_coach_note(
+  p_move_id uuid, p_member_id text, p_coach_note text
+) returns void as $$
+begin
+  update fall_moves set coach_note = p_coach_note, updated_at = now() where id = p_move_id;
+
+  insert into fall_move_events (move_id, member_id, event_type, coach_note)
+  values (p_move_id, p_member_id, 'coach_note_added', p_coach_note);
+end;
+$$ language plpgsql;
+
+-- Coach changes the A/B/E dose on an already-active Move (Section 12) without closing it.
+-- Patches fall_moves.dose and, if this Move is still the member's active one, fall_member_state.dose
+-- too, so the member's prescribed dose updates without a full re-assignment.
+create or replace function fall_change_dose(
+  p_move_id uuid, p_member_id text, p_season text, p_dose text,
+  p_structured_reason text, p_coach_note text
+) returns void as $$
+begin
+  update fall_moves set dose = p_dose, updated_at = now() where id = p_move_id;
+
+  insert into fall_move_events (move_id, member_id, event_type, structured_reason, coach_note)
+  values (p_move_id, p_member_id, 'dose_changed', p_structured_reason, p_coach_note);
+
+  update fall_member_state set dose = p_dose, updated_at = now()
+  where member_id = p_member_id and season = p_season and active_move_id = p_move_id;
+end;
+$$ language plpgsql;
+
 
 -- ═════════════════════════════════════════════════════════════════════════════
 -- Notes / deliberate tradeoffs

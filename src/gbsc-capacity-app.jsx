@@ -6,6 +6,7 @@ import { FallCoachSnapshot } from "./fall/fall-coach-snapshot-ui.jsx";
 import { FallWeeklyCheckIn } from "./fall/fall-weekly-checkin-ui.jsx";
 import { FallMidweekReset } from "./fall/fall-midweek-reset-ui.jsx";
 import { FallCoachTriageDashboard } from "./fall/fall-coach-triage-ui.jsx";
+import { FallManageMove } from "./fall/fall-coach-manage-move-ui.jsx";
 import { FALL_CAPACITY_MOVES, getMoveCard } from "./fall/fall-moves-data.js";
 import { matchCandidateMove } from "./fall/fall-matching-data.js";
 
@@ -935,14 +936,16 @@ function FallCoachTab({ members }) {
   const [subTab, setSubTab] = useState("queue"); // queue | triage
   const [statesByMember, setStatesByMember] = useState({});
   const [checksByMember, setChecksByMember] = useState({});
+  const [movesById, setMovesById] = useState({});
   const [selectedMemberId, setSelectedMemberId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   async function refresh() {
     setLoading(true);
-    const [{ data: states }, { data: checks }] = await Promise.all([
+    const [{ data: states }, { data: checks }, { data: moves }] = await Promise.all([
       supabase.from("fall_member_state").select("*").eq("season", FALL_SEASON),
       supabase.from("fall_weekly_checks").select("*").eq("season", FALL_SEASON).order("season_week", { ascending: true }),
+      supabase.from("fall_moves").select("*").eq("season", FALL_SEASON),
     ]);
     const byMember = {};
     for (const s of states || []) byMember[s.member_id] = s;
@@ -953,6 +956,9 @@ function FallCoachTab({ members }) {
       if (c.move_level_reached) checksMap[c.member_id].push(c); // only count rows with a real submitted check-in
     }
     setChecksByMember(checksMap);
+    const movesMap = {};
+    for (const mv of moves || []) movesMap[mv.id] = mv;
+    setMovesById(movesMap);
     setLoading(false);
   }
   useEffect(() => { refresh(); }, []);
@@ -972,11 +978,50 @@ function FallCoachTab({ members }) {
     await refresh();
   }
 
+  async function handleAddNote(moveId, memberId, note) {
+    await supabase.rpc("fall_add_coach_note", { p_move_id: moveId, p_member_id: memberId, p_coach_note: note || null });
+    await refresh();
+  }
+
+  async function handleChangeDose(moveId, memberId, dose, structuredReason, note) {
+    await supabase.rpc("fall_change_dose", {
+      p_move_id: moveId, p_member_id: memberId, p_season: FALL_SEASON, p_dose: dose,
+      p_structured_reason: structuredReason, p_coach_note: note || null,
+    });
+    await refresh();
+  }
+
+  async function handleCloseMove(moveId, memberId, eventType, structuredReason, note, exitImpact) {
+    await supabase.rpc("fall_close_move", {
+      p_move_id: moveId, p_member_id: memberId, p_event_type: eventType,
+      p_structured_reason: structuredReason, p_coach_note: note || null, p_exit_constraint_impact: exitImpact,
+    });
+    setSelectedMemberId(null);
+    await refresh();
+  }
+
   if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "#aaa" }}>Loading…</div>;
 
   if (selectedMemberId) {
     const member = members.find((m) => m.id === selectedMemberId);
     const state = statesByMember[selectedMemberId];
+    const activeMove = state?.active_move_id ? movesById[state.active_move_id] : null;
+
+    // Already has an active Move — manage it (note/dose/close) rather than re-running the
+    // assignment RPC, which would insert a duplicate fall_moves row instead of updating this one.
+    if (activeMove) {
+      return (
+        <FallManageMove
+          member={member}
+          move={activeMove}
+          onAddNote={(note) => handleAddNote(activeMove.id, selectedMemberId, note)}
+          onChangeDose={(dose, reason, note) => handleChangeDose(activeMove.id, selectedMemberId, dose, reason, note)}
+          onCloseMove={(eventType, reason, note, exitImpact) => handleCloseMove(activeMove.id, selectedMemberId, eventType, reason, note, exitImpact)}
+          onBack={() => setSelectedMemberId(null)}
+        />
+      );
+    }
+
     const match = matchCandidateMove({ q5: state.reflection_answers.q5, q6: state.reflection_answers.q6, q8: state.reflection_answers.q8 });
     return (
       <FallCoachSnapshot
@@ -4257,6 +4302,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }
 
     if (!fallActiveMove) {
+      const NO_MOVE_COPY = {
+        programming_adjustment: "Your coach adjusted your training plan for this season instead of assigning a Capacity Move.",
+        deeper_look_first: "Your coach wants to take a closer look before assigning a Move. They'll follow up with you directly.",
+        refer_evaluate: "Your coach recommended a professional evaluation before continuing. They'll be in touch.",
+        no_move_needed: "You're already functioning well — no Capacity Move needed right now. Keep up the great work.",
+      };
+      const bodyText = NO_MOVE_COPY[fallState.pathway] || "Your coach is updating your Move for this season — check back soon.";
       return (
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
@@ -4265,7 +4317,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           </div>
           <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
             <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>No active Move right now</div>
-            <div style={{ color: "#666" }}>Your coach has you on a different path this season.</div>
+            <div style={{ color: "#666" }}>{bodyText}</div>
           </div>
         </div>
       );
@@ -4305,6 +4357,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 <div style={{ fontSize: "0.82rem", color: "#888", marginBottom: "0.5rem" }}><strong style={{ color: DARK }}>Make it easier:</strong> {card.makeItEasier}</div>
                 <div style={{ fontSize: "0.82rem", color: "#888" }}><strong style={{ color: DARK }}>Watch for:</strong> {card.watchFor}</div>
               </div>
+
+              {fallActiveMove.coach_note && (
+                <div style={{ marginTop: "1.2rem", background: "#f7f7f5", borderRadius: "10px", padding: "0.9rem 1rem" }}>
+                  <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: "#999", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>A NOTE FROM YOUR COACH</div>
+                  <div style={{ color: DARK, fontSize: "0.86rem", lineHeight: 1.5 }}>{fallActiveMove.coach_note}</div>
+                </div>
+              )}
             </div>
 
             {/* ── Footer tagline ── */}
