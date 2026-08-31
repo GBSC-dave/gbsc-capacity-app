@@ -872,9 +872,9 @@ export const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease
 // Profile/Results instead of behind a separate nav link.
 function ProfileTabs({ setView, active }) {
   const tabs = [
-    { key: "profile", label: "MY PROFILE", view: "profile" },
-    { key: "results", label: "MY RESULTS", view: "checkFeedback" },
+    { key: "week", label: "MY WEEK", view: "profile" },
     { key: "move", label: "MY MOVE", view: "fall" },
+    { key: "results", label: "MY RESULTS", view: "checkFeedback" },
   ];
   return (
     <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
@@ -929,132 +929,6 @@ async function loadFallActiveMove(moveId) {
   return data || null;
 }
 
-// Member-facing Fall flow: Reflection (once) → pending coach review → active Move card,
-// with Weekly Check-In and Midweek Reset reachable from the Move card.
-function FallMemberFlow({ member, setView, hdr, onBack }) {
-  const [loading, setLoading] = useState(true);
-  const [fallState, setFallState] = useState(null);
-  const [activeMove, setActiveMove] = useState(null);
-  const [subView, setSubView] = useState("move"); // move | checkin | midweek
-
-  async function refresh() {
-    setLoading(true);
-    const state = await loadFallMemberState(member.id);
-    setFallState(state);
-    setActiveMove(state?.active_move_id ? await loadFallActiveMove(state.active_move_id) : null);
-    setLoading(false);
-  }
-  useEffect(() => { refresh(); }, []);
-
-  async function handleReflectionComplete({ answers, stopFlagged }) {
-    await supabase.from("fall_member_state").upsert(
-      {
-        member_id: member.id, season: FALL_SEASON,
-        reflection_answers: answers, stop_flagged: stopFlagged,
-        baseline_constraint_impact: answers.baselineImpact ? parseInt(answers.baselineImpact, 10) : null,
-      },
-      { onConflict: "member_id,season" }
-    );
-    await refresh();
-  }
-
-  async function handleCheckinSubmit(payload) {
-    const habitScore = calcWeeklyScore(payload.signals);
-    const seasonWeek = getFallSeasonWeek();
-    await supabase.rpc("fall_submit_weekly_checkin", {
-      p_member_id: member.id, p_season: FALL_SEASON, p_week_key: getFallWeekKey(seasonWeek), p_season_week: seasonWeek,
-      p_move_id: activeMove?.id || null, p_signals: payload.signals, p_habit_score: habitScore,
-      p_move_level_reached: payload.moveLevelReached, p_helpfulness: parseInt(payload.helpfulness, 10),
-      p_difficulty: parseInt(payload.difficulty, 10), p_friction_reason: payload.frictionReason, p_help_requested: payload.helpRequested,
-    });
-    setSubView("move");
-  }
-
-  async function handleMidweekComplete({ status, shiftToAnchor }) {
-    const seasonWeek = getFallSeasonWeek();
-    await supabase.rpc("fall_upsert_midweek", {
-      p_member_id: member.id, p_season: FALL_SEASON, p_week_key: getFallWeekKey(seasonWeek), p_season_week: seasonWeek,
-      p_status: status, p_shift_to_anchor: shiftToAnchor,
-    });
-    setSubView("move");
-  }
-
-  if (loading) {
-    return <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SANS, color: "#888" }}>Loading…</div>;
-  }
-
-  if (!fallState || !fallState.reflection_answers) {
-    return <FallReflection onComplete={handleReflectionComplete} onBack={onBack} />;
-  }
-
-  if (!fallState.pathway) {
-    return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
-          {hdr}
-          <ProfileTabs setView={setView} active="move" />
-        </div>
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
-          <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Reflection submitted</div>
-          <div style={{ color: "#666", lineHeight: 1.6 }}>Your coach is reviewing it and will confirm your Fall Move soon. Check back shortly.</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (subView === "checkin") {
-    const card = activeMove ? getMoveCard(activeMove.move_key, activeMove.dose) : null;
-    return <FallWeeklyCheckIn moveTitle={card?.title} onSubmit={handleCheckinSubmit} onRequestHelp={() => {}} onBack={() => setSubView("move")} />;
-  }
-  if (subView === "midweek") {
-    const card = activeMove ? getMoveCard(activeMove.move_key, activeMove.dose) : null;
-    return <FallMidweekReset moveTitle={card?.title} onComplete={handleMidweekComplete} />;
-  }
-
-  // Non-Move pathways (Programming Adjustment / Deeper Look / Refer / No Move) have no active Move card.
-  if (!activeMove) {
-    return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
-          {hdr}
-          <ProfileTabs setView={setView} active="move" />
-        </div>
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
-          <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>No active Move right now</div>
-          <div style={{ color: "#666" }}>Your coach has you on a different path this season. Check with them for what's next.</div>
-        </div>
-      </div>
-    );
-  }
-
-  const card = getMoveCard(activeMove.move_key, activeMove.dose);
-  return (
-    <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-      <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
-        {hdr}
-        <ProfileTabs setView={setView} active="move" />
-      </div>
-      <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
-        <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem", marginBottom: "1.2rem" }}>
-          <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: G, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>YOUR CAPACITY MOVE · {activeMove.dose?.toUpperCase()}</div>
-          <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>{card.title}</div>
-          <div style={{ color: "#666", marginBottom: "1rem", lineHeight: 1.6 }}>{card.thisMightBeYourMoveIf}</div>
-          <div style={{ background: "#f0f7ec", borderRadius: "10px", padding: "0.9rem 1rem", marginBottom: "1rem", fontWeight: "600", color: DARK }}>{card.activeDoseText}</div>
-          <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "0.4rem" }}><strong>Make it easier:</strong> {card.makeItEasier}</div>
-          <div style={{ fontSize: "0.85rem", color: "#888" }}><strong>Watch for:</strong> {card.watchFor}</div>
-        </div>
-        <button onClick={() => setSubView("checkin")}
-          style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.6rem" }}>
-          Weekly Check-In
-        </button>
-        <button onClick={() => setSubView("midweek")}
-          style={{ width: "100%", background: "#fff", color: DARK, border: "1.5px solid #e0e0e0", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "600", cursor: "pointer" }}>
-          Midweek Reset
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // Coach-facing Fall tab: queue of members needing Snapshot review + confirmation, plus the Triage dashboard.
 function FallCoachTab({ members }) {
@@ -1207,27 +1081,10 @@ export default function GBSCApp() {
           setCurrentMember(member);
           nextView = "member";
 
-          // Determine the correct starting sub-view for returning members
-          const nonBaseline = (member.weeklyChecks || []).filter(c => c && !c.isBaseline);
-          const lastCheck = nonBaseline.length > 0
-            ? nonBaseline[nonBaseline.length - 1]
-            : null;
-
-          if (lastCheck) {
-            if (!isEligibleForCheckin(lastCheck.date)) {
-              // Already checked in this week (since Monday) — go to profile home
-              setMemberView("profile");
-            } else if (nonBaseline.length >= 8) {
-              // Program complete
-              setMemberView("profile");
-            } else {
-              // A full week has passed — eligible for next check-in
-              setMemberView("checkin");
-            }
-          } else {
-            // Has baseline but no weekly checks yet — show check-in
-            setMemberView("checkin");
-          }
+          // My Week (the "profile" view) now handles the "is this week's check-in due?"
+          // gating itself via Fall's check-in — no need to pre-route into Spring's own
+          // separate check-in form.
+          setMemberView("profile");
         }
       }
     } catch {}
@@ -1842,6 +1699,79 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     return () => clearInterval(timer);
   }, [lastCheckScore]);
 
+  // ── Fall — shared across the My Week / My Move tabs so both read one source of truth ──
+  const [fallState, setFallState] = useState(null);
+  const [fallActiveMove, setFallActiveMove] = useState(null);
+  const [fallLoading, setFallLoading] = useState(true);
+  const [fallSubView, setFallSubView] = useState("home"); // home | checkin | midweek
+
+  async function refreshFallState() {
+    if (!currentMember) return;
+    setFallLoading(true);
+    const state = await loadFallMemberState(currentMember.id);
+    setFallState(state);
+    setFallActiveMove(state?.active_move_id ? await loadFallActiveMove(state.active_move_id) : null);
+    setFallLoading(false);
+  }
+  useEffect(() => { if (currentMember) refreshFallState(); }, [currentMember?.id]);
+
+  async function handleFallReflectionComplete({ answers, stopFlagged }) {
+    await supabase.from("fall_member_state").upsert(
+      {
+        member_id: currentMember.id, season: FALL_SEASON,
+        reflection_answers: answers, stop_flagged: stopFlagged,
+        baseline_constraint_impact: answers.baselineImpact ? parseInt(answers.baselineImpact, 10) : null,
+      },
+      { onConflict: "member_id,season" }
+    );
+    await refreshFallState();
+  }
+
+  async function handleFallCheckinSubmit(payload) {
+    const habitScore = calcWeeklyScore(payload.signals);
+    const seasonWeek = getFallSeasonWeek();
+    await supabase.rpc("fall_submit_weekly_checkin", {
+      p_member_id: currentMember.id, p_season: FALL_SEASON, p_week_key: getFallWeekKey(seasonWeek), p_season_week: seasonWeek,
+      p_move_id: fallActiveMove?.id || null, p_signals: payload.signals, p_habit_score: habitScore,
+      p_move_level_reached: payload.moveLevelReached, p_helpfulness: parseInt(payload.helpfulness, 10),
+      p_difficulty: parseInt(payload.difficulty, 10), p_friction_reason: payload.frictionReason, p_help_requested: payload.helpRequested,
+    });
+
+    // Dual-write into Spring's own weeklyChecks array — same shape Spring's own check-in writes —
+    // so the Capacity Index / tier / history in My Results keeps advancing exactly as it always has,
+    // now fed by the Fall check-in instead of Spring's separate (retired) one. Never rewrites past
+    // entries, only appends, so Spring history stays untouched.
+    const existingWeeks = (currentMember.weeklyChecks || []).filter(c => c && !c.isBaseline);
+    const nextWeekNum = existingWeeks.length + 1;
+    const updatedMember = {
+      ...currentMember,
+      weeklyChecks: [...(currentMember.weeklyChecks || []), {
+        date: localDateStr(),
+        week: nextWeekNum,
+        ...payload.signals,
+        score: habitScore,
+        midweekStatus: null, midweekDate: null,
+        weekResult: null, weekResultDate: null,
+        weeklyFrictionType: null, weeklyOutlook: null, weeklyLeanIn: null,
+        weekendType: null, weekendLockedIn: false,
+      }],
+    };
+    await saveMember(updatedMember);
+    setCurrentMember(updatedMember);
+
+    setFallSubView("home");
+    await refreshFallState();
+  }
+
+  async function handleFallMidweekComplete({ status, shiftToAnchor }) {
+    const seasonWeek = getFallSeasonWeek();
+    await supabase.rpc("fall_upsert_midweek", {
+      p_member_id: currentMember.id, p_season: FALL_SEASON, p_week_key: getFallWeekKey(seasonWeek), p_season_week: seasonWeek,
+      p_status: status, p_shift_to_anchor: shiftToAnchor,
+    });
+    setFallSubView("home");
+  }
+
   const [editForm, setEditForm] = useState(null);
   const [tierExpanded, setTierExpanded] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -1897,7 +1827,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       gripScore_pre: gripScore,
     };
     await saveMember(updated);
-    setView("profile");
+    setView("checkFeedback");
   }
 
   async function handleRegister() {
@@ -3361,8 +3291,23 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
 
 
+          {(pods || []).find(pod => pod.memberIds?.includes(currentMember.id)) && (
+            <PodCard
+              myPod={(pods || []).find(pod => pod.memberIds?.includes(currentMember.id))}
+              members={members}
+              currentMember={currentMember}
+              pods={pods}
+              setPods={setPods}
+            />
+          )}
+
+          <button onClick={startEdit}
+            style={{ width: "100%", background: "none", border: "2px solid #ddd", color: "#666", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginTop: "1rem", marginBottom: "0.6rem", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.5rem" }}>
+            <GBSCIcon name="pencil" size={16} color="#666" strokeWidth={0}/>Edit My Profile
+          </button>
+
           <button onClick={() => setView("profile")}
-            style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>← Back to Profile</button>
+            style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>← Back to My Week</button>
         </div>
       </div>
     );
@@ -3956,486 +3901,122 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
 
   if (view === "profile" && currentMember) {
-    const allChecks = currentMember.weeklyChecks || [];
-    const baseline  = allChecks.find(c => c.isBaseline);
-    const checks    = allChecks.filter(c => c && !c.isBaseline);
-    const habitAvg  = checks.length
-      ? Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length)
-      : (baseline ? baseline.score : null);
-    const ci   = habitAvg !== null ? calcCapacityIndex(currentMember.vo2Score_pre, currentMember.gripScore_pre, habitAvg) : null;
-    const tier = ci !== null ? getCapacityTier(ci) : null;
-    const latest = checks[checks.length - 1] || null;
-    const ws     = latest ? getWeekStatus(latest.score) : null;
+    if (fallLoading) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+            {hdr}
+            <ProfileTabs setView={setView} active="week" />
+          </div>
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center", color: "#888" }}>Loading…</div>
+        </div>
+      );
+    }
 
-    // Declared week — computed once, single source of truth for role
-    const dw = getDeclaredWeek(allChecks);
-    // Role lookup table — maps dw.role directly to the same object shape getCapacityRole returns
-    // This guarantees the profile role card always matches the "Your Week Is Set" screen
-    const ROLE_LOOKUP = {
-      "Anchor":    { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer", desc: "Stays consistent when life gets busy." },
-      "Builder":   { role: "Builder",   color: G,         emoji: "📈", icon: "builder",    desc: "Builds capacity week to week." },
-      "Expansion": { role: "Expansion", color: "#1a7a00", emoji: "🔥", icon: "performer",  desc: "Performs at a high level without burning out." },
-      "Reset":     { role: "Reset",     color: "#C8C4BC", emoji: "🔄", icon: null,         desc: "Take a breath. This week is about getting back on track." },
-    };
-    const role = dw ? (ROLE_LOOKUP[dw.role] || null) : (latest ? getCapacityRole(latest.score) : null);
+    if (fallSubView === "checkin") {
+      const card = fallActiveMove ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          {hdr}
+          <FallWeeklyCheckIn moveTitle={card?.title} onSubmit={handleFallCheckinSubmit} onRequestHelp={() => {}} onBack={() => setFallSubView("home")} />
+        </div>
+      );
+    }
+    if (fallSubView === "midweek") {
+      const card = fallActiveMove ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          {hdr}
+          <FallMidweekReset moveTitle={card?.title} onComplete={handleFallMidweekComplete} />
+        </div>
+      );
+    }
 
-    // Tier progress data
-    const tierOrder = [
-      { name: "Foundation Capacity", min: 0,  max: 39,  icon: "foundation", next: "Emerging Capacity",  color: "#b0c090" },
-      { name: "Emerging Capacity",   min: 40, max: 54,  icon: "emerging",   next: "Building Capacity",  color: "#8ab85a" },
-      { name: "Building Capacity",   min: 55, max: 69,  icon: "building",   next: "Durable Capacity",   color: "#4a9e38" },
-      { name: "Durable Capacity",    min: 70, max: 84,  icon: "durable",    next: "Peak Capacity",      color: G },
-      { name: "Peak Capacity",       min: 85, max: 100, icon: "peak",       next: null,                 color: "#1a7a00" },
-    ];
-    const currentTierData = tierOrder.find(t => ci >= t.min && ci <= t.max) || tierOrder[0];
-    const pointsToNext    = currentTierData.next ? (currentTierData.max + 1) - ci : 0;
-    const progressPct     = ci !== null ? Math.min(100, Math.round(((ci - currentTierData.min) / (currentTierData.max - currentTierData.min + 1)) * 100)) : 0;
+    if (!fallState || !fallState.reflection_answers) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          {hdr}
+          <FallReflection onComplete={handleFallReflectionComplete} />
+        </div>
+      );
+    }
 
-    // Today's Focus — same driver logic as feedback screen
-    const focusTipForProfile = (() => {
-      if (!latest) return null;
-      const sleep    = parseInt(latest.sleepQuality) || 0;
-      const energy   = parseInt(latest.energyLevel) || 0;
-      const recovery = parseInt(latest.physicalRecovery) || 0;
-      const workouts = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[latest.workouts] || 0;
-      const protein  = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 }[latest.protein]
-                    ?? (latest.proteinFloor ? { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes": 3 }[latest.proteinFloor] || 0 : 0);
-      const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift]
-                    ?? (latest.regulation ? { "No": 0, "1-2x": 1, "Yes": 2 }[latest.regulation] || 0 : 0);
-      const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 }[latest.zone2]
-                    ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0);
-      const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 }[latest.sleepOpportunity] ?? null;
-      const areas = [
-        { key: "sleep",    pct: sleep / 5 },
-        { key: "energy",   pct: energy / 5 },
-        { key: "recovery", pct: recovery / 5 },
-        { key: "protein",  pct: protein / 3 },
-        { key: "reg",      pct: reg / 2 },
-        { key: "workouts", pct: workouts / 4 },
-        { key: "aerobic",  pct: zone2Val / 3 },
-        ...(sleepOpp !== null ? [{ key: "sleepOpp", pct: sleepOpp / 3 }] : []),
-      ].sort((a, b) => a.pct - b.pct);
-      const weakest = areas[0];
-      const tips = {
-        sleep:    { iconName: "ripple",    label: "Sleep",            articleId: "sleep",              focus: "Try locking in a consistent bedtime — even 30 minutes earlier makes a meaningful difference this week." },
-        energy:   { iconName: "bounce2",   label: "Energy",           articleId: "sleep",              focus: "Low energy usually signals under-recovery, not under-training. Prioritize sleep and consistent meals first." },
-        recovery: { iconName: "refresh",   label: "Recovery",         articleId: "lifestyle-habits",   focus: "Focus on sleep quality, hydration, and at least one active recovery session this week." },
-        protein:  { iconName: "plate",     label: "Nutrition",        articleId: "nutrition-recovery", focus: "Aim for 20–40g of protein at 2–3 meals this week. Start with breakfast." },
-        reg:      { iconName: "meditation",label: "Downshift",        articleId: "nervous-system",     focus: "Schedule one 10-minute downshift practice daily — breathwork, a quiet walk, journaling, or screen-free time." },
-        workouts: { iconName: "dumbbell",  label: "Training",         articleId: "weekly-minimums",    focus: "Can you find one more 30-minute window this week? It doesn't have to be intense — just show up." },
-        aerobic:  { iconName: "lungs",     label: "Zone 2",           articleId: "weekly-minimums",    focus: "Aim for at least one 30–60 min Zone 2 session this week." },
-        sleepOpp: { iconName: "ripple",    label: "Sleep Opportunity",articleId: "sleep",              focus: "Try to protect 7+ hours in bed at least 4 nights this week." },
-      };
-      const lowSleep = sleep <= 2 || (sleepOpp !== null && sleepOpp <= 1);
-      const lowRecovery = recovery <= 2;
-      const lowWorkouts = workouts < 2;
-      const lowDownshift = reg === 0;
-      const highPerf = latest.score >= 85;
-      if (lowSleep && lowRecovery)  return { iconName: "ripple",    label: "Recovery Support Day", articleId: "lifestyle-habits",   focus: "Walk, fuel well, and wind down early tonight. Your body needs a reset, not more load." };
-      if (lowWorkouts)              return { iconName: "bounce2",   label: "Stay in Motion",       articleId: "weekly-minimums",    focus: "Short movement counts today. Any 20–30 minutes of activity keeps the habit alive." };
-      if (lowDownshift && lowSleep) return { iconName: "meditation",label: "Downshift Daily",      articleId: "nervous-system",     focus: "10 quiet minutes today. Walk, breathe, journal, or go screen-free." };
-      if (highPerf)                 return { iconName: "dumbbell",  label: "Push + Recover",       articleId: "weekly-minimums",    focus: "Train hard today, then protect sleep and protein. Don't outrun your recovery." };
-      return tips[weakest.key] || null;
-    })();
+    if (!fallState.pathway) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+            {hdr}
+            <ProfileTabs setView={setView} active="week" />
+          </div>
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Reflection submitted</div>
+            <div style={{ color: "#666", lineHeight: 1.6 }}>Your coach is reviewing it and will confirm your Fall Move soon. Check back shortly.</div>
+          </div>
+        </div>
+      );
+    }
 
-    const lastCheck       = checks[checks.length - 1];
-    const completedProgram   = checks.length >= 8;
-    const checkedInThisWeek  = lastCheck && !isEligibleForCheckin(lastCheck.date);
+    if (!fallActiveMove) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+            {hdr}
+            <ProfileTabs setView={setView} active="week" />
+          </div>
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>No active Move right now</div>
+            <div style={{ color: "#666" }}>Your coach has you on a different path this season. Check with them for what's next.</div>
+          </div>
+        </div>
+      );
+    }
+
+    // Confirmed Move — the actual "My Week" home: this week's dose, flat, nothing collapsed.
+    const card = getMoveCard(fallActiveMove.move_key, fallActiveMove.dose);
+    const existingWeeksForGate = (currentMember.weeklyChecks || []).filter(c => c && !c.isBaseline);
+    const lastCheckForGate = existingWeeksForGate.length > 0 ? existingWeeksForGate[existingWeeksForGate.length - 1] : null;
+    const alreadyCheckedInThisWeek = lastCheckForGate && lastCheckForGate.date && !isEligibleForCheckin(lastCheckForGate.date);
 
     return (
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <ProfileTabs setView={setView} active="profile" />
+          <ProfileTabs setView={setView} active="week" />
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
-
-          {/* ── ZONE 1: YOUR WEEK ──────────────────────────────────────────── */}
-
-          {/* Hero card — habit score + role, with declared week strip */}
-          <div style={{ background: `linear-gradient(135deg, ${DARK} 0%, #2a4a1a 100%)`, borderRadius: "16px", marginBottom: "1.2rem", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
-            <div style={{ padding: "1.5rem", color: "#fff", textAlign: "center" }}>
-              <div style={{ fontSize: "1.2rem", fontWeight: "bold" }}>{currentMember.name}</div>
-              <div style={{ color: "#aaa", fontSize: "0.85rem" }}>Week {checks.length} of 8</div>
-              {latest && (
-                <>
-                  <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginTop: "1rem", marginBottom: "0.2rem" }}>Habit Score</div>
-                  <div style={{ fontSize: "3.5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums", textShadow: `0 0 24px ${G}99, 0 0 8px ${G}66` }}>{displayedScore}</div>
-                  <div style={{ fontSize: "0.78rem", color: "#888", marginTop: "0.2rem" }}>out of 100 this week</div>
-                  <div style={{ fontSize: "0.72rem", color: "#888", marginTop: "0.9rem", borderTop: "1px solid #ffffff12", paddingTop: "0.8rem", lineHeight: 1.5 }}>
-                    How well your training, recovery, and daily habits landed this week.
-                  </div>
-                </>
-              )}
-              {!latest && baseline && (
-                <>
-                  <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.06em", marginTop: "1rem", marginBottom: "0.2rem" }}>Baseline Habit Score</div>
-                  <div style={{ fontSize: "3.5rem", fontWeight: "bold", color: G, lineHeight: 1, fontFamily: SERIF, fontVariantNumeric: "tabular-nums" }}>{displayedScore}</div>
-                  <div style={{ fontSize: "0.72rem", color: "#555", marginTop: "0.9rem", borderTop: "1px solid #ffffff12", paddingTop: "0.8rem", lineHeight: 1.5 }}>
-                    Your starting point. Check in each week to track your progress.
-                  </div>
-                </>
-              )}
-            </div>
-            {/* Declared week — integrated as bottom strip of hero card */}
-            {dw && (
-              <div style={{ background: dw.color, padding: "0.85rem 1.3rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer" }}
-                onClick={() => { setPrevView("profile"); setDeclaredWeek(dw); setView("declaredWeek"); }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.65rem", color: "rgba(255,255,255,0.7)", letterSpacing: "0.08em", fontWeight: "bold", marginBottom: "0.1rem" }}>THIS WEEK</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>
-                    {(() => {
-                      const outlook = getCurrentWeekCheck(currentMember)?.weeklyOutlook;
-                      const leanIn = getCurrentWeekCheck(currentMember)?.weeklyLeanIn;
-                      const leanLabels = { fitness: "Leaning in on Fitness", nutrition: "Leaning in on Nutrition", recovery: "Leaning in on Recovery" };
-                      if (outlook === "tight")    return <>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>Staying in it</span></>;
-                      if (outlook === "on_track") return <>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>Staying consistent</span></>;
-                      if (outlook === "room" && leanIn) return <>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>{leanLabels[leanIn]}</span></>;
-                      if (outlook === "room")     return <>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>Open week — lean in</span></>;
-                      return <>{dw.role} Week · <span style={{ fontStyle: "italic", fontWeight: "normal", opacity: 0.9 }}>{dw.subtext}</span></>;
-                    })()}
-                  </div>
-                </div>
-                <div style={{ color: "rgba(255,255,255,0.7)", fontSize: "1.1rem", flexShrink: 0 }}>→</div>
-              </div>
-            )}
+          <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: G, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>THIS WEEK · {fallActiveMove.dose?.toUpperCase()}</div>
+          <div style={{ fontSize: "1.15rem", fontWeight: "bold", color: DARK, marginBottom: "1rem" }}>{card.title}</div>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginBottom: "1.2rem" }}>
+            <div style={{ fontWeight: "600", color: DARK, fontSize: "1.02rem", lineHeight: 1.5 }}>{card.activeDoseText}</div>
           </div>
 
-
-          {/* Action button — the primary CTA for the week */}
-          {completedProgram ? (
-            <div style={{ background: CARD, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "1rem", textAlign: "center", marginBottom: "1.2rem" }}>
-              <GBSCIcon name="trophy" size={28} color={G} strokeWidth={0}/>
-              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.4rem" }}>Program Complete</div>
-              <div style={{ fontSize: "0.8rem", color: "#888", marginTop: "0.2rem" }}>You've finished all 8 weeks. Outstanding work.</div>
-            </div>
-          ) : checkedInThisWeek ? (
-            <div style={{ background: "#f0f7ec", border: `1.5px solid ${G}`, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "1.2rem" }}>
-              <GBSCIcon name="check" size={24} color={G} strokeWidth={0}/>
-              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.3rem" }}>Week {lastCheck.week} check-in submitted</div>
-              <div style={{ fontSize: "0.8rem", color: "#666", marginTop: "0.2rem" }}>Next window opens Sunday at noon.</div>
-              {(() => {
-                const outlookLabels = { tight: "Tight week", on_track: "On track", room: "Open week" };
-                const frictionLabels = {
-                  time:   "Time / schedule", energy: "Low energy / poor sleep",
-                  stress: "Stress / life load", travel: "Travel / disruption",
-                  body:   "Body feels beat up", mixed:  "Not sure / mixed week",
-                };
-                const leanLabels = { fitness: "Fitness", nutrition: "Nutrition", recovery: "Recovery" };
-                const outlook = lastCheck.weeklyOutlook;
-                const friction = lastCheck.weeklyFrictionType;
-                const lean = lastCheck.weeklyLeanIn;
-                if (!outlook && !friction) return null;
-                return (
-                  <div style={{ marginTop: "0.6rem", paddingTop: "0.5rem", borderTop: `1px solid ${G}33` }}>
-                    {outlook && (
-                      <div style={{ marginBottom: friction || lean ? "0.25rem" : 0 }}>
-                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>THIS WEEK: </span>
-                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{outlookLabels[outlook]}</span>
-                      </div>
-                    )}
-                    {friction && (
-                      <div style={{ marginBottom: lean ? "0.25rem" : 0 }}>
-                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>PLANNING FOR: </span>
-                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{frictionLabels[friction]}</span>
-                      </div>
-                    )}
-                    {lean && (
-                      <div style={{ marginBottom: lastCheck.weekendType ? "0.25rem" : 0 }}>
-                        <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>LEANING IN ON: </span>
-                        <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{leanLabels[lean]}</span>
-                      </div>
-                    )}
-                    {(() => {
-                      const weekend = lastCheck.weekendType;
-                      const weekendLabels = { social: "Social weekend", normal: "Normal weekend", extra_time: "Extra time weekend" };
-                      if (!weekend) return null;
-                      return (
-                        <div>
-                          <span style={{ fontSize: "0.68rem", color: "#888", letterSpacing: "0.04em" }}>WEEKEND PLAN: </span>
-                          <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>{weekendLabels[weekend]}{lastCheck.weekendLockedIn ? " ✓" : ""}</span>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                );
-              })()}
-            </div>
-          ) : !isProgramOpen() ? (
-            <div style={{ background: CARD, border: `1.5px solid ${G}44`, borderRadius: "12px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", textAlign: "center", marginBottom: "1.2rem" }}>
-              <GBSCIcon name="clock" size={28} color={G} strokeWidth={0}/>
-              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginTop: "0.5rem" }}>
-                Week 1 opens April 19
-              </div>
-              <div style={{ fontSize: "0.82rem", color: "#666", marginTop: "0.3rem", lineHeight: 1.5 }}>
-                You're registered and ready.
-              </div>
-              {(() => {
-                const countdown = getProgramCountdown();
-                if (!countdown) return null;
-                return (
-                  <div style={{ marginTop: "0.7rem", background: `${G}10`, borderRadius: "8px", padding: "0.5rem 1rem" }}>
-                    <span style={{ fontSize: "0.72rem", color: "#888", letterSpacing: "0.05em" }}>STARTS IN </span>
-                    <span style={{ fontSize: "0.88rem", fontWeight: "bold", color: G }}>{countdown}</span>
-                  </div>
-                );
-              })()}
+          {alreadyCheckedInThisWeek ? (
+            <div style={{ background: "#f0f7ec", border: `1.5px solid ${G}`, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "0.6rem" }}>
+              <div style={{ color: G, fontWeight: "bold" }}>✓ This week's check-in is done</div>
+              <div style={{ color: "#888", fontSize: "0.8rem", marginTop: "0.2rem" }}>Next window opens Sunday at noon.</div>
             </div>
           ) : (
-            <button onClick={() => setView("checkin")}
-              style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.2rem" }}>
-              + Log This Week's Check-In
+            <button onClick={() => setFallSubView("checkin")}
+              style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.6rem" }}>
+              Weekly Check-In
             </button>
           )}
-
-
-
-          {/* This Week's Focus */}
-          {focusTipForProfile && (
-            <div
-              onClick={() => { if (focusTipForProfile.articleId) { setLibraryArticleId(focusTipForProfile.articleId); setView("library"); } }}
-              style={{ background: CARD, border: `1.5px solid #e8e8e8`, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.1rem 1.3rem", marginBottom: "1.2rem", cursor: focusTipForProfile.articleId ? "pointer" : "default" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.7rem" }}>
-                <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#2a7a14", letterSpacing: "0.07em", background: `${G}15`, border: `1px solid ${G}30`, borderRadius: "6px", padding: "0.2rem 0.5rem" }}>This Week's Focus</div>
-                <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#666", letterSpacing: "0.06em", background: "#f0f0f0", borderRadius: "6px", padding: "0.2rem 0.5rem" }}>{focusTipForProfile.label.toUpperCase()}</div>
-              </div>
-              <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
-                <div style={{ width: "40px", height: "40px", flexShrink: 0, background: `${G}12`, borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <GBSCIcon name={focusTipForProfile.iconName} size={24} color={G} strokeWidth={0}/>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.65 }}>
-                    {(() => {
-                      const outlook = getCurrentWeekCheck(currentMember)?.weeklyOutlook;
-                      const leanIn = getCurrentWeekCheck(currentMember)?.weeklyLeanIn;
-                      const prefix = outlook === "tight"    ? "This week is about staying in it — "
-                                   : outlook === "on_track" ? "You're on track — "
-                                   : outlook === "room" && leanIn === "recovery" ? "You have room — double down on recovery. "
-                                   : outlook === "room"     ? "You have room this week — "
-                                   : "";
-                      return <>{prefix}{focusTipForProfile.focus}</>;
-                    })()}
-                  </div>
-                  {focusTipForProfile.articleId && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "0.5rem" }}>
-                      <GBSCIcon name="book" size={12} color={G} strokeWidth={0}/>
-                      <span style={{ fontSize: "0.72rem", color: G, fontWeight: "bold" }}>Read more in the library →</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── Mid-week check banner on profile — Wednesday+ or when done ── */}
-          {(() => {
-            const thisWeekCheck = getCurrentWeekCheck(currentMember);
-            if (!thisWeekCheck) return null;
-            const done = !!thisWeekCheck.midweekStatus;
-            if (!isMidweekWindow()) return null;
-            const statusColors = { on_track: G, slightly_off: "#e09020" };
-            const statusLabels = { on_track: "On track ✓", slightly_off: "Needs a reset" };
-            const statusColor = done ? (statusColors[thisWeekCheck.midweekStatus] || G) : G;
-            return (
-              <div style={{
-                background: done ? CARD : `linear-gradient(135deg, ${DARK}, #1a3a0a)`,
-                border: `1.5px solid ${done ? statusColor+"66" : G+"33"}`,
-                borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.2rem",
-                display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer",
-                boxShadow: done ? CARD_SHADOW : "none",
-              }}
-                onClick={() => setView("midweekCheckin")}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: done ? statusColor : G, letterSpacing: "0.08em", marginBottom: "0.2rem" }}>MID-WEEK CHECK</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: done ? statusColor : "#fff" }}>
-                    {done ? statusLabels[thisWeekCheck.midweekStatus] : "Are you on track to win your week?"}
-                  </div>
-                  {!done && <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to check in</div>}
-                </div>
-                <GBSCIcon name="check" size={28} color={done ? statusColor : G} strokeWidth={0}/>
-              </div>
-            );
-          })()}
-
-          {/* ── End-of-week reflection banner on profile — Sunday ── */}
-          {(() => {
-            const thisWeekCheck = getCurrentWeekCheck(currentMember);
-            if (!thisWeekCheck || thisWeekCheck.weekResult !== null || !isEndOfWeekWindow()) return null;
-            return (
-              <div style={{ background: `linear-gradient(135deg, #1a2a4a, #0e1a2e)`, borderRadius: "16px", padding: "1.1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem", cursor: "pointer" }}
-                onClick={() => setView("weekReflection")}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.65rem", fontWeight: "bold", color: "#8ab4f8", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>END OF WEEK</div>
-                  <div style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#fff" }}>Did you win your week?</div>
-                  <div style={{ fontSize: "0.78rem", color: "#aaa", marginTop: "0.15rem" }}>Tap to reflect</div>
-                </div>
-                <GBSCIcon name="trophy" size={28} color="#8ab4f8" strokeWidth={0}/>
-              </div>
-            );
-          })()}
-
-          {/* ── Consistency streak ─────────────────────────────────────── */}
-          {(() => {
-            const streak = calcStreak(currentMember);
-            const lastResult = checks.length ? checks[checks.length - 1].weekResult : null;
-            if (streak === 0) return null;
-            const badgeMap = {
-              won:        { icon: "flame",   color: G,         label: "Full Capacity Week" },
-              stayed_in:  { icon: "check",   color: "#4a9e38", label: "Won the Week" },
-              reset:      { icon: "refresh", color: "#C8C4BC", label: "↻ Stayed in the Game" },
-            };
-            const badge = badgeMap[lastResult];
-            return (
-              <div style={{ background: CARD, border: "1.5px solid #e8e8e8", borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1rem 1.3rem", marginBottom: "1.2rem", display: "flex", alignItems: "center", gap: "1rem", ...fadeUp(0) }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "0.62rem", fontWeight: "bold", color: "#aaa", letterSpacing: "0.08em", marginBottom: "0.2rem" }}>CONSISTENCY</div>
-                  {streak > 0 ? (
-                    <div style={{ fontSize: "1.05rem", fontWeight: "bold", color: DARK }}>
-                      {streak} week{streak !== 1 ? "s" : ""} in a row
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: "0.9rem", color: "#888" }}>Start your streak this week</div>
-                  )}
-                  {badge && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.3rem", marginTop: "0.25rem" }}>
-                      <GBSCIcon name={badge.icon} size={12} color={badge.color} strokeWidth={0}/>
-                      <span style={{ fontSize: "0.72rem", color: badge.color, fontWeight: "bold" }}>{badge.label}</span>
-                    </div>
-                  )}
-                </div>
-                {streak >= 3 && <GBSCIcon name="flame" size={22} color={G} strokeWidth={0}/>}
-              </div>
-            );
-          })()}
-
-          {/* ── Weekend Game Plan accordion — Thursday through Sunday ── */}
-          {(() => {
-            const day = new Date().getDay(); // 0=Sun,1=Mon,...,4=Thu,5=Fri,6=Sat
-            const isWeekendWindow = day >= 4 || day === 0; // Thu, Fri, Sat, Sun
-            const thisWeek = getCurrentWeekCheck(currentMember);
-            const lockedIn = thisWeek?.weekendLockedIn;
-            const lockedType = thisWeek?.weekendType;
-            if (!thisWeek || (!isWeekendWindow && !lockedIn)) return null;
-            const weekendOptions = [
-              { key: "social",     label: "Social weekend (stay in control)" },
-              { key: "normal",     label: "Normal weekend (stay consistent)" },
-              { key: "extra_time", label: "Extra time (use it)" },
-            ];
-            const typeLabels = { social: "Social weekend", normal: "Normal weekend", extra_time: "Extra time weekend" };
-            const role = dw?.role || "Anchor";
-            const roleKey = role === "Reset" ? "Anchor" : role;
-            const plan = lockedType ? WEEKEND_PLANS[lockedType]?.[roleKey] : weekendChoice ? WEEKEND_PLANS[weekendChoice]?.[roleKey] : null;
-            return (
-              <AccordionSection
-                label={lockedIn ? `Weekend plan — ${typeLabels[lockedType]} ✓` : "Weekend coming up"}
-                open={weekendOpen}
-                onToggle={() => setWeekendOpen(o => !o)}
-                accentColor={G}
-                textColor={DARK}>
-                {!lockedIn && (
-                  <>
-                    <div style={{ fontSize: "0.78rem", color: "#666", marginBottom: "0.8rem", lineHeight: 1.5 }}>
-                      Stay in it with a quick plan. What's your weekend look like?
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "0.8rem" }}>
-                      {weekendOptions.map(({ key, label }) => (
-                        <button key={key} onClick={() => setWeekendChoice(weekendChoice === key ? null : key)}
-                          style={{
-                            width: "100%", textAlign: "left", cursor: "pointer",
-                            background: weekendChoice === key ? `${G}12` : "#f7f7f7",
-                            border: `1.5px solid ${weekendChoice === key ? G : "#e8e8e8"}`,
-                            borderRadius: "8px", padding: "0.6rem 0.9rem",
-                            fontSize: "0.85rem", fontWeight: weekendChoice === key ? "bold" : "normal",
-                            color: weekendChoice === key ? G : DARK,
-                          }}>
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-                {/* Show plan */}
-                {plan && (
-                  <div style={{ marginBottom: "0.8rem" }}>
-                    {lockedIn && <div style={{ fontSize: "0.68rem", color: G, fontWeight: "bold", letterSpacing: "0.06em", marginBottom: "0.6rem" }}>YOUR WEEKEND PLAN</div>}
-                    {plan.anchors.map(({ time, actions }) => (
-                      <div key={time} style={{ marginBottom: "0.6rem" }}>
-                        <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: G, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "0.2rem" }}>{time}</div>
-                        {actions.map((a, i) => (
-                          <div key={i} style={{ fontSize: "0.78rem", color: DARK, marginBottom: "0.15rem" }}>· {a}</div>
-                        ))}
-                      </div>
-                    ))}
-                    <div style={{ fontSize: "0.78rem", fontWeight: "bold", color: G, marginTop: "0.4rem" }}>
-                      Win: {plan.win}
-                    </div>
-                  </div>
-                )}
-                {/* Lock it in / locked state */}
-                {!lockedIn && weekendChoice && (
-                  <button onClick={async () => {
-                    if (!thisWeek) return;
-                    const updatedChecks = (currentMember.weeklyChecks || []).map(c =>
-                      c && c.week === thisWeek.week && !c.isBaseline
-                        ? { ...c, weekendType: weekendChoice, weekendLockedIn: true }
-                        : c
-                    );
-                    const updatedMember = { ...currentMember, weeklyChecks: updatedChecks };
-                    await saveMember(updatedMember);
-                    setCurrentMember(updatedMember);
-                    setWeekendChoice(null);
-                    setWeekendOpen(false);
-                  }}
-                    style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "10px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer" }}>
-                    Lock this in →
-                  </button>
-                )}
-                {lockedIn && (
-                  <div style={{ textAlign: "center", fontSize: "0.78rem", color: G, fontWeight: "bold" }}>
-                    Locked in. Stay in it.
-                  </div>
-                )}
-                {lockedIn && (
-                  <div style={{ textAlign: "center", fontSize: "0.78rem", color: "#888", marginTop: "0.3rem", fontStyle: "italic" }}>
-                    This is where most people lose it.
-                  </div>
-                )}
-                {lockedIn && (
-                  <div style={{ textAlign: "center", fontSize: "0.72rem", color: "#aaa", marginTop: "0.3rem" }}>
-                    Your pod can see you're locked in.
-                  </div>
-                )}
-              </AccordionSection>
-            );
-          })()}
-
-          {/* Pod card */}
-          {(pods || []).find(pod => pod.memberIds?.includes(currentMember.id)) && (
-            <PodCard
-              myPod={(pods || []).find(pod => pod.memberIds?.includes(currentMember.id))}
-              members={members}
-              currentMember={currentMember}
-              pods={pods}
-              setPods={setPods}
-            />
-          )}
-
-          <button onClick={startEdit}
-            style={{ width: "100%", background: "none", border: "2px solid #ddd", color: "#666", borderRadius: "12px", padding: "0.8rem", fontSize: "0.9rem", fontWeight: "bold", cursor: "pointer", marginBottom: "1.5rem", display:"flex", alignItems:"center", justifyContent:"center", gap:"0.5rem" }}>
-            <GBSCIcon name="pencil" size={16} color="#666" strokeWidth={0}/>Edit My Profile
+          <button onClick={() => setFallSubView("midweek")}
+            style={{ width: "100%", background: "#fff", color: DARK, border: "1.5px solid #e0e0e0", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "600", cursor: "pointer" }}>
+            Midweek Reset
           </button>
-
         </div>
       </div>
     );
   }
+
 
   if (view === "editProfile" && currentMember && editForm) {
     return (
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
-          <button onClick={() => setView("profile")} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>← Back to Profile</button>
+          <button onClick={() => setView("checkFeedback")} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontWeight: "bold", marginBottom: "1rem" }}>← Back to My Results</button>
           <div style={{ fontSize: "1.2rem", fontWeight: "bold", color: DARK, marginBottom: "1.5rem", display:"flex", alignItems:"center", gap:"0.5rem" }}><GBSCIcon name="pencil" size={18} color={DARK} strokeWidth={0}/>Edit My Profile</div>
           <F label="Full Name"><input type="text" value={editForm.name} onChange={e => setEditForm(f => ({...f, name: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
           <F label="Age"><input type="number" value={editForm.age} onChange={e => setEditForm(f => ({...f, age: e.target.value}))} style={{ width: "100%", padding: "0.7rem 1rem", border: "1.5px solid #ddd", borderRadius: "12px", fontSize: "1rem", boxSizing: "border-box" }} /></F>
@@ -4455,7 +4036,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
             Save Changes ✓
           </button>
-          <button onClick={() => setView("profile")} style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>Cancel</button>
+          <button onClick={() => setView("checkFeedback")} style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>Cancel</button>
         </div>
       </div>
     );
@@ -4649,9 +4230,84 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     );
   }
 
-  // ── FALL 2026 ────────────────────────────────────────────────────────────
+  // ── FALL 2026 — MY MOVE ────────────────────────────────────────────────────
   if (view === "fall" && currentMember) {
-    return <FallMemberFlow member={currentMember} setView={setView} hdr={hdr} onBack={() => setView("profile")} />;
+    if (fallLoading) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+            {hdr}
+            <ProfileTabs setView={setView} active="move" />
+          </div>
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center", color: "#888" }}>Loading…</div>
+        </div>
+      );
+    }
+
+    if (!fallState || !fallState.reflection_answers) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+            {hdr}
+            <ProfileTabs setView={setView} active="move" />
+          </div>
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Complete your Fall Reflection first</div>
+            <div style={{ color: "#666" }}>Head to My Week to get started — it only takes about 5 minutes.</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!fallState.pathway) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+            {hdr}
+            <ProfileTabs setView={setView} active="move" />
+          </div>
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Waiting on your coach</div>
+            <div style={{ color: "#666" }}>Your coach is reviewing your Reflection and will confirm your Fall Move soon.</div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!fallActiveMove) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+            {hdr}
+            <ProfileTabs setView={setView} active="move" />
+          </div>
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>No active Move right now</div>
+            <div style={{ color: "#666" }}>Your coach has you on a different path this season.</div>
+          </div>
+        </div>
+      );
+    }
+
+    const card = getMoveCard(fallActiveMove.move_key, fallActiveMove.dose);
+    return (
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+          {hdr}
+          <ProfileTabs setView={setView} active="move" />
+        </div>
+        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
+          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem" }}>
+            <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: G, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>YOUR CAPACITY MOVE · {fallActiveMove.dose?.toUpperCase()}</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>{card.title}</div>
+            <div style={{ color: "#666", marginBottom: "1rem", lineHeight: 1.6 }}>{card.thisMightBeYourMoveIf}</div>
+            <div style={{ color: "#666", marginBottom: "1rem", lineHeight: 1.6, fontStyle: "italic" }}>{card.whyItsPowerful}</div>
+            <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "0.4rem" }}><strong>Make it easier:</strong> {card.makeItEasier}</div>
+            <div style={{ fontSize: "0.85rem", color: "#888" }}><strong>Watch for:</strong> {card.watchFor}</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // ── LIBRARY ──────────────────────────────────────────────────────────────

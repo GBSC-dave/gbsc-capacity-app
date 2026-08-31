@@ -241,7 +241,7 @@ export function FallWeeklyCheckIn({ moveTitle, onSubmit, onRequestHelp, onBack }
         </button>
         {onBack && (
           <button onClick={onBack} style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>
-            ← Back to Profile
+            ← Back to My Week
           </button>
         )}
       </div>
