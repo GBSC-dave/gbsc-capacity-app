@@ -1892,10 +1892,16 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     // Compute declared week from baseline — getDeclaredWeek now falls back to baseline score
-    // This sends new member straight to their full-screen identity/week screen
     const dw = getDeclaredWeek(member.weeklyChecks);
     setDeclaredWeek(dw);
-    onRegistered(dw, member);
+    // Don't hand off to the tabs yet — the Fall Reflection is step 3 of onboarding now,
+    // completed before the member ever sees My Week / My Move / My Results.
+    setOnboardStep(3);
+  }
+
+  async function handleOnboardingReflectionComplete(payload) {
+    await handleFallReflectionComplete(payload);
+    onRegistered(declaredWeek, currentMember);
   }
 
   async function handleSubmitCheck() {
@@ -1982,7 +1988,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ background: `${G}12`, border: `1.5px solid ${G}44`, borderRadius: "12px", padding: "0.7rem 1rem", marginBottom: "1.2rem", textAlign: "center", fontSize: "0.82rem", color: DARK, fontWeight: "600" }}>
-            🍂 Fall 2026 is live — register below, then look for the "MY MOVE" tab on your profile.
+            🍂 Fall 2026 is live — after your baseline check-in, you'll complete a short Reflection to get matched with your Capacity Move.
           </div>
           <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
             <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: DARK, marginBottom: "0.5rem" }}>Welcome to Capacity Season</div>
@@ -2015,7 +2021,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     );
 
     // Step 2: Baseline check-in
-    return (
+    if (onboardStep === 2) return (
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
@@ -2109,6 +2115,16 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           </button>
           <button onClick={() => setOnboardStep(1)} style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>← Back to Profile</button>
         </div>
+      </div>
+    );
+
+    // Step 3: Fall Capacity Reflection — mandatory before a new member ever sees their
+    // tabs, per David's direction that this is the most important moment in the app and
+    // shouldn't be something a member has to go looking for.
+    if (onboardStep === 3) return (
+      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+        {hdr}
+        <FallReflection onComplete={handleOnboardingReflectionComplete} />
       </div>
     );
   }
@@ -3839,6 +3855,26 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
 
   if (view === "profile" && currentMember) {
+    // Hard gate — this should only ever catch a member who registered but abandoned
+    // before finishing their Reflection (it's now step 3 of registration itself), or a
+    // returning member recognized by email who never got that far. Nothing else on My
+    // Week shows until it's done.
+    if (fallLoading) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>
+          Loading…
+        </div>
+      );
+    }
+    if (!fallState || !fallState.reflection_answers) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          {hdr}
+          <FallReflection onComplete={handleFallReflectionComplete} />
+        </div>
+      );
+    }
+
     if (fallSubView === "checkin") {
       const card = fallActiveMove ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
       return (
