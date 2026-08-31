@@ -2805,68 +2805,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
           {tier && (
             <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.5rem", marginBottom: "1.5rem", ...fadeUp(450) }}>
-              {/* Role milestone card — shows after baseline, first check-in, or when role improves */}
-          {(() => {
-            // Use baseline score if no weekly checks yet — gives immediate identity after setup
-            const isBaseline  = checks.length === 0 && !!baseline;
-            const isFirstWeek = checks.length === 1;
-            const scoreSource = checks.length > 0 ? checks[checks.length - 1] : (baseline || null);
-            if (!scoreSource) return null;
-            const latest = scoreSource;
-            const prev   = checks.length >= 2 ? checks[checks.length - 2] : null;
-            const roleOrder = { "Reset": 0, "Anchor": 1, "Builder": 2, "Expansion": 3 };
-            // Use cfDw.role as source of truth so role card matches "Your Week Is Set" screen
-            const CF_ROLE_LOOKUP = {
-              "Anchor":    { role: "Anchor",    color: "#e09020", emoji: "🛡️", icon: "stabilizer" },
-              "Builder":   { role: "Builder",   color: G,         emoji: "📈", icon: "builder"    },
-              "Expansion": { role: "Expansion", color: "#1a7a00", emoji: "🔥", icon: "performer"  },
-              "Reset":     { role: "Reset",     color: "#C8C4BC", emoji: "🔄", icon: null         },
-            };
-            const currentRole = cfDw ? (CF_ROLE_LOOKUP[cfDw.role] || null) : getCapacityRole(latest.score, isBaseline);
-            const prevRole    = prev ? getCapacityRole(prev.score) : null;
-            if (!currentRole) return null;
-            // Show after baseline, on first weekly check-in, or when role improves
-            const roleImproved = prevRole && (roleOrder[currentRole.role] ?? 0) > (roleOrder[prevRole.role] ?? 0);
-            if (!isBaseline && !isFirstWeek && !roleImproved) return null;
-            const firstWeekMessages = {
-              "Reset":      { headline: "Reset week.", body: "Something got in the way — that's part of the program. This week, come back to Anchor targets. Show up, keep it simple, and let consistency do the work." },
-              "Anchor": { headline: "Your starting role: Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
-              "Builder":    { headline: "Your starting role: Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
-              "Expansion":  { headline: "Your starting role: Expansion", body: "You can push, recover, and sustain. That's rare. Protect it." },
-            };
-            const upgradeMessages = {
-              "Anchor": { headline: "You've become an Anchor", body: "You stay consistent — even when life is busy. This is where long-term success begins." },
-              "Builder":    { headline: "You're now a Builder", body: "You're close. One strong week can move you into Durable Capacity. Keep stacking." },
-              "Expansion":  { headline: "You've reached Expansion", body: "You can push, recover, and sustain. This is rare." },
-            };
-            const msg = isFirstWeek ? firstWeekMessages[currentRole.role] : upgradeMessages[currentRole.role];
-            if (!msg) return null;
-            // Match the declared week color system exactly
-            const roleColors = {
-              Anchor:     { color: "#8A94A6", bg: "#F4F6F8", textSupport: "#5F6B7A" },
-              Builder:    { color: "#2FBF71", bg: "#F3FBF6", textSupport: "#2F6B4A" },
-              Expansion:  { color: "#2C4A6E", bg: "#F0F4F8", textSupport: "#1E3348" },
-              Reset:      { color: "#C8C4BC", bg: "#FAFAF8", textSupport: "#7A7570" },
-            };
-            const rc = roleColors[currentRole.role] || roleColors.Reset;
-            return (
-              <div onClick={() => { const dw = getDeclaredWeek(currentMember.weeklyChecks || []); if (dw) { setPrevView("checkFeedback"); setDeclaredWeek(dw); setView("declaredWeek"); } }}
-                style={{ background: rc.bg, border: `1.5px solid ${rc.color}44`, borderRadius: "16px", padding: "1.4rem 1.5rem", marginBottom: "1.5rem", textAlign: "center", cursor: "pointer", ...fadeUp(300) }}>
-                <div style={{ marginBottom: "0.7rem", display: "flex", justifyContent: "center" }}>
-                  {currentRole.icon ? <GBSCIcon name={currentRole.icon} size={40} color={rc.color} strokeWidth={2}/> : <span style={{fontSize:"2rem"}}>{currentRole.emoji}</span>}
-                </div>
-                <div style={{ fontWeight: "bold", color: rc.color, fontSize: "1.1rem", marginBottom: "0.3rem" }}>
-                  {msg.headline}
-                </div>
-                <div style={{ fontSize: "0.85rem", color: rc.textSupport, lineHeight: 1.6, marginBottom: "0.7rem" }}>
-                  {msg.body}
-                </div>
-                <div style={{ fontSize: "0.72rem", color: rc.color, fontWeight: "bold", opacity: 0.85 }}>
-                  See this week's action plan →
-                </div>
-              </div>
-            );
-          })()}
 
           {/* Tier card */}
           {ci !== null && (
