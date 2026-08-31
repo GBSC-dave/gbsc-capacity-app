@@ -4298,6 +4298,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }
 
     const card = getMoveCard(fallActiveMove.move_key, fallActiveMove.dose);
+    const moveNum = String(fallActiveMove.move_key.replace("M", "")).padStart(2, "0");
+    const pillStyle = { display: "inline-block", background: G, color: "#fff", borderRadius: "999px", padding: "0.25rem 0.9rem", fontSize: "0.68rem", fontWeight: "bold", letterSpacing: "0.06em", marginBottom: "0.7rem" };
     return (
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
@@ -4305,13 +4307,36 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <ProfileTabs setView={setView} active="move" />
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
-          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.3rem 1.4rem" }}>
-            <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: G, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>YOUR CAPACITY MOVE · {fallActiveMove.dose?.toUpperCase()}</div>
-            <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>{card.title}</div>
-            <div style={{ color: "#666", marginBottom: "1rem", lineHeight: 1.6 }}>{card.thisMightBeYourMoveIf}</div>
-            <div style={{ color: "#666", marginBottom: "1rem", lineHeight: 1.6, fontStyle: "italic" }}>{card.whyItsPowerful}</div>
-            <div style={{ fontSize: "0.85rem", color: "#888", marginBottom: "0.4rem" }}><strong>Make it easier:</strong> {card.makeItEasier}</div>
-            <div style={{ fontSize: "0.85rem", color: "#888" }}><strong>Watch for:</strong> {card.watchFor}</div>
+          <div style={{ borderRadius: "16px", overflow: "hidden", boxShadow: CARD_SHADOW }}>
+            {/* ── Header band — Capacity Move eyebrow, title, big number ── */}
+            <div style={{ background: DARK, padding: "1.4rem 1.5rem 1.2rem" }}>
+              <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: G, letterSpacing: "0.1em", marginBottom: "0.5rem" }}>CAPACITY MOVE</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.8rem" }}>
+                <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#fff", lineHeight: 1.2 }}>{card.title}</div>
+                <div style={{ fontSize: "2.6rem", fontWeight: "bold", color: G, lineHeight: 1, opacity: 0.85, flexShrink: 0 }}>{moveNum}</div>
+              </div>
+            </div>
+
+            {/* ── Body ── */}
+            <div style={{ background: CARD, padding: "1.4rem 1.5rem" }}>
+              <div style={{ color: "#666", marginBottom: "1.3rem", lineHeight: 1.6, fontSize: "0.9rem" }}>{card.thisMightBeYourMoveIf}</div>
+
+              <div style={pillStyle}>YOUR MOVE · {fallActiveMove.dose?.toUpperCase()}</div>
+              <div style={{ color: DARK, fontWeight: "600", fontSize: "1rem", lineHeight: 1.5, marginBottom: "1.3rem" }}>{card.activeDoseText}</div>
+
+              <div style={pillStyle}>WHY IT'S POWERFUL</div>
+              <div style={{ color: DARK, lineHeight: 1.6, fontSize: "0.9rem", marginBottom: "1.3rem" }}>{card.whyItsPowerful}</div>
+
+              <div style={{ borderTop: "1px solid #eee", paddingTop: "1rem" }}>
+                <div style={{ fontSize: "0.82rem", color: "#888", marginBottom: "0.5rem" }}><strong style={{ color: DARK }}>Make it easier:</strong> {card.makeItEasier}</div>
+                <div style={{ fontSize: "0.82rem", color: "#888" }}><strong style={{ color: DARK }}>Watch for:</strong> {card.watchFor}</div>
+              </div>
+            </div>
+
+            {/* ── Footer tagline ── */}
+            <div style={{ background: DARK, padding: "0.7rem 1.5rem", textAlign: "center" }}>
+              <div style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.78rem", fontStyle: "italic" }}>You don't need to do everything. Win this one.</div>
+            </div>
           </div>
         </div>
       </div>
