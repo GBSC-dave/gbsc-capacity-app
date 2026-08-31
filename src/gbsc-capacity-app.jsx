@@ -3901,18 +3901,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
 
   if (view === "profile" && currentMember) {
-    if (fallLoading) {
-      return (
-        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
-            {hdr}
-            <ProfileTabs setView={setView} active="week" />
-          </div>
-          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center", color: "#888" }}>Loading…</div>
-        </div>
-      );
-    }
-
     if (fallSubView === "checkin") {
       const card = fallActiveMove ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
       return (
@@ -3932,83 +3920,109 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       );
     }
 
-    if (!fallState || !fallState.reflection_answers) {
-      return (
-        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-          {hdr}
-          <FallReflection onComplete={handleFallReflectionComplete} />
-        </div>
-      );
-    }
+    // My Week — driven entirely by Spring's own declared-week role/targets system (the
+    // "Your Week Is Set" screen's content and color scheme), independent of Fall's Move
+    // state. This is the tactical "what to do this week" layer; My Move (the "fall" view)
+    // is the separate strategic 12-Moves layer.
+    const dw = getDeclaredWeek(currentMember.weeklyChecks || []);
 
-    if (!fallState.pathway) {
+    if (!dw) {
       return (
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
             {hdr}
             <ProfileTabs setView={setView} active="week" />
           </div>
-          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
-            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Reflection submitted</div>
-            <div style={{ color: "#666", lineHeight: 1.6 }}>Your coach is reviewing it and will confirm your Fall Move soon. Check back shortly.</div>
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center", color: "#888" }}>
+            Complete your baseline check-in to see your week.
           </div>
         </div>
       );
     }
 
-    if (!fallActiveMove) {
-      return (
-        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
-            {hdr}
-            <ProfileTabs setView={setView} active="week" />
-          </div>
-          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
-            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>No active Move right now</div>
-            <div style={{ color: "#666" }}>Your coach has you on a different path this season. Check with them for what's next.</div>
-          </div>
-        </div>
-      );
-    }
-
-    // Confirmed Move — the actual "My Week" home: this week's dose, flat, nothing collapsed.
-    const card = getMoveCard(fallActiveMove.move_key, fallActiveMove.dose);
     const existingWeeksForGate = (currentMember.weeklyChecks || []).filter(c => c && !c.isBaseline);
     const lastCheckForGate = existingWeeksForGate.length > 0 ? existingWeeksForGate[existingWeeksForGate.length - 1] : null;
     const alreadyCheckedInThisWeek = lastCheckForGate && lastCheckForGate.date && !isEligibleForCheckin(lastCheckForGate.date);
 
+    const sectionCardStyle = { background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginBottom: "1rem" };
+    const sectionLabelStyle = { fontSize: "0.68rem", fontWeight: "bold", color: dw.color, letterSpacing: "0.06em", marginBottom: "0.6rem", textTransform: "uppercase" };
+
     return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+      <div style={{ minHeight: "100vh", background: dw.bg, fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
           <ProfileTabs setView={setView} active="week" />
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
-          <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: G, letterSpacing: "0.06em", marginBottom: "0.4rem" }}>THIS WEEK · {fallActiveMove.dose?.toUpperCase()}</div>
-          <div style={{ fontSize: "1.15rem", fontWeight: "bold", color: DARK, marginBottom: "1rem" }}>{card.title}</div>
-          <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginBottom: "1.2rem" }}>
-            <div style={{ fontWeight: "600", color: DARK, fontSize: "1.02rem", lineHeight: 1.5 }}>{card.activeDoseText}</div>
+
+          {/* ── Role reveal — same treatment as "Your Week Is Set" ── */}
+          <div style={{ textAlign: "center", marginBottom: "1.6rem" }}>
+            <div style={{ display: "inline-block", background: dw.color, color: "#fff", borderRadius: "999px", padding: "0.3rem 1.1rem", fontSize: "0.72rem", fontWeight: "bold", letterSpacing: "0.08em", marginBottom: "1rem" }}>
+              YOUR WEEK IS SET
+            </div>
+            {dw.iconName && (
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.6rem" }}>
+                <GBSCIcon name={dw.iconName} size={48} color={dw.color} strokeWidth={2}/>
+              </div>
+            )}
+            <div style={{ fontSize: "2.1rem", fontWeight: "bold", color: dw.color, letterSpacing: "-0.01em", lineHeight: 1.1, marginBottom: "0.4rem", fontFamily: SERIF }}>
+              {dw.role} Week
+            </div>
+            <div style={{ fontSize: "0.88rem", color: dw.textSupport, lineHeight: 1.6 }}>
+              {dw.reasonLine}
+            </div>
+          </div>
+
+          {/* ── This week's targets — flat, nothing collapsed ── */}
+          <div style={sectionCardStyle}>
+            <div style={sectionLabelStyle}>This Week's Targets</div>
+            {(dw.targets || []).map(({ label, value }) => (
+              <div key={label} style={{ display: "flex", gap: "0.8rem", marginBottom: "0.5rem", alignItems: "flex-start" }}>
+                <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: dw.color, minWidth: "72px", paddingTop: "0.15rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+                <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.4 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Why this week ── */}
+          <div style={sectionCardStyle}>
+            <div style={sectionLabelStyle}>Why This Week</div>
+            <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.65 }}>{dw.whyLine}</div>
+            <div style={{ fontSize: "0.72rem", color: dw.textSupport, marginTop: "0.6rem", opacity: 0.8 }}>
+              {dw.weekCount < 3 ? "Based on your check-in today." : "Based on your recent trends."}
+            </div>
+          </div>
+
+          {/* ── This week's focus ── */}
+          <div style={sectionCardStyle}>
+            <div style={sectionLabelStyle}>This Week's Focus</div>
+            <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>PRIORITY THIS WEEK</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: dw.color }}>{dw.focusSignal}</div>
+            <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginTop: "0.4rem", lineHeight: 1.5 }}>
+              Of all your habit signals, this is the one area that will move the needle most this week.
+            </div>
           </div>
 
           {alreadyCheckedInThisWeek ? (
-            <div style={{ background: "#f0f7ec", border: `1.5px solid ${G}`, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "0.6rem" }}>
-              <div style={{ color: G, fontWeight: "bold" }}>✓ This week's check-in is done</div>
+            <div style={{ background: `${dw.color}18`, border: `1.5px solid ${dw.color}`, borderRadius: "12px", padding: "1rem", textAlign: "center", marginBottom: "0.6rem" }}>
+              <div style={{ color: dw.color, fontWeight: "bold" }}>✓ This week's check-in is done</div>
               <div style={{ color: "#888", fontSize: "0.8rem", marginTop: "0.2rem" }}>Next window opens Sunday at noon.</div>
             </div>
           ) : (
             <button onClick={() => setFallSubView("checkin")}
-              style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.6rem" }}>
+              style={{ width: "100%", background: dw.color, color: "#fff", border: "none", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "bold", cursor: "pointer", marginBottom: "0.6rem" }}>
               Weekly Check-In
             </button>
           )}
           <button onClick={() => setFallSubView("midweek")}
-            style={{ width: "100%", background: "#fff", color: DARK, border: "1.5px solid #e0e0e0", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "600", cursor: "pointer" }}>
+            style={{ width: "100%", background: "#fff", color: dw.textSupport, border: `1.5px solid ${dw.color}66`, borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "600", cursor: "pointer" }}>
             Midweek Reset
           </button>
         </div>
       </div>
     );
   }
+
 
 
   if (view === "editProfile" && currentMember && editForm) {
@@ -4247,14 +4261,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     if (!fallState || !fallState.reflection_answers) {
       return (
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
-            {hdr}
-            <ProfileTabs setView={setView} active="move" />
-          </div>
-          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
-            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Complete your Fall Reflection first</div>
-            <div style={{ color: "#666" }}>Head to My Week to get started — it only takes about 5 minutes.</div>
-          </div>
+          {hdr}
+          <FallReflection onComplete={handleFallReflectionComplete} />
         </div>
       );
     }
