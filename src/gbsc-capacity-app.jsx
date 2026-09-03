@@ -1024,6 +1024,12 @@ function FallCoachTab({ members }) {
     await refresh();
   }
 
+  async function handleMarkIntegrated(moveId, memberId) {
+    await supabase.rpc("fall_mark_integrated", { p_move_id: moveId, p_member_id: memberId });
+    setSelectedMemberId(null);
+    await refresh();
+  }
+
   if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "#aaa" }}>Loading…</div>;
 
   if (selectedMemberId) {
@@ -1031,9 +1037,12 @@ function FallCoachTab({ members }) {
     const state = statesByMember[selectedMemberId];
     const activeMove = state?.active_move_id ? movesById[state.active_move_id] : null;
 
-    // Already has an active Move — manage it (note/dose/close) rather than re-running the
-    // assignment RPC, which would insert a duplicate fall_moves row instead of updating this one.
-    if (activeMove) {
+    // Already has a Working On Move — manage it (note/dose/close/integrate) rather than
+    // re-running the assignment RPC, which would insert a duplicate fall_moves row instead of
+    // updating this one. An Integrated Move does NOT route here — per Section 4, "Expand" and
+    // "Next Move" both just reuse the normal Snapshot/assignment flow below (fall_confirm_move
+    // already creates a fresh Working On row without disturbing the Integrated one's history).
+    if (activeMove && activeMove.status === "active") {
       const memberChecks = checksByMember[selectedMemberId] || [];
       const latestMoveCheckin = memberChecks[memberChecks.length - 1] || null;
       return (
@@ -1045,6 +1054,7 @@ function FallCoachTab({ members }) {
           onChangeDose={(dose, reason, note) => handleChangeDose(activeMove.id, selectedMemberId, dose, reason, note)}
           onSetWeeklyPlanLimit={(limit) => handleSetWeeklyPlanLimit(activeMove.id, limit)}
           onSetPersonalizedPlan={(plan) => handleSetPersonalizedPlan(activeMove.id, plan)}
+          onMarkIntegrated={() => handleMarkIntegrated(activeMove.id, selectedMemberId)}
           onCloseMove={(eventType, reason, note, exitImpact) => handleCloseMove(activeMove.id, selectedMemberId, eventType, reason, note, exitImpact)}
           onBack={() => setSelectedMemberId(null)}
         />
@@ -1783,6 +1793,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [fallActiveMove, setFallActiveMove] = useState(null);
   const [fallLoading, setFallLoading] = useState(true);
   const [fallSubView, setFallSubView] = useState("home"); // home | checkin | midweek
+  const fallIsIntegrated = fallActiveMove?.status === "integrated";
+  // Section 4 — "Stop applying that assignment's weekly plan limit" once Integrated.
+  const effectiveWeeklyPlanLimit = fallIsIntegrated ? null : fallActiveMove?.weekly_plan_limit;
 
   async function refreshFallState() {
     if (!currentMember) return;
@@ -1972,7 +1985,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     // Compute declared week from baseline — getDeclaredWeek now falls back to baseline score
-    const dw = getDeclaredWeek(member.weeklyChecks, fallActiveMove?.weekly_plan_limit);
+    const dw = getDeclaredWeek(member.weeklyChecks, effectiveWeeklyPlanLimit);
     setDeclaredWeek(dw);
     // Don't hand off to the tabs yet — the Fall Reflection is step 3 of onboarding now,
     // completed before the member ever sees My Week / My Move / My Results.
@@ -2028,7 +2041,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setCurrentMember(updatedMember);
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
-    const dw = getDeclaredWeek(updatedMember.weeklyChecks, fallActiveMove?.weekly_plan_limit);
+    const dw = getDeclaredWeek(updatedMember.weeklyChecks, effectiveWeeklyPlanLimit);
     setPrevView("profile");
     setDeclaredWeek(dw);
     setView("declaredWeek");
@@ -2551,7 +2564,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   if (view === "frictionPlanning" && currentMember) {
     const allChecks = currentMember.weeklyChecks || [];
-    const dw = getDeclaredWeek(allChecks, fallActiveMove?.weekly_plan_limit);
+    const dw = getDeclaredWeek(allChecks, effectiveWeeklyPlanLimit);
     const checks = allChecks.filter(c => c && !c.isBaseline);
     const thisWeek = getCurrentWeekCheck(currentMember);
     const accentColor = dw ? dw.color : G;
@@ -2684,7 +2697,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const baseline = allChecks.find(c => c && c.isBaseline);
     const checks = allChecks.filter(c => c && !c.isBaseline);
     // Single source of truth for role — matches the "Your Week Is Set" screen
-    const cfDw = getDeclaredWeek(allChecks, fallActiveMove?.weekly_plan_limit);
+    const cfDw = getDeclaredWeek(allChecks, effectiveWeeklyPlanLimit);
     // For baseline-only state, use the baseline habit score so CI is visible right away
     const habitAvg = checks.length
       ? Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length)
@@ -3354,7 +3367,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     if (!thisWeek) { setView("profile"); return null; }
 
     const already = thisWeek.midweekStatus;
-    const dw = declaredWeek || getDeclaredWeek(allChecks, fallActiveMove?.weekly_plan_limit);
+    const dw = declaredWeek || getDeclaredWeek(allChecks, effectiveWeeklyPlanLimit);
     const accentColor = dw?.color || G;
     const outlook = thisWeek?.weeklyOutlook;
     const role = dw?.role || "Anchor";
@@ -3462,7 +3475,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const thisWeek = getCurrentWeekCheck(currentMember);
     if (!thisWeek) { setView("checkFeedback"); return null; }
     const status = thisWeek?.midweekStatus;
-    const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || [], fallActiveMove?.weekly_plan_limit);
+    const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || [], effectiveWeeklyPlanLimit);
     const accentColor = dw?.color || G;
     const outlook = thisWeek?.weeklyOutlook;
     const role = dw?.role || "Anchor";
@@ -3659,7 +3672,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     if (!thisWeek) return null;
 
     const already = thisWeek.weekResult;
-    const dw = declaredWeek || getDeclaredWeek(allChecks, fallActiveMove?.weekly_plan_limit);
+    const dw = declaredWeek || getDeclaredWeek(allChecks, effectiveWeeklyPlanLimit);
     const accentColor = dw?.color || G;
 
     async function handleWeekResult(result) {
@@ -3744,7 +3757,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const thisWeek = getCurrentWeekCheck(currentMember);
     if (!thisWeek) { setView("profile"); return null; }
     const result = thisWeek?.weekResult;
-    const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || [], fallActiveMove?.weekly_plan_limit);
+    const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || [], effectiveWeeklyPlanLimit);
     const accentColor = dw?.color || G;
     const streak = calcStreak(currentMember);
 
@@ -3956,8 +3969,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }
 
     if (fallSubView === "checkin") {
-      const card = fallActiveMove ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
-      const movePlanText = fallActiveMove ? (fallActiveMove.personalized_plan || card?.activeDoseText) : null;
+      // Section 4 — "Stop the weekly Move questions" once Integrated; card stays null so
+      // FallWeeklyCheckIn's whole "How did your Move go?" block (gated on moveTitle) hides.
+      const card = (fallActiveMove && !fallIsIntegrated) ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
+      const movePlanText = card ? (fallActiveMove.personalized_plan || card.activeDoseText) : null;
       const q5 = fallState?.reflection_answers?.q5;
       const constraintLabel = q5 === "other" ? fallState.reflection_answers.q5Other : Q5_OPTIONS.find((o) => o.id === q5)?.label;
       return (
@@ -3988,8 +4003,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     // "Your Week Is Set" screen's content and color scheme), independent of Fall's Move
     // state. This is the tactical "what to do this week" layer; My Move (the "fall" view)
     // is the separate strategic 12-Moves layer.
-    const dw = getDeclaredWeek(currentMember.weeklyChecks || [], fallActiveMove?.weekly_plan_limit);
-    const priorityCard = fallActiveMove ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
+    const dw = getDeclaredWeek(currentMember.weeklyChecks || [], effectiveWeeklyPlanLimit);
+    // Section 4 — "Remove the active-priority card from My Week" once Integrated.
+    const priorityCard = (fallActiveMove && !fallIsIntegrated) ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
 
     if (!dw) {
       return (
@@ -4393,6 +4409,37 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const card = getMoveCard(fallActiveMove.move_key, fallActiveMove.dose);
     const moveNum = String(fallActiveMove.move_key.replace("M", "")).padStart(2, "0");
     const pillStyle = { display: "inline-block", background: G, color: "#fff", borderRadius: "999px", padding: "0.25rem 0.9rem", fontSize: "0.68rem", fontWeight: "bold", letterSpacing: "0.06em", marginBottom: "0.7rem" };
+
+    // Section 4 — coach-confirmed Integrated state: simpler card, per the doc's exact copy.
+    // "Preserve the plan and its feedback" — same title/plan-or-instruction as the active
+    // card, just the maintenance framing instead of the full Why/Make it easier/Watch for.
+    if (fallIsIntegrated) {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
+            {hdr}
+            <ProfileTabs setView={setView} active="move" />
+          </div>
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
+            <div style={{ borderRadius: "16px", overflow: "hidden", boxShadow: CARD_SHADOW }}>
+              <div style={{ background: DARK, padding: "1.4rem 1.5rem 1.2rem" }}>
+                <div style={{ fontSize: "0.7rem", fontWeight: "bold", color: G, letterSpacing: "0.1em", marginBottom: "0.5rem" }}>INTEGRATED ✓</div>
+                <div style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#fff", lineHeight: 1.2 }}>{card.title}</div>
+              </div>
+              <div style={{ background: CARD, padding: "1.4rem 1.5rem" }}>
+                <div style={{ color: DARK, fontWeight: "600", fontSize: "1rem", lineHeight: 1.5, marginBottom: "1.3rem" }}>
+                  {fallActiveMove.personalized_plan || card.activeDoseText}
+                </div>
+                <div style={{ color: "#666", fontSize: "0.9rem", lineHeight: 1.6 }}>
+                  Keep using this plan while it continues to help. Let your coach know if you need support again.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>

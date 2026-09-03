@@ -64,11 +64,12 @@ function ReasonPicker({ value, onChange }) {
  *   onChangeDose: (dose: string, structuredReason: string, note: string) => void,
  *   onSetWeeklyPlanLimit: (limit: string) => void,
  *   onSetPersonalizedPlan: (plan: string) => void,
+ *   onMarkIntegrated: () => void,
  *   onCloseMove: (eventType: "graduated"|"replaced", structuredReason: string, note: string, exitImpact: number|null) => void,
  *   onBack?: () => void,
  * }} props
  */
-export function FallManageMove({ member, move, latestMoveCheckin, onAddNote, onChangeDose, onSetWeeklyPlanLimit, onSetPersonalizedPlan, onCloseMove, onBack }) {
+export function FallManageMove({ member, move, latestMoveCheckin, onAddNote, onChangeDose, onSetWeeklyPlanLimit, onSetPersonalizedPlan, onMarkIntegrated, onCloseMove, onBack }) {
   const mv = FALL_CAPACITY_MOVES[move.move_key];
 
   const [note, setNote] = useState(move.coach_note || "");
@@ -84,6 +85,8 @@ export function FallManageMove({ member, move, latestMoveCheckin, onAddNote, onC
 
   const [limit, setLimit] = useState(move.weekly_plan_limit || "no_limit");
   const [limitMsg, setLimitMsg] = useState("");
+
+  const [confirmingIntegrate, setConfirmingIntegrate] = useState(false);
 
   const [closeType, setCloseType] = useState(null); // "graduated" | "replaced"
   const [closeReason, setCloseReason] = useState("");
@@ -257,6 +260,37 @@ export function FallManageMove({ member, move, latestMoveCheckin, onAddNote, onC
             Save
           </button>
           {limitMsg && <div style={{ color: G, fontSize: "0.8rem", marginTop: "0.5rem" }}>{limitMsg}</div>}
+        </SectionCard>
+
+        <SectionCard title="Integration">
+          {!confirmingIntegrate ? (
+            <button
+              onClick={() => setConfirmingIntegrate(true)}
+              style={{ background: G, color: "#fff", border: "none", borderRadius: "10px", padding: "0.6rem 1.1rem", fontWeight: "bold", fontSize: "0.85rem", cursor: "pointer" }}
+            >
+              Mark as Integrated
+            </button>
+          ) : (
+            <>
+              <div style={{ fontSize: "0.85rem", color: DARK, lineHeight: 1.5, marginBottom: "0.8rem" }}>
+                Has the member confirmed that this plan feels established and can continue without weekly coaching attention?
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <button
+                  onClick={() => setConfirmingIntegrate(false)}
+                  style={{ flex: 1, background: "#fff", color: DARK, border: "1.5px solid #e0e0e0", borderRadius: "10px", padding: "0.6rem", fontWeight: "600", fontSize: "0.85rem", cursor: "pointer" }}
+                >
+                  Keep Working On
+                </button>
+                <button
+                  onClick={onMarkIntegrated}
+                  style={{ flex: 1, background: G, color: "#fff", border: "none", borderRadius: "10px", padding: "0.6rem", fontWeight: "bold", fontSize: "0.85rem", cursor: "pointer" }}
+                >
+                  Mark as Integrated
+                </button>
+              </div>
+            </>
+          )}
         </SectionCard>
 
         <SectionCard title="Close this Move">

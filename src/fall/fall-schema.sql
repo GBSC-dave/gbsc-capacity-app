@@ -37,6 +37,15 @@ alter table fall_weekly_checks add column if not exists move_helped text
 alter table fall_weekly_checks add column if not exists move_constraint_impact smallint
   check (move_constraint_impact between 1 and 5);
 
+-- MIGRATION (2026-09-03, point 4) — add 'integrated' to both check constraints. Default
+-- (unnamed) constraint names from the original CREATE TABLE statements.
+alter table fall_moves drop constraint if exists fall_moves_status_check;
+alter table fall_moves add constraint fall_moves_status_check
+  check (status in ('active','graduated','replaced','integrated'));
+alter table fall_move_events drop constraint if exists fall_move_events_event_type_check;
+alter table fall_move_events add constraint fall_move_events_event_type_check
+  check (event_type in ('assigned','dose_changed','coach_note_added','integration_candidate','integrated','graduated','replaced','reactivated'));
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- fall_moves — one row per Move assignment episode. Per the original scope doc, only
 -- THREE statuses are ever persisted here — everything richer in Section 20's lifecycle
@@ -50,7 +59,13 @@ create table if not exists fall_moves (
   season text not null default 'fall_2026',
   move_key text not null check (move_key in ('M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12')),
   dose text not null check (dose in ('anchor','builder','expansion')),
-  status text not null default 'active' check (status in ('active','graduated','replaced')),
+  -- 'integrated' added (2026-09-03) per the Fall App Implementation Handoff Section 4 — the
+  -- coach-confirmed "Working On" -> "Integrated" transition. Unlike graduated/replaced,
+  -- integrating does NOT clear fall_member_state.active_move_id — the Move stays the
+  -- member's pointer (My Move shows it as "INTEGRATED ✓" instead of disappearing), and
+  -- Working On/Integrated are display labels for 'active'/'integrated' respectively — no
+  -- separate status value was added for "Working On".
+  status text not null default 'active' check (status in ('active','graduated','replaced','integrated')),
 
   -- audit trail of what the deterministic matcher suggested at assignment time, so a
   -- later rule-table change doesn't rewrite history for Moves already assigned
@@ -175,7 +190,9 @@ create table if not exists fall_move_events (
   move_id uuid not null references fall_moves(id),
   member_id text not null, -- denormalized for easy querying without a join
 
-  event_type text not null check (event_type in ('assigned','dose_changed','coach_note_added','integration_candidate','graduated','replaced','reactivated')),
+  -- 'integrated' added (2026-09-03, Section 4) — distinct from 'integration_candidate' above,
+  -- which was the older, still-unused Section 20 "flagged as a candidate" concept.
+  event_type text not null check (event_type in ('assigned','dose_changed','coach_note_added','integration_candidate','integrated','graduated','replaced','reactivated')),
 
   -- Section 28 — structured reasons, one tap not notes. Required on dose_changed/replaced;
   -- optional elsewhere.
@@ -301,6 +318,21 @@ begin
 
   update fall_member_state set active_move_id = null, dose = null, updated_at = now()
   where active_move_id = p_move_id;
+end;
+$$ language plpgsql;
+
+-- Coach marks a Move Integrated (Section 4) — a coach-confirmed transition, not a close.
+-- Deliberately does NOT touch fall_member_state.active_move_id/dose: the Move stays the
+-- member's pointer so My Move keeps showing it (as "INTEGRATED ✓"). "Working On" has no
+-- separate status value — it's just the display label for 'active'.
+create or replace function fall_mark_integrated(
+  p_move_id uuid, p_member_id text
+) returns void as $$
+begin
+  update fall_moves set status = 'integrated', updated_at = now() where id = p_move_id;
+
+  insert into fall_move_events (move_id, member_id, event_type)
+  values (p_move_id, p_member_id, 'integrated');
 end;
 $$ language plpgsql;
 
