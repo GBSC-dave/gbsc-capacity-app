@@ -60,6 +60,16 @@ function isEligibleForCheckin(lastCheckDateStr) {
   return checkDate < boundary;
 }
 
+// Registration no longer collects a baseline check-in (Eric's last-minute call, 2026-09-03) —
+// a brand new member's weeklyChecks starts empty, and their first real Weekly Check-in (the
+// trimmed 7-signal "Last 7 Days" questions, folded into the normal check-in screen) is what
+// eventually populates it. Until that happens, My Week / My Results stay hidden (ProfileTabs)
+// and only My Move is reachable. Existing Spring members already have real history, so this
+// is true immediately for them — nothing changes in their experience.
+function hasCompletedFirstWeeklyCheckin(member) {
+  return (member?.weeklyChecks || []).filter(c => c && !c.isBaseline).length > 0;
+}
+
 // ── Program schedule ──────────────────────────────────────────────────────────
 // Week 1 opens Sunday April 19, 2026 at noon (local time).
 // Each subsequent week opens the Sunday before that week's Monday at noon.
@@ -893,12 +903,15 @@ export const fadeUp = (delay) => ({ opacity: 0, animation: `gbscFadeUp 0.5s ease
 // Shared three-tab switcher — My Profile / My Results / My Move — used at the top of every
 // screen in the member's "home area" so the Fall Move conversation sits at the same level as
 // Profile/Results instead of behind a separate nav link.
-function ProfileTabs({ setView, active }) {
-  const tabs = [
+function ProfileTabs({ setView, active, locked }) {
+  const allTabs = [
     { key: "week", label: "MY WEEK", view: "profile" },
     { key: "move", label: "MY MOVE", view: "fall" },
     { key: "results", label: "MY RESULTS", view: "checkFeedback" },
   ];
+  // Eric's call (2026-09-03): before a member's first real Weekly Check-in exists, My Week
+  // and My Results have nothing to show yet — only My Move is reachable.
+  const tabs = locked ? allTabs.filter((t) => t.key === "move") : allTabs;
   return (
     <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
       {tabs.map((tab) => {
@@ -1196,10 +1209,11 @@ export default function GBSCApp() {
           setCurrentMember(member);
           nextView = "member";
 
-          // My Week (the "profile" view) now handles the "is this week's check-in due?"
-          // gating itself via Fall's check-in — no need to pre-route into Spring's own
-          // separate check-in form.
-          setMemberView("profile");
+          // My Week (the "profile" view) handles the "is this week's check-in due?" gating
+          // itself via Fall's check-in. Members who haven't done their first real Weekly
+          // Check-in yet (brand new registrants) land on My Move instead — My Week/My Results
+          // stay hidden until then (ProfileTabs).
+          setMemberView(hasCompletedFirstWeeklyCheckin(member) ? "profile" : "fall");
         }
       }
     } catch {}
@@ -1401,7 +1415,7 @@ export default function GBSCApp() {
         saveMember={saveMember}
         pods={pods}
         setPods={setPods}
-        onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView("profile"); }}
+        onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView(hasCompletedFirstWeeklyCheckin(newMember) ? "profile" : "fall"); }}
         onCoachAccess={() => setView("coachPin")}
       />
       </ErrorBoundary>
@@ -1421,7 +1435,7 @@ export default function GBSCApp() {
         saveMember={saveMember}
         pods={pods}
         setPods={setPods}
-        onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView("profile"); }}
+        onRegistered={(dw, newMember) => { if (newMember) setCurrentMember(newMember); setView("member"); setMemberView(hasCompletedFirstWeeklyCheckin(newMember) ? "profile" : "fall"); }}
         onCoachAccess={() => setView("coachPin")}
       />
       </ErrorBoundary>
@@ -1753,7 +1767,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [lastCheckScore, setLastCheckScore] = useState(null);
   const [displayedScore, setDisplayedScore] = useState(0);
 
-  const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = baseline check-in
+  const [onboardStep, setOnboardStep] = useState(1); // 1 = profile info, 2 = capacity reflection
   const [validationMsg, setValidationMsg] = useState("");
   const [declaredWeek, setDeclaredWeek] = useState(null);
   const [tightOpen, setTightOpen]   = useState(false);
@@ -1824,6 +1838,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const fallIsIntegrated = fallActiveMove?.status === "integrated";
   // Section 4 — "Stop applying that assignment's weekly plan limit" once Integrated.
   const effectiveWeeklyPlanLimit = fallIsIntegrated ? null : fallActiveMove?.weekly_plan_limit;
+  // Eric's call (2026-09-03) — My Week/My Results stay hidden (ProfileTabs) until the member's
+  // first real Weekly Check-in exists; see hasCompletedFirstWeeklyCheckin's own comment.
+  const tabsLocked = !hasCompletedFirstWeeklyCheckin(currentMember);
 
   async function refreshFallState() {
     if (!currentMember) return;
@@ -1891,6 +1908,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setCurrentMember(updatedMember);
 
     setFallSubView("home");
+    // First-ever Weekly Check-in just unlocked My Week/My Results (tabsLocked) — take them
+    // straight there rather than leaving them on My Move to go find the newly-unlocked tab.
+    if (existingWeeks.length === 0) setView("profile");
     await refreshFallState();
   }
 
@@ -1987,47 +2007,26 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     if (!weight || weight <= 0) { setValidationMsg("Please enter a valid bodyweight greater than 0."); return; }
     if (isNaN(grip) || grip <= 0) { setValidationMsg("Please enter a valid grip strength greater than 0."); return; }
     if (isNaN(vo2) || vo2 <= 0) { setValidationMsg("Please enter a valid VO₂ estimate greater than 0."); return; }
-    // Advance to baseline check-in step
-    setOnboardStep(2);
-  }
 
-  async function handleRegisterWithBaseline() {
-    if (!check.workouts || !check.strengthRPE || !check.zone2) {
-      setValidationMsg("Please answer at least the first 3 questions before continuing.");
-      return;
-    }
-    const vo2Score = getVO2Score(parseFloat(form.vo2), parseInt(form.age), form.sex);
-    const gripScore = getGripScore(parseFloat(form.grip), parseFloat(form.weight), parseInt(form.age), form.sex);
-    const weekScore = calcWeeklyScore(check);
+    // Eric's last-minute call (2026-09-03): registration no longer collects a baseline
+    // check-in here — straight from profile info to the Capacity Reflection. The member
+    // record is created now (weeklyChecks starts empty); their first real Weekly Check-in
+    // — the trimmed "Last 7 Days" signals, folded into the normal ongoing check-in screen —
+    // is what eventually populates it, whenever they naturally reach it from My Move.
+    const vo2Score = getVO2Score(vo2, age, form.sex);
+    const gripScore = getGripScore(grip, weight, age, form.sex);
     const member = {
       id: form.email.trim().replace(/[^a-zA-Z0-9]/g, "_"),
       name: form.name.trim(),
       email: form.email.trim(),
-      age: parseInt(form.age),
-      sex: form.sex,
-      weight: parseFloat(form.weight),
-      grip_pre: parseFloat(form.grip),
-      vo2_pre: parseFloat(form.vo2),
-      vo2Score_pre: vo2Score,
-      gripScore_pre: gripScore,
-      weeklyChecks: [{
-        date: localDateStr(),
-        week: 0,
-        ...check,
-        score: weekScore,
-        isBaseline: true,
-      }],
+      age, sex: form.sex, weight,
+      grip_pre: grip, vo2_pre: vo2,
+      vo2Score_pre: vo2Score, gripScore_pre: gripScore,
+      weeklyChecks: [],
       enrolledDate: localDateStr()
     };
     await saveMember(member);
-    setLastCheckScore(weekScore);
-    setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
-    // Compute declared week from baseline — getDeclaredWeek now falls back to baseline score
-    const dw = getDeclaredWeek(member.weeklyChecks, effectiveWeeklyPlanLimit);
-    setDeclaredWeek(dw);
-    // Don't hand off to the tabs yet — the Fall Reflection is step 3 of onboarding now,
-    // completed before the member ever sees My Week / My Move / My Results.
-    setOnboardStep(3);
+    setOnboardStep(2);
   }
 
   async function handleOnboardingReflectionComplete(payload) {
@@ -2119,12 +2118,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         {hdr}
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
           <div style={{ background: `${G}12`, border: `1.5px solid ${G}44`, borderRadius: "12px", padding: "0.7rem 1rem", marginBottom: "1.2rem", textAlign: "center", fontSize: "0.82rem", color: DARK, fontWeight: "600" }}>
-            🍂 Fall 2026 is live — after your baseline check-in, you'll complete a short Reflection to get matched with your Capacity Move.
+            🍂 Fall 2026 is live — right after this, you'll complete a short Capacity Reflection to get matched with your Move.
           </div>
           <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
             <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: DARK, marginBottom: "0.5rem" }}>Welcome to Capacity Season</div>
             <div style={{ fontSize: "0.88rem", color: "#666", lineHeight: 1.65, maxWidth: "360px", margin: "0 auto" }}>
-              Your Capacity Index is a personal score built from your training, recovery, and daily habits. These two steps set your starting point. Takes about two minutes.
+              First, a couple minutes on your profile. Then a short Capacity Reflection — the most important part — so your coach can match you with your Move. About 7 minutes total.
             </div>
           </div>
           <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.9rem" }}>Your profile</div>
@@ -2145,114 +2144,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           )}
           <button onClick={() => { setValidationMsg(""); handleRegister(); }}
             style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer", marginTop: "0.5rem" }}>
-            Next: Baseline Check-In →
+            Next: Capacity Reflection →
           </button>
         </div>
       </div>
     );
 
-    // Step 2: Baseline check-in
-    if (onboardStep === 2) return (
-      <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-        {hdr}
-        <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
-          {(() => {
-            const fields = ["workouts","zone2","strengthRPE","dailyMovement","protein","downshift","sleepOpportunity","sleepQuality","energyLevel","physicalRecovery","disruption"];
-            const answered = fields.filter(f => check[f] !== "" && check[f] != null).length;
-            const pct = Math.round((answered / fields.length) * 100);
-            return (
-              <div style={{ position: "sticky", top: 0, zIndex: 10, background: LIGHT_BG, paddingTop: "1rem", paddingBottom: "0.8rem", marginBottom: "0.5rem" }}>
-                <div style={{ textAlign: "center", marginBottom: "0.6rem" }}>
-                  <div style={{ fontSize: "1.3rem", fontWeight: "bold", color: DARK, marginBottom: "0.2rem" }}>Last 7 days</div>
-                  <div style={{ color: "#666", fontSize: "0.88rem" }}>First instinct is fine — ~45 seconds.</div>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                  <div style={{ flex: 1, background: "#eee", borderRadius: "999px", height: "5px" }}>
-                    <div style={{ background: G, borderRadius: "999px", height: "5px", width: `${pct}%`, transition: "width 0.3s ease" }} />
-                  </div>
-                  <div style={{ fontSize: "0.8rem", color: answered === fields.length ? G : "#888", fontWeight: answered === fields.length ? "bold" : "normal", whiteSpace: "nowrap" }}>
-                    {answered === fields.length ? "✓ All done!" : `${answered} of ${fields.length}`}
-                  </div>
-                </div>
-                <div style={{ borderBottom: "1px solid #e8e8e8", marginTop: "0.8rem" }} />
-              </div>
-            );
-          })()}
-          {[
-            { label: "Workouts in the last 7 days", field: "workouts", options: ["0","1","2","3","4+"], hint: "Classes, runs, lifts, cycling all count" },
-            { label: "Challenging strength session", field: "strengthRPE", options: ["Yes","No"], hint: "At least one session around RPE 7+ (2–3 reps left in reserve)" },
-            { label: "Daily movement outside workouts", field: "dailyMovement", options: ["High","Moderate","Low"], hints: ["High (8k+ steps/day or very active job)", "Moderate (5–8k/day)", "Low (<5k/day)"] },
-            { label: "Zone 2 aerobic work in the last 7 days", field: "zone2", options: ["0–30 min","30–60 min","60–90 min","90+ min"], hint: "Steady effort — breathing elevated but sustainable" },
-            { label: "Protein in 3+ meals per day", field: "protein", options: ["Yes (most days)","Most days","Some days","Rarely"], hint: "~20g+ of protein per meal" },
-            { label: "Sleep opportunity", field: "sleepOpportunity", options: ["5+ nights","3–4 nights","1–2 nights","Rarely"], hint: "How many nights did you have 7+ hours available for sleep?" },
-            { label: "Intentional downshift (10+ min)", field: "downshift", options: ["3+ times","1–2 times","None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
-          ].map((q, qi) => (
-            <div key={q.field} style={{ paddingTop: "1.3rem", borderTop: qi === 0 ? "none" : "1px solid #efefef", marginBottom: "0.2rem" }}>
-              <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>{q.label}</div>
-              {(q.hint || q.hints) && <div style={{ color: "#aaa", fontSize: "0.78rem", marginBottom: "0.65rem" }}>{q.hint || q.hints.join(" · ")}</div>}
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                {q.options.map(opt => (
-                  <button key={opt} onClick={() => setCheck(c => ({...c, [q.field]: opt}))}
-                    style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `1.5px solid ${check[q.field] === opt ? G : "#e0e0e0"}`, borderRadius: "12px", background: check[q.field] === opt ? G : "#fff", color: check[q.field] === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.88rem", fontWeight: check[q.field] === opt ? "600" : "normal", display: "flex", alignItems: "center", transition: "all 0.15s ease" }}>
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "1.8rem 0 0.6rem" }}>
-            <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
-            <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Recovery check · not scored</div>
-            <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
-          </div>
-          <div style={{ fontSize: "0.82rem", color: "#888", marginBottom: "1.2rem", lineHeight: 1.5 }}>
-            These help us personalize your weekly coaching.
-          </div>
-          <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Sleep quality</div>
-            <ScaleGroup field="sleepQuality" value={check.sleepQuality} setCheck={setCheck} labels={["Poor most nights","Restless several nights","Mixed sleep","Good most nights","Consistently deep"]} />
-          </div>
-          <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Energy — last 7 days</div>
-            <ScaleGroup field="energyLevel" value={check.energyLevel} setCheck={setCheck} labels={["Exhausted often","Low most days","Mixed energy","Steady most days","High and stable"]} />
-          </div>
-          <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Physical recovery</div>
-            <ScaleGroup field="physicalRecovery" value={check.physicalRecovery} setCheck={setCheck} labels={["Sore most of week","Soreness lingered","Average recovery","Recovered well","Consistently fresh"]} />
-          </div>
-
-          <div style={{ marginBottom: "1.5rem" }}>
-            <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.25rem" }}>Weekly disruption</div>
-            <div style={{ color: "#888", fontSize: "0.8rem", marginBottom: "0.5rem" }}>Illness, travel, sick kids, heavy workload — won't affect your score, just helps interpret it</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-              {["None","Some disruption","Major disruption"].map(opt => (
-                <button key={opt} onClick={() => setCheck(c => ({...c, disruption: opt}))}
-                  style={{ padding: "0.5rem 1rem", minHeight: "44px", border: `2px solid ${check.disruption === opt ? G : "#ddd"}`, borderRadius: "8px", background: check.disruption === opt ? G : "#fff", color: check.disruption === opt ? "#fff" : DARK, cursor: "pointer", fontSize: "0.9rem", fontWeight: check.disruption === opt ? "bold" : "normal", display: "flex", alignItems: "center" }}>
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {validationMsg && (
-            <div style={{ color: "#e05030", fontSize: "0.82rem", textAlign: "center", marginBottom: "0.7rem", padding: "0.5rem 1rem", background: "#fff4f2", borderRadius: "12px", border: "1px solid #fad0c8" }}>
-              {validationMsg}
-            </div>
-          )}
-          <button onClick={() => { setValidationMsg(""); handleRegisterWithBaseline(); }}
-            style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "1rem", fontSize: "1rem", fontWeight: "bold", cursor: "pointer" }}>
-            Complete Setup & See My Score →
-          </button>
-          <button onClick={() => setOnboardStep(1)} style={{ width: "100%", background: "none", border: "none", color: "#888", cursor: "pointer", marginTop: "0.5rem" }}>← Back to Profile</button>
-        </div>
-      </div>
-    );
-
-    // Step 3: Fall Capacity Reflection — mandatory before a new member ever sees their
+    // Step 2: Fall Capacity Reflection — mandatory before a new member ever sees their
     // tabs, per David's direction that this is the most important moment in the app and
-    // shouldn't be something a member has to go looking for.
-    if (onboardStep === 3) return (
+    // shouldn't be something a member has to go looking for. Eric's later call (2026-09-03):
+    // registration goes straight from profile info to this, skipping baseline habit
+    // collection entirely — that's now folded into their first real Weekly Check-in instead,
+    // reached from My Move once a coach confirms their Move.
+    if (onboardStep === 2) return (
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         {hdr}
         <FallReflection onComplete={handleOnboardingReflectionComplete} />
@@ -2863,7 +2767,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         `}</style>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <ProfileTabs setView={setView} active="results" />
+          <ProfileTabs setView={setView} active="results" locked={tabsLocked} />
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
 
@@ -4020,10 +3924,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
 
   if (view === "profile" && currentMember) {
-    // Hard gate — this should only ever catch a member who registered but abandoned
-    // before finishing their Reflection (it's now step 3 of registration itself), or a
-    // returning member recognized by email who never got that far. Nothing else on My
-    // Week shows until it's done.
+    // Hard gate — in practice unreachable now (My Week only shows in ProfileTabs once
+    // hasCompletedFirstWeeklyCheckin is true, which itself requires Reflection to already be
+    // done), but kept as a defensive fallback for a member who registered but abandoned
+    // before finishing their Reflection (it's step 2 of registration itself), or a returning
+    // member recognized by email who never got that far.
     if (fallLoading) {
       return (
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", alignItems: "center", justifyContent: "center", color: "#888" }}>
@@ -4083,7 +3988,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
             {hdr}
-            <ProfileTabs setView={setView} active="week" />
+            <ProfileTabs setView={setView} active="week" locked={tabsLocked} />
           </div>
           <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center", color: "#888" }}>
             Complete your baseline check-in to see your week.
@@ -4103,7 +4008,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <div style={{ minHeight: "100vh", background: dw.bg, fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <ProfileTabs setView={setView} active="week" />
+          <ProfileTabs setView={setView} active="week" locked={tabsLocked} />
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
 
@@ -4424,7 +4329,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
             {hdr}
-            <ProfileTabs setView={setView} active="move" />
+            <ProfileTabs setView={setView} active="move" locked={tabsLocked} />
           </div>
           <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center", color: "#888" }}>Loading…</div>
         </div>
@@ -4440,16 +4345,60 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       );
     }
 
+    // Reachable from My Move too (not just My Week) — while My Week/My Results stay hidden
+    // before a member's first real Weekly Check-in, My Move is the only place to reach it from.
+    if (fallSubView === "checkin") {
+      const card = (fallActiveMove && !fallIsIntegrated) ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
+      const movePlanText = card ? (fallActiveMove.personalized_plan || card.activeDoseText) : null;
+      const q5 = fallState?.reflection_answers?.q5;
+      const constraintLabel = q5 === "other" ? fallState.reflection_answers.q5Other : Q5_OPTIONS.find((o) => o.id === q5)?.label;
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          {hdr}
+          <FallWeeklyCheckIn
+            moveTitle={card?.title}
+            movePlanText={movePlanText}
+            constraintLabel={constraintLabel}
+            onSubmit={handleFallCheckinSubmit}
+            onRequestHelp={() => {}}
+            onBack={() => setFallSubView("home")}
+          />
+        </div>
+      );
+    }
+    if (fallSubView === "midweek") {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          {hdr}
+          <FallMidweekReset onComplete={handleFallMidweekComplete} />
+        </div>
+      );
+    }
+
+    // While My Week/My Results are locked, My Move is the only place a member can reach their
+    // first Weekly Check-in from — shown across every Move state so there's no dead end
+    // waiting on a coach confirmation.
+    const firstCheckinBanner = tabsLocked ? (
+      <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginTop: "1.2rem", textAlign: "center" }}>
+        <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginBottom: "0.4rem" }}>Ready for your first Weekly Check-In?</div>
+        <div style={{ color: "#888", fontSize: "0.82rem", marginBottom: "0.9rem", lineHeight: 1.5 }}>A quick check-in on your last 7 days. This unlocks My Week and My Results.</div>
+        <button onClick={() => setFallSubView("checkin")} style={{ background: G, color: "#fff", border: "none", borderRadius: "10px", padding: "0.7rem 1.4rem", fontWeight: "bold", fontSize: "0.88rem", cursor: "pointer" }}>
+          Start Weekly Check-In →
+        </button>
+      </div>
+    ) : null;
+
     if (!fallState.pathway) {
       return (
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
             {hdr}
-            <ProfileTabs setView={setView} active="move" />
+            <ProfileTabs setView={setView} active="move" locked={tabsLocked} />
           </div>
           <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
             <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Waiting on your coach</div>
             <div style={{ color: "#666" }}>Your coach is reviewing your Reflection and will confirm your Fall Move soon.</div>
+            {firstCheckinBanner}
           </div>
         </div>
       );
@@ -4467,11 +4416,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
             {hdr}
-            <ProfileTabs setView={setView} active="move" />
+            <ProfileTabs setView={setView} active="move" locked={tabsLocked} />
           </div>
           <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
             <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>No active Move right now</div>
             <div style={{ color: "#666" }}>{bodyText}</div>
+            {firstCheckinBanner}
           </div>
         </div>
       );
@@ -4489,7 +4439,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
             {hdr}
-            <ProfileTabs setView={setView} active="move" />
+            <ProfileTabs setView={setView} active="move" locked={tabsLocked} />
           </div>
           <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
             <div style={{ borderRadius: "16px", overflow: "hidden", boxShadow: CARD_SHADOW }}>
@@ -4506,6 +4456,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 </div>
               </div>
             </div>
+            {firstCheckinBanner}
           </div>
         </div>
       );
@@ -4515,7 +4466,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
         <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
           {hdr}
-          <ProfileTabs setView={setView} active="move" />
+          <ProfileTabs setView={setView} active="move" locked={tabsLocked} />
         </div>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem" }}>
           <div style={{ borderRadius: "16px", overflow: "hidden", boxShadow: CARD_SHADOW }}>
@@ -4563,6 +4514,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               <div style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.78rem", fontStyle: "italic" }}>You don't need to do everything. Win this one.</div>
             </div>
           </div>
+          {firstCheckinBanner}
         </div>
       </div>
     );
