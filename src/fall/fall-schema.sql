@@ -15,10 +15,33 @@
 --     FOREIGN KEY (member_id) REFERENCES members(id);
 -- (repeat for the other three tables) once you've verified the type matches.
 --
--- Table creation order below is deliberate: fall_moves has to exist before
--- fall_member_state / fall_weekly_checks, since both reference fall_moves(id).
+-- Table creation order below is deliberate: fall_constraints has to exist before fall_moves,
+-- which has to exist before fall_member_state / fall_weekly_checks, since both of those
+-- reference fall_moves(id) (and fall_member_state also references fall_constraints(id)).
 
 create extension if not exists pgcrypto; -- for gen_random_uuid()
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- fall_constraints — Section 14: "the baseline belongs to the constraint, not the Move."
+-- One row per distinct constraint a member's season addresses. Today, nothing in the app lets
+-- a coach identify a genuinely different constraint after the one-time Reflection (there's no
+-- retake-Reflection flow and Q5 isn't coach-editable), so in practice every member has exactly
+-- one row here for the whole season — but modeling it as its own table (rather than more
+-- columns on fall_member_state) means a future "this is actually a different issue" flow
+-- doesn't need a second migration: it would just insert a new row and repoint
+-- fall_member_state.active_constraint_id, leaving this one intact as history. Created before
+-- fall_moves/fall_member_state below since both reference it.
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists fall_constraints (
+  id uuid primary key default gen_random_uuid(),
+  member_id text not null,
+  season text not null default 'fall_2026',
+  constraint_key text not null,      -- a Q5_OPTIONS id from fall-reflection-data.js, or 'other'
+  constraint_label text not null,    -- denormalized display label, stable even if Q5_OPTIONS wording changes later or the answer was "other"
+  baseline_rating smallint not null check (baseline_rating between 1 and 5),
+  baseline_date date not null,       -- "save the initial rating and date, never replace it with a weekly rating"
+  created_at timestamptz not null default now()
+);
 
 -- MIGRATION (2026-09-03) — run this against the already-existing staging fall_moves table;
 -- the CREATE TABLE below already includes the column for anyone standing up fresh.
@@ -45,6 +68,55 @@ alter table fall_moves add constraint fall_moves_status_check
 alter table fall_move_events drop constraint if exists fall_move_events_event_type_check;
 alter table fall_move_events add constraint fall_move_events_event_type_check
   check (event_type in ('assigned','dose_changed','coach_note_added','integration_candidate','integrated','graduated','replaced','reactivated'));
+
+-- MIGRATION (2026-09-03, point 14) — links from fall_member_state/fall_moves to the
+-- fall_constraints record above, plus the weekly-check-in snapshot columns.
+alter table fall_member_state add column if not exists active_constraint_id uuid references fall_constraints(id);
+alter table fall_moves add column if not exists constraint_id uuid references fall_constraints(id);
+alter table fall_weekly_checks add column if not exists move_dose_snapshot text;
+alter table fall_weekly_checks add column if not exists move_plan_snapshot text;
+
+-- One-time backfill for members who completed Reflection before fall_constraints existed —
+-- without this, every existing test member's My Results Constraint Impact card would show
+-- nothing until they redid Reflection, which isn't a repeatable flow. Skips anyone who
+-- already has an active_constraint_id (safe to re-run). Uses fall_member_state.created_at's
+-- date as the best available stand-in for "when Reflection was completed."
+do $$
+declare
+  r record;
+  v_constraint_id uuid;
+  v_label text;
+begin
+  for r in
+    select * from fall_member_state
+    where reflection_answers is not null and active_constraint_id is null and baseline_constraint_impact is not null
+  loop
+    v_label := case
+      when r.reflection_answers->>'q5' = 'other' then coalesce(r.reflection_answers->>'q5Other', 'Something else')
+      when r.reflection_answers->>'q5' = 'training_consistency' then 'Training consistency'
+      when r.reflection_answers->>'q5' = 'daily_movement' then 'Daily movement'
+      when r.reflection_answers->>'q5' = 'meal_structure' then 'Meal structure / nutrition'
+      when r.reflection_answers->>'q5' = 'food_availability' then 'Food availability / convenience'
+      when r.reflection_answers->>'q5' = 'sleep' then 'Sleep'
+      when r.reflection_answers->>'q5' = 'stress_downshift' then 'Stress / downshift'
+      when r.reflection_answers->>'q5' = 'weekends' then 'Weekends'
+      when r.reflection_answers->>'q5' = 'all_or_nothing' then 'All-or-nothing / plan fragility'
+      when r.reflection_answers->>'q5' = 'environment' then 'Environment / defaults'
+      when r.reflection_answers->>'q5' = 'overload' then 'Overload / lack of margin'
+      when r.reflection_answers->>'q5' = 'support' then 'Support / accountability'
+      when r.reflection_answers->>'q5' = 'recovery_depletion' then 'Recovery / unexplained depletion'
+      when r.reflection_answers->>'q5' = 'physical' then 'Pain, injury, or physical limitation'
+      else coalesce(r.reflection_answers->>'q5', 'Constraint')
+    end;
+
+    insert into fall_constraints (member_id, season, constraint_key, constraint_label, baseline_rating, baseline_date)
+    values (r.member_id, r.season, coalesce(r.reflection_answers->>'q5', 'other'), v_label, r.baseline_constraint_impact, r.created_at::date)
+    returning id into v_constraint_id;
+
+    update fall_member_state set active_constraint_id = v_constraint_id where id = r.id;
+    update fall_moves set constraint_id = v_constraint_id where member_id = r.member_id and season = r.season and constraint_id is null;
+  end loop;
+end $$;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- fall_moves — one row per Move assignment episode. Per the original scope doc, only
@@ -85,6 +157,11 @@ create table if not exists fall_moves (
   -- it. 'no_limit' (or null) means the algorithm's own result stands untouched.
   weekly_plan_limit text check (weekly_plan_limit in ('no_limit','anchor','builder','expansion')),
 
+  -- Section 14 — snapshot of which constraint this assignment addressed, so "if the coach
+  -- changes the Move but addresses the same constraint, keep the baseline" is provably true:
+  -- a reassignment for the same constraint just stamps the same constraint_id again.
+  constraint_id uuid references fall_constraints(id),
+
   assigned_at timestamptz not null default now(),
   closed_at timestamptz, -- set when status moves to graduated/replaced
 
@@ -113,7 +190,12 @@ create table if not exists fall_member_state (
 
   reflection_answers jsonb, -- the { q1..q8, q5Other, baselineImpact } object from fall-reflection-ui.jsx
   stop_flagged boolean not null default false,
-  baseline_constraint_impact smallint check (baseline_constraint_impact between 1 and 5),
+  baseline_constraint_impact smallint check (baseline_constraint_impact between 1 and 5), -- kept for compatibility; fall_constraints.baseline_rating (via active_constraint_id) is the source of truth as of Section 14
+
+  -- Section 14 — "the baseline belongs to the constraint, not the Move." Points at the
+  -- member's current fall_constraints row; set once at Reflection, unchanged by Move
+  -- reassignments that address the same constraint (which is every reassignment today).
+  active_constraint_id uuid references fall_constraints(id),
 
   scope_concern_flag boolean not null default false, -- coach-set manual override feeding fall-triage-data.js
 
@@ -137,6 +219,11 @@ create table if not exists fall_weekly_checks (
   week_key text not null,       -- e.g. "fall_2026_w4" (Section 42)
   season_week smallint not null check (season_week between 1 and 8),
   move_id uuid references fall_moves(id), -- which Move this check-in was against, if any
+  -- Data requirements (point 14) — snapshot of the dose/plan text being rated at submission
+  -- time, so a later coach edit to the Move can't retroactively change what this feedback
+  -- describes. move_id above is still the FK for joins; these two are the point-in-time copy.
+  move_dose_snapshot text,
+  move_plan_snapshot text,
 
   -- The 7 Spring-compatible Capacity Signals (Section 13.1) — same field names/option
   -- strings calcWeeklyScore() already expects, so scoring stays untouched.
@@ -221,6 +308,31 @@ create index if not exists idx_fall_move_events_move on fall_move_events (move_i
 -- whole-row upserts, avoiding races between coach and member edits touching the same row.
 -- ═════════════════════════════════════════════════════════════════════════════
 
+-- Reflection complete (Section 14) — creates the member's fall_constraints record and points
+-- fall_member_state at it, atomically, so the constraint's baseline/date/label can never exist
+-- without a member_state row (or vice versa) pointing at the wrong one mid-write.
+create or replace function fall_complete_reflection(
+  p_member_id text, p_season text, p_reflection_answers jsonb, p_stop_flagged boolean,
+  p_constraint_key text, p_constraint_label text, p_baseline_rating smallint
+) returns uuid as $$
+declare
+  v_constraint_id uuid;
+begin
+  insert into fall_constraints (member_id, season, constraint_key, constraint_label, baseline_rating, baseline_date)
+  values (p_member_id, p_season, p_constraint_key, p_constraint_label, p_baseline_rating, current_date)
+  returning id into v_constraint_id;
+
+  insert into fall_member_state (member_id, season, reflection_answers, stop_flagged, baseline_constraint_impact, active_constraint_id)
+  values (p_member_id, p_season, p_reflection_answers, p_stop_flagged, p_baseline_rating, v_constraint_id)
+  on conflict (member_id, season) do update
+    set reflection_answers = excluded.reflection_answers, stop_flagged = excluded.stop_flagged,
+        baseline_constraint_impact = excluded.baseline_constraint_impact,
+        active_constraint_id = excluded.active_constraint_id, updated_at = now();
+
+  return v_constraint_id;
+end;
+$$ language plpgsql;
+
 -- Midweek reset (Wed) — creates or patches just the midweek columns on that week's row,
 -- never touching signals/move-question columns the main check-in owns.
 create or replace function fall_upsert_midweek(
@@ -242,20 +354,26 @@ $$ language plpgsql;
 -- MIGRATION (2026-09-03, point 3): signature swaps the old p_move_level_reached/p_helpfulness/
 -- p_difficulty/p_friction_reason for the new, simpler p_move_used/p_move_helped/
 -- p_move_constraint_impact — drop the old 12-arg version first (new arg list = new overload).
+-- MIGRATION (2026-09-03, point 14): signature gained p_move_dose_snapshot/p_move_plan_snapshot
+-- — drop that 11-arg version too.
 drop function if exists fall_submit_weekly_checkin(text, text, text, smallint, uuid, jsonb, smallint, text, smallint, smallint, text, boolean);
+drop function if exists fall_submit_weekly_checkin(text, text, text, smallint, uuid, jsonb, smallint, text, text, smallint, boolean);
 create or replace function fall_submit_weekly_checkin(
   p_member_id text, p_season text, p_week_key text, p_season_week smallint, p_move_id uuid,
   p_signals jsonb, p_habit_score smallint, p_move_used text, p_move_helped text,
-  p_move_constraint_impact smallint, p_help_requested boolean
+  p_move_constraint_impact smallint, p_help_requested boolean,
+  p_move_dose_snapshot text, p_move_plan_snapshot text
 ) returns void as $$
 begin
-  insert into fall_weekly_checks (member_id, season, week_key, season_week, move_id, signals, habit_score, move_used, move_helped, move_constraint_impact, help_requested, submitted_at)
-  values (p_member_id, p_season, p_week_key, p_season_week, p_move_id, p_signals, p_habit_score, p_move_used, p_move_helped, p_move_constraint_impact, p_help_requested, now())
+  insert into fall_weekly_checks (member_id, season, week_key, season_week, move_id, signals, habit_score, move_used, move_helped, move_constraint_impact, help_requested, move_dose_snapshot, move_plan_snapshot, submitted_at)
+  values (p_member_id, p_season, p_week_key, p_season_week, p_move_id, p_signals, p_habit_score, p_move_used, p_move_helped, p_move_constraint_impact, p_help_requested, p_move_dose_snapshot, p_move_plan_snapshot, now())
   on conflict (member_id, week_key) do update
     set move_id = excluded.move_id, signals = excluded.signals, habit_score = excluded.habit_score,
         move_used = excluded.move_used, move_helped = excluded.move_helped,
         move_constraint_impact = excluded.move_constraint_impact,
-        help_requested = excluded.help_requested, submitted_at = now(), updated_at = now();
+        help_requested = excluded.help_requested,
+        move_dose_snapshot = excluded.move_dose_snapshot, move_plan_snapshot = excluded.move_plan_snapshot,
+        submitted_at = now(), updated_at = now();
 end;
 $$ language plpgsql;
 
@@ -263,6 +381,9 @@ $$ language plpgsql;
 -- logs the event, and points fall_member_state at it, atomically.
 -- MIGRATION (2026-09-03): signature gained p_weekly_plan_limit, then p_personalized_plan —
 -- Postgres treats a changed argument list as a new overload, so drop prior versions first.
+-- MIGRATION (2026-09-03, point 14): no new param — constraint_id is looked up server-side
+-- from fall_member_state.active_constraint_id rather than passed in, so the link can never
+-- drift from whatever the member's actual current constraint record is.
 drop function if exists fall_confirm_move(text, text, text, text, text, text, text);
 drop function if exists fall_confirm_move(text, text, text, text, text, text, text, text);
 create or replace function fall_confirm_move(
@@ -272,9 +393,13 @@ create or replace function fall_confirm_move(
 ) returns uuid as $$
 declare
   v_move_id uuid;
+  v_constraint_id uuid;
 begin
-  insert into fall_moves (member_id, season, move_key, dose, status, candidate_primary, candidate_alternate, coach_note, weekly_plan_limit, personalized_plan)
-  values (p_member_id, p_season, p_move_key, p_dose, 'active', p_candidate_primary, p_candidate_alternate, p_coach_note, p_weekly_plan_limit, p_personalized_plan)
+  select active_constraint_id into v_constraint_id from fall_member_state
+  where member_id = p_member_id and season = p_season;
+
+  insert into fall_moves (member_id, season, move_key, dose, status, candidate_primary, candidate_alternate, coach_note, weekly_plan_limit, personalized_plan, constraint_id)
+  values (p_member_id, p_season, p_move_key, p_dose, 'active', p_candidate_primary, p_candidate_alternate, p_coach_note, p_weekly_plan_limit, p_personalized_plan, v_constraint_id)
   returning id into v_move_id;
 
   insert into fall_move_events (move_id, member_id, event_type, coach_note)

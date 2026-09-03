@@ -942,6 +942,15 @@ async function loadFallActiveMove(moveId) {
   const { data } = await supabase.from("fall_moves").select("*").eq("id", moveId).maybeSingle();
   return data || null;
 }
+async function loadFallConstraint(constraintId) {
+  if (!constraintId) return null;
+  const { data } = await supabase.from("fall_constraints").select("*").eq("id", constraintId).maybeSingle();
+  return data || null;
+}
+async function loadFallWeeklyChecks(memberId) {
+  const { data } = await supabase.from("fall_weekly_checks").select("*").eq("member_id", memberId).eq("season", FALL_SEASON).order("season_week", { ascending: true });
+  return data || [];
+}
 
 
 // Coach-facing Fall tab: queue of members needing Snapshot review + confirmation, plus the Triage dashboard.
@@ -1791,6 +1800,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   // ── Fall — shared across the My Week / My Move tabs so both read one source of truth ──
   const [fallState, setFallState] = useState(null);
   const [fallActiveMove, setFallActiveMove] = useState(null);
+  const [fallConstraint, setFallConstraint] = useState(null);
+  const [fallWeeklyChecks, setFallWeeklyChecks] = useState([]);
   const [fallLoading, setFallLoading] = useState(true);
   const [fallSubView, setFallSubView] = useState("home"); // home | checkin | midweek
   const fallIsIntegrated = fallActiveMove?.status === "integrated";
@@ -1803,19 +1814,25 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const state = await loadFallMemberState(currentMember.id);
     setFallState(state);
     setFallActiveMove(state?.active_move_id ? await loadFallActiveMove(state.active_move_id) : null);
+    setFallConstraint(state?.active_constraint_id ? await loadFallConstraint(state.active_constraint_id) : null);
+    setFallWeeklyChecks(await loadFallWeeklyChecks(currentMember.id));
     setFallLoading(false);
   }
   useEffect(() => { if (currentMember) refreshFallState(); }, [currentMember?.id]);
 
   async function handleFallReflectionComplete({ answers, stopFlagged }) {
-    await supabase.from("fall_member_state").upsert(
-      {
-        member_id: currentMember.id, season: FALL_SEASON,
-        reflection_answers: answers, stop_flagged: stopFlagged,
-        baseline_constraint_impact: answers.baselineImpact ? parseInt(answers.baselineImpact, 10) : null,
-      },
-      { onConflict: "member_id,season" }
-    );
+    // Section 14 — "the baseline belongs to the constraint, not the Move." Creates the
+    // member's one (so far — no UI yet lets a coach identify a genuinely different
+    // constraint later) fall_constraints record and points fall_member_state at it,
+    // atomically, server-side.
+    const q5 = answers.q5;
+    const constraintLabel = q5 === "other" ? answers.q5Other : Q5_OPTIONS.find((o) => o.id === q5)?.label;
+    await supabase.rpc("fall_complete_reflection", {
+      p_member_id: currentMember.id, p_season: FALL_SEASON,
+      p_reflection_answers: answers, p_stop_flagged: stopFlagged,
+      p_constraint_key: q5 || null, p_constraint_label: constraintLabel || null,
+      p_baseline_rating: answers.baselineImpact ? parseInt(answers.baselineImpact, 10) : null,
+    });
     await refreshFallState();
   }
 
@@ -1828,6 +1845,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       p_move_used: payload.moveUsed, p_move_helped: payload.moveHelped,
       p_move_constraint_impact: payload.moveConstraintImpact ? parseInt(payload.moveConstraintImpact, 10) : null,
       p_help_requested: payload.helpRequested,
+      // Data requirements — "snapshot of the Move ID, dose, and plan text being rated," so a
+      // later coach edit to the Move can't retroactively change what this feedback describes.
+      p_move_dose_snapshot: fallActiveMove?.dose || null,
+      p_move_plan_snapshot: fallActiveMove?.personalized_plan || null,
     });
 
     // Dual-write into Spring's own weeklyChecks array — same shape Spring's own check-in writes —
@@ -2797,6 +2818,21 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     }
     const community = getCommunityStats();
 
+    // ── Constraint Impact card (Section 14) — "use the latest ANSWERED impact question;
+    // missing answers must not overwrite a previous rating," so scan from the end rather than
+    // just reading the latest check-in row (which may have left this question blank).
+    let constraintImpact = null;
+    if (fallConstraint) {
+      const latestAnswered = [...fallWeeklyChecks].reverse().find(c => c.move_constraint_impact !== null && c.move_constraint_impact !== undefined);
+      const baseline = fallConstraint.baseline_rating;
+      const latest = latestAnswered ? latestAnswered.move_constraint_impact : null;
+      const diff = latest !== null ? latest - baseline : null;
+      const situationMsg = diff === null ? "Waiting for your next rating"
+        : diff > 0 ? `Getting in the way more — up ${diff} point${diff === 1 ? "" : "s"}`
+        : diff < 0 ? `Getting in the way less — down ${-diff} point${diff === -1 ? "" : "s"}`
+        : "Same reported impact";
+      constraintImpact = { label: fallConstraint.constraint_label, baseline, latest, situationMsg, updatedDate: latestAnswered?.submitted_at };
+    }
 
     return (
       <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
@@ -2844,6 +2880,25 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                 <span style={{ fontSize: "0.78rem", color: "#aaa" }}>Explore the resource library</span>
                 <span style={{ fontSize: "0.78rem", color: G, fontWeight: "bold" }}>→</span>
               </button>
+            </div>
+          )}
+
+          {/* Constraint Impact — Section 14. Kept separate from Capacity Index/Margin Score. */}
+          {constraintImpact && (
+            <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginBottom: "1.5rem", ...fadeUp(75) }}>
+              <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: "#999", letterSpacing: "0.06em", marginBottom: "0.5rem" }}>CONSTRAINT IMPACT</div>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "0.95rem", marginBottom: "0.6rem" }}>{constraintImpact.label}</div>
+              <div style={{ fontSize: "0.85rem", color: "#666", marginBottom: "0.2rem" }}>Starting impact: <strong style={{ color: DARK }}>{constraintImpact.baseline}/5</strong></div>
+              {constraintImpact.latest !== null && (
+                <div style={{ fontSize: "0.85rem", color: "#666", marginBottom: "0.6rem" }}>Latest impact: <strong style={{ color: DARK }}>{constraintImpact.latest}/5</strong></div>
+              )}
+              <div style={{ fontSize: "0.85rem", color: G, fontWeight: "600", marginTop: constraintImpact.latest !== null ? 0 : "0.6rem" }}>{constraintImpact.situationMsg}</div>
+              {constraintImpact.updatedDate && (
+                <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: "0.5rem" }}>Updated {new Date(constraintImpact.updatedDate).toLocaleDateString()}</div>
+              )}
+              {fallIsIntegrated && (
+                <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: "0.3rem" }}>Move Integrated</div>
+              )}
             </div>
           )}
 
