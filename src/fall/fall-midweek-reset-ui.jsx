@@ -12,11 +12,10 @@ const STATUS_OPTIONS = [
 
 /**
  * @param {{
- *   moveTitle: string,
  *   onComplete: (result: { status: string, shiftToAnchor: boolean|null }) => void,
  * }} props
  */
-export function FallMidweekReset({ moveTitle, onComplete }) {
+export function FallMidweekReset({ onComplete }) {
   const [status, setStatus] = useState(null);
 
   const handleStatus = (id) => {
@@ -28,10 +27,9 @@ export function FallMidweekReset({ moveTitle, onComplete }) {
   return (
     <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS, display: "flex", alignItems: "center", justifyContent: "center", padding: "1.5rem" }}>
       <div style={{ maxWidth: "400px", width: "100%", background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.5rem" }}>
-        <div style={{ fontSize: "1.05rem", fontWeight: "bold", color: DARK, marginBottom: "0.3rem" }}>
-          How's your Capacity Move going?
+        <div style={{ fontSize: "1.05rem", fontWeight: "bold", color: DARK, marginBottom: "1.1rem" }}>
+          How's your week going so far?
         </div>
-        {moveTitle && <div style={{ color: "#888", fontSize: "0.85rem", marginBottom: "1.1rem" }}>{moveTitle}</div>}
 
         {status !== "adjust" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>

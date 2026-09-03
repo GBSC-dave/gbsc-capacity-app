@@ -657,7 +657,13 @@ function getDeclaredWeek(allChecks, weeklyPlanLimit) {
   if (isStabilizer) role = "Anchor";
   else if (isPerformer) role = "Expansion";
   else role = "Builder";
+  const algorithmRole = role;
   role = applyWeeklyPlanLimit(role, weeklyPlanLimit);
+  // True only when the cap actually pulled the role down — a member whose own signals already
+  // land on the capped role sees the normal, honest reasoning below; only a member who'd
+  // otherwise be told a stronger week is warranted gets this override, so the copy is never
+  // reporting fake "signals" reasoning that has nothing to do with why their week looks capped.
+  const cappedByMove = role !== algorithmRole;
 
   // ── Reason lines ───────────────────────────────────────────────────────────
   // Week 1-2: score-based, honest about thin data
@@ -777,8 +783,11 @@ function getDeclaredWeek(allChecks, weeklyPlanLimit) {
   return {
     role,
     weekCount,
-    reasonLine: reasonLines[role],
-    whyLine: whyLines[role],
+    cappedByMove,
+    reasonLine: cappedByMove ? "Held here by your current Move — not this week's signals." : reasonLines[role],
+    whyLine: cappedByMove
+      ? "Your coach set this week's ceiling as part of your current Move. It isn't a read on how this week's going — your other signals are still being tracked as usual."
+      : whyLines[role],
     focusSignal,
     ...cfg,
   };
@@ -916,6 +925,14 @@ function ProfileTabs({ setView, active }) {
 
 // ─── Fall 2026 ──────────────────────────────────────────────────────────────
 const FALL_SEASON = "fall_2026";
+
+// Member-facing label for a Move's dose — deliberately NOT "Anchor/Builder/Expansion" (the
+// underlying stored values, and what the coach screens still call it) because My Week already
+// uses those exact three words for a different, unrelated weekly-role system. Showing both on
+// the same screen (since Point 1's My Week priority card) reads as the app contradicting
+// itself. This only changes what the MEMBER sees on My Move's dose pill — the data model,
+// coach-facing UI, and dose values ("anchor"/"builder"/"expansion") are untouched.
+const MOVE_DOSE_MEMBER_LABEL = { anchor: "Step 1", builder: "Step 2", expansion: "Step 3" };
 const FALL_START_DATE = new Date(2026, 8, 20); // Sept 20 2026 — confirmed with Eric, revisable
 
 // Staging-only override so time-sensitive Fall windows (Week 4/8) can be tested without
@@ -4045,11 +4062,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       );
     }
     if (fallSubView === "midweek") {
-      const card = fallActiveMove ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
       return (
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           {hdr}
-          <FallMidweekReset moveTitle={card?.title} onComplete={handleFallMidweekComplete} />
+          <FallMidweekReset onComplete={handleFallMidweekComplete} />
         </div>
       );
     }
@@ -4516,7 +4532,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <div style={{ background: CARD, padding: "1.4rem 1.5rem" }}>
               <div style={{ color: "#666", marginBottom: "1.3rem", lineHeight: 1.6, fontSize: "0.9rem" }}>{card.thisMightBeYourMoveIf}</div>
 
-              <div style={pillStyle}>YOUR MOVE · {fallActiveMove.dose?.toUpperCase()}</div>
+              <div style={pillStyle}>YOUR MOVE · {(MOVE_DOSE_MEMBER_LABEL[fallActiveMove.dose] || fallActiveMove.dose)?.toUpperCase()}</div>
               <div style={{ color: DARK, fontWeight: "600", fontSize: "1rem", lineHeight: 1.5, marginBottom: "1.3rem" }}>{card.activeDoseText}</div>
 
               {fallActiveMove.personalized_plan && (
