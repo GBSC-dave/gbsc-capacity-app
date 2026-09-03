@@ -3,7 +3,7 @@
 // a hypothesis, not a blank slate. The algorithm never assigns a Move on its own — this
 // screen is where the coach confirms (or overrides) the pathway, Move, and A/B/E dose.
 //
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Q1_OPTIONS, Q3_OPTIONS, Q4_OPTIONS, Q5_OPTIONS, Q6_BRANCHES, Q7_OPTIONS, Q8_OPTIONS, BASELINE_IMPACT_LABELS } from "./fall-reflection-data.js";
 import { FALL_CAPACITY_MOVES, FALL_MOVE_IDS } from "./fall-moves-data.js";
 import { PATHWAYS } from "./fall-matching-data.js";
@@ -50,24 +50,47 @@ const DOSE_OPTIONS = [
   { id: "expansion", label: "Expansion" },
 ];
 
+const WEEKLY_LIMIT_OPTIONS = [
+  { id: "no_limit", label: "No limit" },
+  { id: "anchor", label: "Anchor" },
+  { id: "builder", label: "Builder" },
+  { id: "expansion", label: "Expansion" },
+];
+
+// Fall App Implementation Handoff, Section 1 — default weekly plan limit per assigned Move.
+// "Currently displayed weekly level" means snapshot the member's live getDeclaredWeek() role
+// at assignment time (currentDeclaredRole, passed down by the caller); falls back to Anchor
+// when there's no weekly history yet to snapshot. The coach can always override the default.
+function defaultWeeklyPlanLimit(moveKey, currentDeclaredRole) {
+  if (moveKey === "M9") return "anchor"; // Win the Minimum Week
+  if (moveKey === "M6" || moveKey === "M11") return currentDeclaredRole || "anchor"; // Protect Sleep Opportunity / Create Margin
+  return "no_limit";
+}
+
 /**
  * @param {{
  *   member: { name: string },
  *   reflection: { answers: object, stopFlagged: boolean, match: { pathway: string|null, primary: string|null, alternate: string|null, note: string|null } },
  *   objectiveContext?: string,  // e.g. attendance/testing/history — Spring-side data, not part of the Reflection itself
- *   onConfirm: (decision: { pathway: string, moveId: string|null, dose: string|null, coachNote: string }) => void,
+ *   currentDeclaredRole?: "anchor"|"builder"|"expansion"|null,  // member's live getDeclaredWeek() role, for the weekly plan limit's default
+ *   onConfirm: (decision: { pathway: string, moveId: string|null, dose: string|null, coachNote: string, weeklyPlanLimit: string|null }) => void,
  *   onBack?: () => void,
  * }} props
  */
-export function FallCoachSnapshot({ member, reflection, objectiveContext, onConfirm, onBack }) {
+export function FallCoachSnapshot({ member, reflection, objectiveContext, currentDeclaredRole, onConfirm, onBack }) {
   const { answers, stopFlagged, match } = reflection;
   const q6Options = answers.q5 ? Q6_BRANCHES[answers.q5] || [] : [];
 
   const [pathway, setPathway] = useState(match?.pathway || null);
   const [moveId, setMoveId] = useState(match?.primary || null);
   const [dose, setDose] = useState(null);
+  const [weeklyPlanLimit, setWeeklyPlanLimit] = useState(() => (match?.primary ? defaultWeeklyPlanLimit(match.primary, currentDeclaredRole) : "no_limit"));
   const [coachNote, setCoachNote] = useState("");
   const [validationMsg, setValidationMsg] = useState("");
+
+  useEffect(() => {
+    if (moveId) setWeeklyPlanLimit(defaultWeeklyPlanLimit(moveId, currentDeclaredRole));
+  }, [moveId]);
 
   const isCapacityMove = pathway === PATHWAYS.CAPACITY_MOVE;
   const canConfirm = isCapacityMove ? !!moveId && !!dose : !!pathway;
@@ -77,7 +100,10 @@ export function FallCoachSnapshot({ member, reflection, objectiveContext, onConf
       setValidationMsg(isCapacityMove ? "Pick a Move and a dose before confirming." : "Pick a pathway before confirming.");
       return;
     }
-    onConfirm({ pathway, moveId: isCapacityMove ? moveId : null, dose: isCapacityMove ? dose : null, coachNote: coachNote.trim() });
+    onConfirm({
+      pathway, moveId: isCapacityMove ? moveId : null, dose: isCapacityMove ? dose : null,
+      coachNote: coachNote.trim(), weeklyPlanLimit: isCapacityMove ? weeklyPlanLimit : null,
+    });
   };
 
   return (
@@ -217,6 +243,19 @@ export function FallCoachSnapshot({ member, reflection, objectiveContext, onConf
                   {FALL_CAPACITY_MOVES[moveId].doses[dose]}
                 </div>
               )}
+            </SectionCard>
+
+            <SectionCard title="Weekly plan limit">
+              <select
+                value={weeklyPlanLimit}
+                onChange={(e) => setWeeklyPlanLimit(e.target.value)}
+                style={{ width: "100%", padding: "0.6rem 0.7rem", border: "1.5px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", fontFamily: SANS, background: "#fff" }}
+              >
+                {WEEKLY_LIMIT_OPTIONS.map((opt) => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+              </select>
+              <div style={{ fontSize: "0.78rem", color: "#888", marginTop: "0.5rem", lineHeight: 1.4 }}>
+                Keeps weekly targets from increasing beyond this level while this Move is active.
+              </div>
             </SectionCard>
           </>
         )}

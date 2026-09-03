@@ -584,7 +584,18 @@ const WEEKEND_PLANS = {
 };
 
 // ─── Declared Week Engine ─────────────────────────────────────────────────────
-function getDeclaredWeek(allChecks) {
+// Fall's coach-set cap on the weekly role an active Move's assignment allows (Section 1 of
+// the Fall App Implementation Handoff) — "anchor" | "builder" | "expansion" | "no_limit" | null/undefined.
+// Never raises the role the algorithm would otherwise pick, only lowers it.
+const WEEKLY_ROLE_RANK = { Anchor: 1, Builder: 2, Expansion: 3 };
+function applyWeeklyPlanLimit(role, weeklyPlanLimit) {
+  if (!weeklyPlanLimit || weeklyPlanLimit === "no_limit") return role;
+  const limitRole = weeklyPlanLimit.charAt(0).toUpperCase() + weeklyPlanLimit.slice(1);
+  if (WEEKLY_ROLE_RANK[limitRole] < WEEKLY_ROLE_RANK[role]) return limitRole;
+  return role;
+}
+
+function getDeclaredWeek(allChecks, weeklyPlanLimit) {
   const nonBaseline = (allChecks || []).filter(c => c && !c.isBaseline);
   // Fall back to baseline check when no weekly checks exist yet
   const baseline = (allChecks || []).find(c => c && c.isBaseline);
@@ -645,6 +656,7 @@ function getDeclaredWeek(allChecks) {
   if (isStabilizer) role = "Anchor";
   else if (isPerformer) role = "Expansion";
   else role = "Builder";
+  role = applyWeeklyPlanLimit(role, weeklyPlanLimit);
 
   // ── Reason lines ───────────────────────────────────────────────────────────
   // Week 1-2: score-based, honest about thin data
@@ -970,6 +982,7 @@ function FallCoachTab({ members }) {
       await supabase.rpc("fall_confirm_move", {
         p_member_id: memberId, p_season: FALL_SEASON, p_move_key: decision.moveId, p_dose: decision.dose,
         p_candidate_primary: match?.primary || null, p_candidate_alternate: match?.alternate || null, p_coach_note: decision.coachNote || null,
+        p_weekly_plan_limit: decision.weeklyPlanLimit || "no_limit",
       });
     } else {
       await supabase.rpc("fall_set_pathway", { p_member_id: memberId, p_season: FALL_SEASON, p_pathway: decision.pathway });
@@ -988,6 +1001,11 @@ function FallCoachTab({ members }) {
       p_move_id: moveId, p_member_id: memberId, p_season: FALL_SEASON, p_dose: dose,
       p_structured_reason: structuredReason, p_coach_note: note || null,
     });
+    await refresh();
+  }
+
+  async function handleSetWeeklyPlanLimit(moveId, limit) {
+    await supabase.rpc("fall_set_weekly_plan_limit", { p_move_id: moveId, p_weekly_plan_limit: limit });
     await refresh();
   }
 
@@ -1016,6 +1034,7 @@ function FallCoachTab({ members }) {
           move={activeMove}
           onAddNote={(note) => handleAddNote(activeMove.id, selectedMemberId, note)}
           onChangeDose={(dose, reason, note) => handleChangeDose(activeMove.id, selectedMemberId, dose, reason, note)}
+          onSetWeeklyPlanLimit={(limit) => handleSetWeeklyPlanLimit(activeMove.id, limit)}
           onCloseMove={(eventType, reason, note, exitImpact) => handleCloseMove(activeMove.id, selectedMemberId, eventType, reason, note, exitImpact)}
           onBack={() => setSelectedMemberId(null)}
         />
@@ -1023,10 +1042,15 @@ function FallCoachTab({ members }) {
     }
 
     const match = matchCandidateMove({ q5: state.reflection_answers.q5, q6: state.reflection_answers.q6, q8: state.reflection_answers.q8 });
+    // Snapshot the member's live weekly role so the weekly-plan-limit default for
+    // Create Margin / Protect Sleep Opportunity ("currently displayed weekly level") has
+    // something real to anchor to — see defaultWeeklyPlanLimit in fall-coach-snapshot-ui.jsx.
+    const currentDeclaredRole = getDeclaredWeek(member?.weeklyChecks || [])?.role?.toLowerCase() || null;
     return (
       <FallCoachSnapshot
         member={member}
         reflection={{ answers: state.reflection_answers, stopFlagged: state.stop_flagged, match: state.stop_flagged ? null : match }}
+        currentDeclaredRole={currentDeclaredRole}
         onConfirm={(decision) => handleConfirm(selectedMemberId, decision)}
         onBack={() => setSelectedMemberId(null)}
       />
@@ -1937,7 +1961,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
     // Compute declared week from baseline — getDeclaredWeek now falls back to baseline score
-    const dw = getDeclaredWeek(member.weeklyChecks);
+    const dw = getDeclaredWeek(member.weeklyChecks, fallActiveMove?.weekly_plan_limit);
     setDeclaredWeek(dw);
     // Don't hand off to the tabs yet — the Fall Reflection is step 3 of onboarding now,
     // completed before the member ever sees My Week / My Move / My Results.
@@ -1993,7 +2017,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     setCurrentMember(updatedMember);
     setLastCheckScore(weekScore);
     setCheck({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "", sleepQuality: "", energyLevel: "", physicalRecovery: "", disruption: "" });
-    const dw = getDeclaredWeek(updatedMember.weeklyChecks);
+    const dw = getDeclaredWeek(updatedMember.weeklyChecks, fallActiveMove?.weekly_plan_limit);
     setPrevView("profile");
     setDeclaredWeek(dw);
     setView("declaredWeek");
@@ -2497,10 +2521,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           </AccordionSection>
 
           <AccordionSection label="This week's focus" open={focusOpen} onToggle={() => setFocusOpen(o => !o)} accentColor={dw.color} textColor={dw.textSupport}>
-            <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>PRIORITY THIS WEEK</div>
+            <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>THIS WEEK'S HEALTH SIGNAL</div>
             <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: dw.color }}>{dw.focusSignal}</div>
             <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginTop: "0.4rem", lineHeight: 1.5 }}>
-              Of all your habit signals, this is the one area that will move the needle most this week.
+              An area to keep an eye on this week.
             </div>
           </AccordionSection>
 
@@ -2516,7 +2540,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
   if (view === "frictionPlanning" && currentMember) {
     const allChecks = currentMember.weeklyChecks || [];
-    const dw = getDeclaredWeek(allChecks);
+    const dw = getDeclaredWeek(allChecks, fallActiveMove?.weekly_plan_limit);
     const checks = allChecks.filter(c => c && !c.isBaseline);
     const thisWeek = getCurrentWeekCheck(currentMember);
     const accentColor = dw ? dw.color : G;
@@ -2649,7 +2673,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const baseline = allChecks.find(c => c && c.isBaseline);
     const checks = allChecks.filter(c => c && !c.isBaseline);
     // Single source of truth for role — matches the "Your Week Is Set" screen
-    const cfDw = getDeclaredWeek(allChecks);
+    const cfDw = getDeclaredWeek(allChecks, fallActiveMove?.weekly_plan_limit);
     // For baseline-only state, use the baseline habit score so CI is visible right away
     const habitAvg = checks.length
       ? Math.round(checks.reduce((s,c) => s+c.score, 0) / checks.length)
@@ -3319,7 +3343,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     if (!thisWeek) { setView("profile"); return null; }
 
     const already = thisWeek.midweekStatus;
-    const dw = declaredWeek || getDeclaredWeek(allChecks);
+    const dw = declaredWeek || getDeclaredWeek(allChecks, fallActiveMove?.weekly_plan_limit);
     const accentColor = dw?.color || G;
     const outlook = thisWeek?.weeklyOutlook;
     const role = dw?.role || "Anchor";
@@ -3427,7 +3451,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const thisWeek = getCurrentWeekCheck(currentMember);
     if (!thisWeek) { setView("checkFeedback"); return null; }
     const status = thisWeek?.midweekStatus;
-    const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || []);
+    const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || [], fallActiveMove?.weekly_plan_limit);
     const accentColor = dw?.color || G;
     const outlook = thisWeek?.weeklyOutlook;
     const role = dw?.role || "Anchor";
@@ -3624,7 +3648,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     if (!thisWeek) return null;
 
     const already = thisWeek.weekResult;
-    const dw = declaredWeek || getDeclaredWeek(allChecks);
+    const dw = declaredWeek || getDeclaredWeek(allChecks, fallActiveMove?.weekly_plan_limit);
     const accentColor = dw?.color || G;
 
     async function handleWeekResult(result) {
@@ -3709,7 +3733,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const thisWeek = getCurrentWeekCheck(currentMember);
     if (!thisWeek) { setView("profile"); return null; }
     const result = thisWeek?.weekResult;
-    const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || []);
+    const dw = declaredWeek || getDeclaredWeek(currentMember.weeklyChecks || [], fallActiveMove?.weekly_plan_limit);
     const accentColor = dw?.color || G;
     const streak = calcStreak(currentMember);
 
@@ -3943,7 +3967,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     // "Your Week Is Set" screen's content and color scheme), independent of Fall's Move
     // state. This is the tactical "what to do this week" layer; My Move (the "fall" view)
     // is the separate strategic 12-Moves layer.
-    const dw = getDeclaredWeek(currentMember.weeklyChecks || []);
+    const dw = getDeclaredWeek(currentMember.weeklyChecks || [], fallActiveMove?.weekly_plan_limit);
+    const priorityCard = fallActiveMove ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
 
     if (!dw) {
       return (
@@ -3992,6 +4017,26 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             </div>
           </div>
 
+          {/* ── Your Priority — the active Capacity Move, per the Fall App Implementation
+              Handoff Section 1. Shows the personalized plan once that field exists (point 2);
+              until then, falls back to the assigned dose's standard instruction. ── */}
+          {priorityCard && (
+            <div style={{ background: DARK, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginBottom: "1rem" }}>
+              <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: G, letterSpacing: "0.08em", marginBottom: "0.6rem" }}>YOUR PRIORITY</div>
+              <div style={{ fontSize: "1.05rem", fontWeight: "bold", color: "#fff", marginBottom: "0.5rem" }}>{priorityCard.title}</div>
+              <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.5, marginBottom: "0.8rem" }}>
+                {priorityCard.activeDoseText}
+              </div>
+              <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.55)", marginBottom: "0.9rem" }}>Your weekly targets support this plan.</div>
+              <button
+                onClick={() => setView("fall")}
+                style={{ background: "none", border: "none", color: G, fontWeight: "bold", fontSize: "0.85rem", cursor: "pointer", padding: 0 }}
+              >
+                View My Move →
+              </button>
+            </div>
+          )}
+
           {/* ── This week's targets — flat, nothing collapsed ── */}
           <div style={sectionCardStyle}>
             <div style={sectionLabelStyle}>This Week's Targets</div>
@@ -4015,10 +4060,10 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {/* ── This week's focus ── */}
           <div style={sectionCardStyle}>
             <div style={sectionLabelStyle}>This Week's Focus</div>
-            <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>PRIORITY THIS WEEK</div>
+            <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>THIS WEEK'S HEALTH SIGNAL</div>
             <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: dw.color }}>{dw.focusSignal}</div>
             <div style={{ fontSize: "0.78rem", color: dw.textSupport, marginTop: "0.4rem", lineHeight: 1.5 }}>
-              Of all your habit signals, this is the one area that will move the needle most this week.
+              An area to keep an eye on this week.
             </div>
           </div>
 

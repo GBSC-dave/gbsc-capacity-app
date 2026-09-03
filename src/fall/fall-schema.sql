@@ -20,6 +20,11 @@
 
 create extension if not exists pgcrypto; -- for gen_random_uuid()
 
+-- MIGRATION (2026-09-03) — run this against the already-existing staging fall_moves table;
+-- the CREATE TABLE below already includes the column for anyone standing up fresh.
+alter table fall_moves add column if not exists weekly_plan_limit text
+  check (weekly_plan_limit in ('no_limit','anchor','builder','expansion'));
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- fall_moves — one row per Move assignment episode. Per the original scope doc, only
 -- THREE statuses are ever persisted here — everything richer in Section 20's lifecycle
@@ -41,6 +46,11 @@ create table if not exists fall_moves (
   candidate_alternate text,
 
   coach_note text,
+
+  -- Fall App Implementation Handoff, Section 1 — caps the highest weekly A/B/E role the
+  -- existing getDeclaredWeek() algorithm may render while this Move is active. Never raises
+  -- it. 'no_limit' (or null) means the algorithm's own result stands untouched.
+  weekly_plan_limit text check (weekly_plan_limit in ('no_limit','anchor','builder','expansion')),
 
   assigned_at timestamptz not null default now(),
   closed_at timestamptz, -- set when status moves to graduated/replaced
@@ -206,15 +216,18 @@ $$ language plpgsql;
 
 -- Coach confirms a Capacity Move (FallCoachSnapshot.onConfirm) — assigns the Move,
 -- logs the event, and points fall_member_state at it, atomically.
+-- MIGRATION (2026-09-03): signature gained p_weekly_plan_limit — Postgres treats a changed
+-- argument list as a new overload, so drop the old 7-arg version first.
+drop function if exists fall_confirm_move(text, text, text, text, text, text, text);
 create or replace function fall_confirm_move(
   p_member_id text, p_season text, p_move_key text, p_dose text,
-  p_candidate_primary text, p_candidate_alternate text, p_coach_note text
+  p_candidate_primary text, p_candidate_alternate text, p_coach_note text, p_weekly_plan_limit text
 ) returns uuid as $$
 declare
   v_move_id uuid;
 begin
-  insert into fall_moves (member_id, season, move_key, dose, status, candidate_primary, candidate_alternate, coach_note)
-  values (p_member_id, p_season, p_move_key, p_dose, 'active', p_candidate_primary, p_candidate_alternate, p_coach_note)
+  insert into fall_moves (member_id, season, move_key, dose, status, candidate_primary, candidate_alternate, coach_note, weekly_plan_limit)
+  values (p_member_id, p_season, p_move_key, p_dose, 'active', p_candidate_primary, p_candidate_alternate, p_coach_note, p_weekly_plan_limit)
   returning id into v_move_id;
 
   insert into fall_move_events (move_id, member_id, event_type, coach_note)
@@ -290,6 +303,17 @@ begin
 
   update fall_member_state set dose = p_dose, updated_at = now()
   where member_id = p_member_id and season = p_season and active_move_id = p_move_id;
+end;
+$$ language plpgsql;
+
+-- Coach adjusts the weekly plan limit on an already-active Move (Section 1 of the Fall App
+-- Implementation Handoff). A plain setting, not a lifecycle decision — no structured reason,
+-- no event log entry, unlike dose changes and closures.
+create or replace function fall_set_weekly_plan_limit(
+  p_move_id uuid, p_weekly_plan_limit text
+) returns void as $$
+begin
+  update fall_moves set weekly_plan_limit = p_weekly_plan_limit, updated_at = now() where id = p_move_id;
 end;
 $$ language plpgsql;
 

@@ -30,6 +30,13 @@ const DOSE_OPTIONS = [
   { id: "expansion", label: "Expansion" },
 ];
 
+const WEEKLY_LIMIT_OPTIONS = [
+  { id: "no_limit", label: "No limit" },
+  { id: "anchor", label: "Anchor" },
+  { id: "builder", label: "Builder" },
+  { id: "expansion", label: "Expansion" },
+];
+
 function ReasonPicker({ value, onChange }) {
   return (
     <select
@@ -46,14 +53,15 @@ function ReasonPicker({ value, onChange }) {
 /**
  * @param {{
  *   member: { name: string },
- *   move: { id: string, move_key: string, dose: string, coach_note: string|null },
+ *   move: { id: string, move_key: string, dose: string, coach_note: string|null, weekly_plan_limit: string|null },
  *   onAddNote: (note: string) => void,
  *   onChangeDose: (dose: string, structuredReason: string, note: string) => void,
+ *   onSetWeeklyPlanLimit: (limit: string) => void,
  *   onCloseMove: (eventType: "graduated"|"replaced", structuredReason: string, note: string, exitImpact: number|null) => void,
  *   onBack?: () => void,
  * }} props
  */
-export function FallManageMove({ member, move, onAddNote, onChangeDose, onCloseMove, onBack }) {
+export function FallManageMove({ member, move, onAddNote, onChangeDose, onSetWeeklyPlanLimit, onCloseMove, onBack }) {
   const mv = FALL_CAPACITY_MOVES[move.move_key];
 
   const [note, setNote] = useState(move.coach_note || "");
@@ -63,6 +71,9 @@ export function FallManageMove({ member, move, onAddNote, onChangeDose, onCloseM
   const [doseReason, setDoseReason] = useState("");
   const [doseNote, setDoseNote] = useState("");
   const [doseMsg, setDoseMsg] = useState("");
+
+  const [limit, setLimit] = useState(move.weekly_plan_limit || "no_limit");
+  const [limitMsg, setLimitMsg] = useState("");
 
   const [closeType, setCloseType] = useState(null); // "graduated" | "replaced"
   const [closeReason, setCloseReason] = useState("");
@@ -82,6 +93,13 @@ export function FallManageMove({ member, move, onAddNote, onChangeDose, onCloseM
     onChangeDose(dose, doseReason, doseNote.trim());
     setDoseMsg("Dose updated — visible to the member now.");
     setTimeout(() => setDoseMsg(""), 2500);
+  };
+
+  const handleSaveLimit = () => {
+    if (limit === (move.weekly_plan_limit || "no_limit")) { setLimitMsg("Already set to this."); return; }
+    onSetWeeklyPlanLimit(limit);
+    setLimitMsg("Saved.");
+    setTimeout(() => setLimitMsg(""), 2500);
   };
 
   const handleClose = () => {
@@ -161,6 +179,26 @@ export function FallManageMove({ member, move, onAddNote, onChangeDose, onCloseM
             </>
           )}
           {doseMsg && <div style={{ color: dose !== move.dose ? "#e05030" : G, fontSize: "0.8rem", marginTop: "0.5rem" }}>{doseMsg}</div>}
+        </SectionCard>
+
+        <SectionCard title="Weekly plan limit">
+          <select
+            value={limit}
+            onChange={(e) => setLimit(e.target.value)}
+            style={{ width: "100%", padding: "0.6rem 0.7rem", border: "1.5px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", fontFamily: SANS, background: "#fff", marginBottom: "0.6rem" }}
+          >
+            {WEEKLY_LIMIT_OPTIONS.map((opt) => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+          </select>
+          <div style={{ fontSize: "0.78rem", color: "#888", marginBottom: "0.6rem", lineHeight: 1.4 }}>
+            Keeps weekly targets from increasing beyond this level while this Move is active.
+          </div>
+          <button
+            onClick={handleSaveLimit}
+            style={{ background: G, color: "#fff", border: "none", borderRadius: "10px", padding: "0.6rem 1.1rem", fontWeight: "bold", fontSize: "0.85rem", cursor: "pointer" }}
+          >
+            Save
+          </button>
+          {limitMsg && <div style={{ color: G, fontSize: "0.8rem", marginTop: "0.5rem" }}>{limitMsg}</div>}
         </SectionCard>
 
         <SectionCard title="Close this Move">
