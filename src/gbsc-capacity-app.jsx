@@ -982,7 +982,7 @@ function FallCoachTab({ members }) {
       await supabase.rpc("fall_confirm_move", {
         p_member_id: memberId, p_season: FALL_SEASON, p_move_key: decision.moveId, p_dose: decision.dose,
         p_candidate_primary: match?.primary || null, p_candidate_alternate: match?.alternate || null, p_coach_note: decision.coachNote || null,
-        p_weekly_plan_limit: decision.weeklyPlanLimit || "no_limit",
+        p_weekly_plan_limit: decision.weeklyPlanLimit || "no_limit", p_personalized_plan: decision.personalizedPlan || null,
       });
     } else {
       await supabase.rpc("fall_set_pathway", { p_member_id: memberId, p_season: FALL_SEASON, p_pathway: decision.pathway });
@@ -1006,6 +1006,11 @@ function FallCoachTab({ members }) {
 
   async function handleSetWeeklyPlanLimit(moveId, limit) {
     await supabase.rpc("fall_set_weekly_plan_limit", { p_move_id: moveId, p_weekly_plan_limit: limit });
+    await refresh();
+  }
+
+  async function handleSetPersonalizedPlan(moveId, plan) {
+    await supabase.rpc("fall_set_personalized_plan", { p_move_id: moveId, p_personalized_plan: plan || null });
     await refresh();
   }
 
@@ -1035,6 +1040,7 @@ function FallCoachTab({ members }) {
           onAddNote={(note) => handleAddNote(activeMove.id, selectedMemberId, note)}
           onChangeDose={(dose, reason, note) => handleChangeDose(activeMove.id, selectedMemberId, dose, reason, note)}
           onSetWeeklyPlanLimit={(limit) => handleSetWeeklyPlanLimit(activeMove.id, limit)}
+          onSetPersonalizedPlan={(plan) => handleSetPersonalizedPlan(activeMove.id, plan)}
           onCloseMove={(eventType, reason, note, exitImpact) => handleCloseMove(activeMove.id, selectedMemberId, eventType, reason, note, exitImpact)}
           onBack={() => setSelectedMemberId(null)}
         />
@@ -4018,14 +4024,15 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           </div>
 
           {/* ── Your Priority — the active Capacity Move, per the Fall App Implementation
-              Handoff Section 1. Shows the personalized plan once that field exists (point 2);
-              until then, falls back to the assigned dose's standard instruction. ── */}
+              Handoff Sections 1 and 2. Shows the personalized plan when the coach has set
+              one; both this card and My Move read from the same fall_moves.personalized_plan
+              field, falling back to the assigned dose's standard instruction otherwise. ── */}
           {priorityCard && (
             <div style={{ background: DARK, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginBottom: "1rem" }}>
               <div style={{ fontSize: "0.68rem", fontWeight: "bold", color: G, letterSpacing: "0.08em", marginBottom: "0.6rem" }}>YOUR PRIORITY</div>
               <div style={{ fontSize: "1.05rem", fontWeight: "bold", color: "#fff", marginBottom: "0.5rem" }}>{priorityCard.title}</div>
               <div style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.85)", lineHeight: 1.5, marginBottom: "0.8rem" }}>
-                {priorityCard.activeDoseText}
+                {fallActiveMove.personalized_plan || priorityCard.activeDoseText}
               </div>
               <div style={{ fontSize: "0.76rem", color: "rgba(255,255,255,0.55)", marginBottom: "0.9rem" }}>Your weekly targets support this plan.</div>
               <button
@@ -4394,6 +4401,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
               <div style={pillStyle}>YOUR MOVE · {fallActiveMove.dose?.toUpperCase()}</div>
               <div style={{ color: DARK, fontWeight: "600", fontSize: "1rem", lineHeight: 1.5, marginBottom: "1.3rem" }}>{card.activeDoseText}</div>
+
+              {fallActiveMove.personalized_plan && (
+                <>
+                  <div style={pillStyle}>YOUR PLAN</div>
+                  <div style={{ color: DARK, fontWeight: "600", fontSize: "1rem", lineHeight: 1.5, marginBottom: "1.3rem" }}>{fallActiveMove.personalized_plan}</div>
+                </>
+              )}
 
               <div style={pillStyle}>WHY IT'S POWERFUL</div>
               <div style={{ color: DARK, lineHeight: 1.6, fontSize: "0.9rem", marginBottom: "1.3rem" }}>{card.whyItsPowerful}</div>

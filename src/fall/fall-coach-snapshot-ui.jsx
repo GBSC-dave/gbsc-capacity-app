@@ -73,7 +73,7 @@ function defaultWeeklyPlanLimit(moveKey, currentDeclaredRole) {
  *   reflection: { answers: object, stopFlagged: boolean, match: { pathway: string|null, primary: string|null, alternate: string|null, note: string|null } },
  *   objectiveContext?: string,  // e.g. attendance/testing/history — Spring-side data, not part of the Reflection itself
  *   currentDeclaredRole?: "anchor"|"builder"|"expansion"|null,  // member's live getDeclaredWeek() role, for the weekly plan limit's default
- *   onConfirm: (decision: { pathway: string, moveId: string|null, dose: string|null, coachNote: string, weeklyPlanLimit: string|null }) => void,
+ *   onConfirm: (decision: { pathway: string, moveId: string|null, dose: string|null, coachNote: string, weeklyPlanLimit: string|null, personalizedPlan: string|null }) => void,
  *   onBack?: () => void,
  * }} props
  */
@@ -85,6 +85,7 @@ export function FallCoachSnapshot({ member, reflection, objectiveContext, curren
   const [moveId, setMoveId] = useState(match?.primary || null);
   const [dose, setDose] = useState(null);
   const [weeklyPlanLimit, setWeeklyPlanLimit] = useState(() => (match?.primary ? defaultWeeklyPlanLimit(match.primary, currentDeclaredRole) : "no_limit"));
+  const [personalizedPlan, setPersonalizedPlan] = useState("");
   const [coachNote, setCoachNote] = useState("");
   const [validationMsg, setValidationMsg] = useState("");
 
@@ -103,6 +104,7 @@ export function FallCoachSnapshot({ member, reflection, objectiveContext, curren
     onConfirm({
       pathway, moveId: isCapacityMove ? moveId : null, dose: isCapacityMove ? dose : null,
       coachNote: coachNote.trim(), weeklyPlanLimit: isCapacityMove ? weeklyPlanLimit : null,
+      personalizedPlan: isCapacityMove ? (personalizedPlan.trim() || null) : null,
     });
   };
 
@@ -256,6 +258,21 @@ export function FallCoachSnapshot({ member, reflection, objectiveContext, curren
               <div style={{ fontSize: "0.78rem", color: "#888", marginTop: "0.5rem", lineHeight: 1.4 }}>
                 Keeps weekly targets from increasing beyond this level while this Move is active.
               </div>
+            </SectionCard>
+
+            <SectionCard title="Personalize this Move (optional)">
+              <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "0.6rem" }}>
+                Write the specific action you agreed on. The member will see this.
+              </div>
+              <textarea
+                value={personalizedPlan}
+                onChange={(e) => setPersonalizedPlan(e.target.value.slice(0, 300))}
+                rows={2}
+                maxLength={300}
+                placeholder="Example: Put my phone on the kitchen charger when I start the boys' bedtime routine."
+                style={{ width: "100%", padding: "0.6rem", border: "1.5px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", fontFamily: SANS, resize: "vertical", boxSizing: "border-box" }}
+              />
+              <div style={{ fontSize: "0.72rem", color: "#aaa", marginTop: "0.3rem", textAlign: "right" }}>{personalizedPlan.length}/300</div>
             </SectionCard>
           </>
         )}

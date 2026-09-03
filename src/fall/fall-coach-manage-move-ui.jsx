@@ -53,19 +53,23 @@ function ReasonPicker({ value, onChange }) {
 /**
  * @param {{
  *   member: { name: string },
- *   move: { id: string, move_key: string, dose: string, coach_note: string|null, weekly_plan_limit: string|null },
+ *   move: { id: string, move_key: string, dose: string, coach_note: string|null, weekly_plan_limit: string|null, personalized_plan: string|null },
  *   onAddNote: (note: string) => void,
  *   onChangeDose: (dose: string, structuredReason: string, note: string) => void,
  *   onSetWeeklyPlanLimit: (limit: string) => void,
+ *   onSetPersonalizedPlan: (plan: string) => void,
  *   onCloseMove: (eventType: "graduated"|"replaced", structuredReason: string, note: string, exitImpact: number|null) => void,
  *   onBack?: () => void,
  * }} props
  */
-export function FallManageMove({ member, move, onAddNote, onChangeDose, onSetWeeklyPlanLimit, onCloseMove, onBack }) {
+export function FallManageMove({ member, move, onAddNote, onChangeDose, onSetWeeklyPlanLimit, onSetPersonalizedPlan, onCloseMove, onBack }) {
   const mv = FALL_CAPACITY_MOVES[move.move_key];
 
   const [note, setNote] = useState(move.coach_note || "");
   const [noteMsg, setNoteMsg] = useState("");
+
+  const [plan, setPlan] = useState(move.personalized_plan || "");
+  const [planMsg, setPlanMsg] = useState("");
 
   const [dose, setDose] = useState(move.dose);
   const [doseReason, setDoseReason] = useState("");
@@ -85,6 +89,12 @@ export function FallManageMove({ member, move, onAddNote, onChangeDose, onSetWee
     onAddNote(note.trim());
     setNoteMsg("Saved — visible to the member now.");
     setTimeout(() => setNoteMsg(""), 2500);
+  };
+
+  const handleSavePlan = () => {
+    onSetPersonalizedPlan(plan.trim());
+    setPlanMsg("Saved — visible to the member now.");
+    setTimeout(() => setPlanMsg(""), 2500);
   };
 
   const handleSaveDose = () => {
@@ -138,6 +148,28 @@ export function FallManageMove({ member, move, onAddNote, onChangeDose, onSetWee
             Save Note
           </button>
           {noteMsg && <div style={{ color: G, fontSize: "0.8rem", marginTop: "0.5rem" }}>{noteMsg}</div>}
+        </SectionCard>
+
+        <SectionCard title="Personalize this Move">
+          <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "0.6rem" }}>
+            Write the specific action you agreed on. The member will see this on My Move and My Week.
+          </div>
+          <textarea
+            value={plan}
+            onChange={(e) => setPlan(e.target.value.slice(0, 300))}
+            rows={2}
+            maxLength={300}
+            placeholder="Example: Put my phone on the kitchen charger when I start the boys' bedtime routine."
+            style={{ width: "100%", padding: "0.6rem", border: "1.5px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", fontFamily: SANS, resize: "vertical", boxSizing: "border-box", marginBottom: "0.4rem" }}
+          />
+          <div style={{ fontSize: "0.72rem", color: "#aaa", marginBottom: "0.6rem", textAlign: "right" }}>{plan.length}/300</div>
+          <button
+            onClick={handleSavePlan}
+            style={{ background: G, color: "#fff", border: "none", borderRadius: "10px", padding: "0.6rem 1.1rem", fontWeight: "bold", fontSize: "0.85rem", cursor: "pointer" }}
+          >
+            Save Plan
+          </button>
+          {planMsg && <div style={{ color: G, fontSize: "0.8rem", marginTop: "0.5rem" }}>{planMsg}</div>}
         </SectionCard>
 
         <SectionCard title="A/B/E dose (Section 12)">
