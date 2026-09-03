@@ -29,6 +29,14 @@ alter table fall_moves add column if not exists weekly_plan_limit text
 alter table fall_moves add column if not exists personalized_plan text
   check (char_length(personalized_plan) <= 300);
 
+-- MIGRATION (2026-09-03, point 3) — the three weekly Move questions' new, simpler columns.
+alter table fall_weekly_checks add column if not exists move_used text
+  check (move_used in ('never','sometimes','most_of_the_time','no_opportunity'));
+alter table fall_weekly_checks add column if not exists move_helped text
+  check (move_helped in ('not_really','somewhat','definitely','too_soon_to_tell'));
+alter table fall_weekly_checks add column if not exists move_constraint_impact smallint
+  check (move_constraint_impact between 1 and 5);
+
 -- ─────────────────────────────────────────────────────────────────────────────
 -- fall_moves — one row per Move assignment episode. Per the original scope doc, only
 -- THREE statuses are ever persisted here — everything richer in Section 20's lifecycle
@@ -120,13 +128,19 @@ create table if not exists fall_weekly_checks (
   signals jsonb,             -- { workouts, zone2, strengthRPE, dailyMovement, protein, downshift, sleepOpportunity }
   habit_score smallint,      -- calcWeeklyScore(signals) result, stored for history like Spring's weeklyChecks[].score
 
-  -- Section 13.2 — three required Move questions
+  -- SUPERSEDED (2026-09-03) by the Fall App Implementation Handoff's simpler point-3
+  -- questions below — left in place, unused, rather than dropped, since nothing surgical
+  -- requires removing them and early staging test data may already reference them.
   move_level_reached text check (move_level_reached in ('Below Anchor','Anchor','Builder','Expansion')),
   helpfulness smallint check (helpfulness between 1 and 5),
   difficulty smallint check (difficulty between 1 and 5),
-
-  -- Section 13.3 — conditional friction, one tap, only when triggered
   friction_reason text,      -- a Q7_OPTIONS id from fall-reflection-data.js
+
+  -- Fall App Implementation Handoff, Section 3 — the three weekly Move questions, all
+  -- optional (never block submission; store unanswered as null, not zero/failure).
+  move_used text check (move_used in ('never','sometimes','most_of_the_time','no_opportunity')),          -- Q1: Did you use it?
+  move_helped text check (move_helped in ('not_really','somewhat','definitely','too_soon_to_tell')),        -- Q2: Did it help? (only asked if Q1 is sometimes/most_of_the_time)
+  move_constraint_impact smallint check (move_constraint_impact between 1 and 5),                           -- Q3: same constraint-impact question as Reflection/end-of-season (Section 14)
 
   -- Section 13.4 — persistent help action; fires a Red flag immediately in the UI,
   -- this column is just the durable record of that tap
@@ -208,18 +222,22 @@ $$ language plpgsql;
 
 -- Main weekly check-in (Sun) — patches the check-in columns only, preserving whatever
 -- midweek_* values already landed earlier in the week.
+-- MIGRATION (2026-09-03, point 3): signature swaps the old p_move_level_reached/p_helpfulness/
+-- p_difficulty/p_friction_reason for the new, simpler p_move_used/p_move_helped/
+-- p_move_constraint_impact — drop the old 12-arg version first (new arg list = new overload).
+drop function if exists fall_submit_weekly_checkin(text, text, text, smallint, uuid, jsonb, smallint, text, smallint, smallint, text, boolean);
 create or replace function fall_submit_weekly_checkin(
   p_member_id text, p_season text, p_week_key text, p_season_week smallint, p_move_id uuid,
-  p_signals jsonb, p_habit_score smallint, p_move_level_reached text,
-  p_helpfulness smallint, p_difficulty smallint, p_friction_reason text, p_help_requested boolean
+  p_signals jsonb, p_habit_score smallint, p_move_used text, p_move_helped text,
+  p_move_constraint_impact smallint, p_help_requested boolean
 ) returns void as $$
 begin
-  insert into fall_weekly_checks (member_id, season, week_key, season_week, move_id, signals, habit_score, move_level_reached, helpfulness, difficulty, friction_reason, help_requested, submitted_at)
-  values (p_member_id, p_season, p_week_key, p_season_week, p_move_id, p_signals, p_habit_score, p_move_level_reached, p_helpfulness, p_difficulty, p_friction_reason, p_help_requested, now())
+  insert into fall_weekly_checks (member_id, season, week_key, season_week, move_id, signals, habit_score, move_used, move_helped, move_constraint_impact, help_requested, submitted_at)
+  values (p_member_id, p_season, p_week_key, p_season_week, p_move_id, p_signals, p_habit_score, p_move_used, p_move_helped, p_move_constraint_impact, p_help_requested, now())
   on conflict (member_id, week_key) do update
     set move_id = excluded.move_id, signals = excluded.signals, habit_score = excluded.habit_score,
-        move_level_reached = excluded.move_level_reached, helpfulness = excluded.helpfulness,
-        difficulty = excluded.difficulty, friction_reason = excluded.friction_reason,
+        move_used = excluded.move_used, move_helped = excluded.move_helped,
+        move_constraint_impact = excluded.move_constraint_impact,
         help_requested = excluded.help_requested, submitted_at = now(), updated_at = now();
 end;
 $$ language plpgsql;

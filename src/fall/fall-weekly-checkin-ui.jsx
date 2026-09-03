@@ -8,8 +8,8 @@
 // calcWeeklyScore()/downshiftMap (both variants now accepted). This file stores the hyphen
 // value regardless, so it scores correctly either way.
 
-import React, { useState } from "react";
-import { Q7_OPTIONS } from "./fall-reflection-data.js";
+import React, { useState, useEffect } from "react";
+import { BASELINE_IMPACT_PROMPT, BASELINE_IMPACT_LABELS } from "./fall-reflection-data.js";
 import { G, DARK, SANS, LIGHT_BG } from "../theme.jsx";
 
 // The 7 Spring-compatible Capacity Signals (Section 13.1). Field names/option strings match
@@ -27,7 +27,19 @@ const SIGNAL_FIELDS = [
   { label: "Intentional downshift (10+ min)", field: "downshift", displayOptions: ["3+ times", "1–2 times", "None"], options: ["3+ times", "1-2 times", "None"], hint: "Breathwork, quiet walk, journaling, meditation, screen-free time" },
 ];
 
-const MOVE_LEVEL_OPTIONS = ["Below Anchor", "Anchor", "Builder", "Expansion"];
+// Fall App Implementation Handoff, Section 3 — the three weekly Move questions.
+export const MOVE_USED_OPTIONS = [
+  { id: "never", label: "Never" },
+  { id: "sometimes", label: "Sometimes" },
+  { id: "most_of_the_time", label: "Most of the time" },
+  { id: "no_opportunity", label: "No opportunity this week" },
+];
+export const MOVE_HELPED_OPTIONS = [
+  { id: "not_really", label: "Not really" },
+  { id: "somewhat", label: "Somewhat" },
+  { id: "definitely", label: "Definitely" },
+  { id: "too_soon_to_tell", label: "Too soon to tell" },
+];
 
 function Scale5({ value, onChange, lowLabel, highLabel }) {
   return (
@@ -67,29 +79,30 @@ const QUESTION_LABEL_STYLE = { fontWeight: "600", color: DARK, fontSize: "0.95re
 
 /**
  * @param {{
- *   moveTitle: string,   // e.g. "Protect Your Training" — for the "How did <Move> go?" framing
- *   onSubmit: (payload: { signals: object, moveLevelReached: string, helpfulness: string, difficulty: string, frictionReason: string|null, helpRequested: boolean }) => void,
+ *   moveTitle: string,   // e.g. "Protect Your Training" — for the "How did <Move> go?" framing; also gates whether the Section 3 questions show at all
+ *   movePlanText?: string,  // personalized plan, or the assigned dose instruction, shown under the Move name
+ *   constraintLabel?: string,  // Q5's label, for "The issue we're working on: [constraint label]"
+ *   onSubmit: (payload: { signals: object, moveUsed: string|null, moveHelped: string|null, moveConstraintImpact: string|null, helpRequested: boolean }) => void,
  *   onRequestHelp: () => void,  // fires immediately on tap (Section 13.4) — creates a Red coach flag right away, not just at submit
  *   onBack?: () => void,
  * }} props
  */
-export function FallWeeklyCheckIn({ moveTitle, onSubmit, onRequestHelp, onBack }) {
+export function FallWeeklyCheckIn({ moveTitle, movePlanText, constraintLabel, onSubmit, onRequestHelp, onBack }) {
   const [signals, setSignals] = useState({ workouts: "", zone2: "", strengthRPE: "", dailyMovement: "", protein: "", downshift: "", sleepOpportunity: "" });
-  const [moveLevelReached, setMoveLevelReached] = useState(null);
-  const [helpfulness, setHelpfulness] = useState(null);
-  const [difficulty, setDifficulty] = useState(null);
-  const [frictionReason, setFrictionReason] = useState(null);
+  const [moveUsed, setMoveUsed] = useState(null);
+  const [moveHelped, setMoveHelped] = useState(null);
+  const [moveConstraintImpact, setMoveConstraintImpact] = useState(null);
   const [helpRequested, setHelpRequested] = useState(false);
   const [validationMsg, setValidationMsg] = useState("");
 
-  const needsFriction =
-    moveLevelReached === "Below Anchor" ||
-    (difficulty && parseInt(difficulty, 10) >= 4) ||
-    (helpfulness && parseInt(helpfulness, 10) <= 2);
+  const showMoveHelped = moveUsed === "sometimes" || moveUsed === "most_of_the_time";
+  useEffect(() => {
+    if (!showMoveHelped && moveHelped) setMoveHelped(null);
+  }, [showMoveHelped]);
 
+  // Section 3 — the Move questions are all optional; only the 7 Capacity Signals can block submission.
   const signalFields = SIGNAL_FIELDS.map((f) => f.field);
-  const signalsAnswered = signalFields.filter((f) => signals[f] !== "").length;
-  const fields = [...signalFields.map((f) => signals[f]), moveLevelReached, helpfulness, difficulty, needsFriction ? frictionReason : "x"];
+  const fields = signalFields.map((f) => signals[f]);
   const answeredCount = fields.filter(Boolean).length;
   const allAnswered = answeredCount === fields.length;
 
@@ -104,7 +117,7 @@ export function FallWeeklyCheckIn({ moveTitle, onSubmit, onRequestHelp, onBack }
       setValidationMsg("A few answers are still missing above.");
       return;
     }
-    onSubmit({ signals, moveLevelReached, helpfulness, difficulty, frictionReason: needsFriction ? frictionReason : null, helpRequested });
+    onSubmit({ signals, moveUsed, moveHelped: showMoveHelped ? moveHelped : null, moveConstraintImpact, helpRequested });
   };
 
   return (
@@ -151,68 +164,77 @@ export function FallWeeklyCheckIn({ moveTitle, onSubmit, onRequestHelp, onBack }
           </div>
         ))}
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "1.8rem 0 1rem" }}>
-          <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
-          <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>Your Move{moveTitle ? `: ${moveTitle}` : ""}</div>
-          <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
-        </div>
-
-        <div style={QUESTION_BLOCK_STYLE}>
-          <div style={QUESTION_LABEL_STYLE}>Where did you land?</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-            {MOVE_LEVEL_OPTIONS.map((opt) => {
-              const selected = moveLevelReached === opt;
-              return (
-                <button
-                  key={opt}
-                  onClick={() => setMoveLevelReached(opt)}
-                  style={{
-                    padding: "0.5rem 1rem", minHeight: "44px",
-                    border: `1.5px solid ${selected ? G : "#e0e0e0"}`, borderRadius: "12px",
-                    background: selected ? G : "#fff", color: selected ? "#fff" : DARK,
-                    cursor: "pointer", fontSize: "0.88rem", fontWeight: selected ? "600" : "normal",
-                  }}
-                >
-                  {opt}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={QUESTION_BLOCK_STYLE}>
-          <div style={QUESTION_LABEL_STYLE}>How much did this Move help?</div>
-          <Scale5 value={helpfulness} onChange={setHelpfulness} lowLabel="1 — Not at all" highLabel="5 — A lot" />
-        </div>
-
-        <div style={QUESTION_BLOCK_STYLE}>
-          <div style={QUESTION_LABEL_STYLE}>How difficult was this Move to fit into your life?</div>
-          <Scale5 value={difficulty} onChange={setDifficulty} lowLabel="1 — Very easy" highLabel="5 — Very difficult" />
-        </div>
-
-        {needsFriction && (
-          <div style={QUESTION_BLOCK_STYLE}>
-            <div style={QUESTION_LABEL_STYLE}>What got in the way most?</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-              {Q7_OPTIONS.map((opt) => {
-                const selected = frictionReason === opt.id;
-                return (
-                  <button
-                    key={opt.id}
-                    onClick={() => setFrictionReason(opt.id)}
-                    style={{
-                      padding: "0.5rem 1rem", minHeight: "44px",
-                      border: `1.5px solid ${selected ? G : "#e0e0e0"}`, borderRadius: "12px",
-                      background: selected ? G : "#fff", color: selected ? "#fff" : DARK,
-                      cursor: "pointer", fontSize: "0.88rem", fontWeight: selected ? "600" : "normal",
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                );
-              })}
+        {moveTitle && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", margin: "1.8rem 0 1rem" }}>
+              <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
+              <div style={{ fontSize: "0.68rem", color: "#aaa", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>HOW DID YOUR MOVE GO THIS WEEK?</div>
+              <div style={{ flex: 1, height: "1px", background: "#e8e8e8" }} />
             </div>
-          </div>
+            <div style={{ marginBottom: "1rem" }}>
+              <div style={{ fontWeight: "bold", color: DARK, fontSize: "1rem" }}>{moveTitle}</div>
+              {movePlanText && <div style={{ color: "#888", fontSize: "0.85rem", marginTop: "0.2rem", lineHeight: 1.4 }}>{movePlanText}</div>}
+            </div>
+
+            <div style={QUESTION_BLOCK_STYLE}>
+              <div style={QUESTION_LABEL_STYLE}>Did you use it?</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                {MOVE_USED_OPTIONS.map((opt) => {
+                  const selected = moveUsed === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => setMoveUsed(selected ? null : opt.id)}
+                      style={{
+                        padding: "0.5rem 1rem", minHeight: "44px",
+                        border: `1.5px solid ${selected ? G : "#e0e0e0"}`, borderRadius: "12px",
+                        background: selected ? G : "#fff", color: selected ? "#fff" : DARK,
+                        cursor: "pointer", fontSize: "0.88rem", fontWeight: selected ? "600" : "normal",
+                      }}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {showMoveHelped && (
+              <div style={QUESTION_BLOCK_STYLE}>
+                <div style={QUESTION_LABEL_STYLE}>Did it help?</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                  {MOVE_HELPED_OPTIONS.map((opt) => {
+                    const selected = moveHelped === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        onClick={() => setMoveHelped(selected ? null : opt.id)}
+                        style={{
+                          padding: "0.5rem 1rem", minHeight: "44px",
+                          border: `1.5px solid ${selected ? G : "#e0e0e0"}`, borderRadius: "12px",
+                          background: selected ? G : "#fff", color: selected ? "#fff" : DARK,
+                          cursor: "pointer", fontSize: "0.88rem", fontWeight: selected ? "600" : "normal",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div style={QUESTION_BLOCK_STYLE}>
+              {constraintLabel && <div style={{ color: "#888", fontSize: "0.82rem", marginBottom: "0.3rem" }}>The issue we're working on: {constraintLabel}</div>}
+              <div style={QUESTION_LABEL_STYLE}>{BASELINE_IMPACT_PROMPT}</div>
+              <Scale5
+                value={moveConstraintImpact}
+                onChange={(v) => setMoveConstraintImpact(v === moveConstraintImpact ? null : v)}
+                lowLabel={`1 — ${BASELINE_IMPACT_LABELS[1]}`}
+                highLabel={`5 — ${BASELINE_IMPACT_LABELS[5]}`}
+              />
+            </div>
+          </>
         )}
 
         <button

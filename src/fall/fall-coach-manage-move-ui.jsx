@@ -13,7 +13,12 @@
 import React, { useState } from "react";
 import { FALL_CAPACITY_MOVES } from "./fall-moves-data.js";
 import { STRUCTURED_REASONS } from "./fall-matching-data.js";
+import { MOVE_USED_OPTIONS, MOVE_HELPED_OPTIONS } from "./fall-weekly-checkin-ui.jsx";
 import { G, DARK, CARD, CARD_SHADOW, SANS } from "../theme.jsx";
+
+function labelFor(options, id) {
+  return options.find((o) => o.id === id)?.label || "Not answered";
+}
 
 function SectionCard({ title, children }) {
   return (
@@ -54,6 +59,7 @@ function ReasonPicker({ value, onChange }) {
  * @param {{
  *   member: { name: string },
  *   move: { id: string, move_key: string, dose: string, coach_note: string|null, weekly_plan_limit: string|null, personalized_plan: string|null },
+ *   latestMoveCheckin?: { submitted_at: string, move_used: string|null, move_helped: string|null, move_constraint_impact: number|null } | null,
  *   onAddNote: (note: string) => void,
  *   onChangeDose: (dose: string, structuredReason: string, note: string) => void,
  *   onSetWeeklyPlanLimit: (limit: string) => void,
@@ -62,7 +68,7 @@ function ReasonPicker({ value, onChange }) {
  *   onBack?: () => void,
  * }} props
  */
-export function FallManageMove({ member, move, onAddNote, onChangeDose, onSetWeeklyPlanLimit, onSetPersonalizedPlan, onCloseMove, onBack }) {
+export function FallManageMove({ member, move, latestMoveCheckin, onAddNote, onChangeDose, onSetWeeklyPlanLimit, onSetPersonalizedPlan, onCloseMove, onBack }) {
   const mv = FALL_CAPACITY_MOVES[move.move_key];
 
   const [note, setNote] = useState(move.coach_note || "");
@@ -132,6 +138,26 @@ export function FallManageMove({ member, move, onAddNote, onChangeDose, onSetWee
           <div style={{ color: "#aaa", fontSize: "0.85rem" }}>{move.move_key} — {mv.title}</div>
           <div style={{ color: "#777", fontSize: "0.75rem", marginTop: "0.4rem" }}>Currently on: {move.dose?.toUpperCase()}</div>
         </div>
+
+        <SectionCard title={latestMoveCheckin ? `Latest Move check-in · ${new Date(latestMoveCheckin.submitted_at).toLocaleDateString()}` : "Latest Move check-in"}>
+          {latestMoveCheckin ? (
+            <>
+              <div style={{ fontSize: "0.85rem", color: DARK, marginBottom: "0.3rem" }}>
+                <strong>Used:</strong> {labelFor(MOVE_USED_OPTIONS, latestMoveCheckin.move_used)}
+              </div>
+              <div style={{ fontSize: "0.85rem", color: DARK, marginBottom: "0.3rem" }}>
+                <strong>Helped:</strong> {latestMoveCheckin.move_used && !["sometimes", "most_of_the_time"].includes(latestMoveCheckin.move_used)
+                  ? "Not assessed"
+                  : labelFor(MOVE_HELPED_OPTIONS, latestMoveCheckin.move_helped)}
+              </div>
+              <div style={{ fontSize: "0.85rem", color: DARK }}>
+                <strong>Constraint impact:</strong> {latestMoveCheckin.move_constraint_impact ? `${latestMoveCheckin.move_constraint_impact} / 5` : "Not answered"}
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: "0.85rem", color: "#aaa" }}>No weekly check-in submitted yet.</div>
+          )}
+        </SectionCard>
 
         <SectionCard title="Coach note">
           <textarea

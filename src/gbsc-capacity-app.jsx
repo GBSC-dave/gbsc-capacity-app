@@ -9,6 +9,7 @@ import { FallCoachTriageDashboard } from "./fall/fall-coach-triage-ui.jsx";
 import { FallManageMove } from "./fall/fall-coach-manage-move-ui.jsx";
 import { FALL_CAPACITY_MOVES, getMoveCard } from "./fall/fall-moves-data.js";
 import { matchCandidateMove } from "./fall/fall-matching-data.js";
+import { Q5_OPTIONS } from "./fall/fall-reflection-data.js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON;
@@ -965,7 +966,7 @@ function FallCoachTab({ members }) {
     const checksMap = {};
     for (const c of checks || []) {
       if (!checksMap[c.member_id]) checksMap[c.member_id] = [];
-      if (c.move_level_reached) checksMap[c.member_id].push(c); // only count rows with a real submitted check-in
+      if (c.submitted_at) checksMap[c.member_id].push(c); // only count rows with a real submitted check-in (Move questions are optional now, so submitted_at is the real signal)
     }
     setChecksByMember(checksMap);
     const movesMap = {};
@@ -1033,10 +1034,13 @@ function FallCoachTab({ members }) {
     // Already has an active Move — manage it (note/dose/close) rather than re-running the
     // assignment RPC, which would insert a duplicate fall_moves row instead of updating this one.
     if (activeMove) {
+      const memberChecks = checksByMember[selectedMemberId] || [];
+      const latestMoveCheckin = memberChecks[memberChecks.length - 1] || null;
       return (
         <FallManageMove
           member={member}
           move={activeMove}
+          latestMoveCheckin={latestMoveCheckin}
           onAddNote={(note) => handleAddNote(activeMove.id, selectedMemberId, note)}
           onChangeDose={(dose, reason, note) => handleChangeDose(activeMove.id, selectedMemberId, dose, reason, note)}
           onSetWeeklyPlanLimit={(limit) => handleSetWeeklyPlanLimit(activeMove.id, limit)}
@@ -1808,8 +1812,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     await supabase.rpc("fall_submit_weekly_checkin", {
       p_member_id: currentMember.id, p_season: FALL_SEASON, p_week_key: getFallWeekKey(seasonWeek), p_season_week: seasonWeek,
       p_move_id: fallActiveMove?.id || null, p_signals: payload.signals, p_habit_score: habitScore,
-      p_move_level_reached: payload.moveLevelReached, p_helpfulness: parseInt(payload.helpfulness, 10),
-      p_difficulty: parseInt(payload.difficulty, 10), p_friction_reason: payload.frictionReason, p_help_requested: payload.helpRequested,
+      p_move_used: payload.moveUsed, p_move_helped: payload.moveHelped,
+      p_move_constraint_impact: payload.moveConstraintImpact ? parseInt(payload.moveConstraintImpact, 10) : null,
+      p_help_requested: payload.helpRequested,
     });
 
     // Dual-write into Spring's own weeklyChecks array — same shape Spring's own check-in writes —
@@ -3952,10 +3957,20 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     if (fallSubView === "checkin") {
       const card = fallActiveMove ? getMoveCard(fallActiveMove.move_key, fallActiveMove.dose) : null;
+      const movePlanText = fallActiveMove ? (fallActiveMove.personalized_plan || card?.activeDoseText) : null;
+      const q5 = fallState?.reflection_answers?.q5;
+      const constraintLabel = q5 === "other" ? fallState.reflection_answers.q5Other : Q5_OPTIONS.find((o) => o.id === q5)?.label;
       return (
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           {hdr}
-          <FallWeeklyCheckIn moveTitle={card?.title} onSubmit={handleFallCheckinSubmit} onRequestHelp={() => {}} onBack={() => setFallSubView("home")} />
+          <FallWeeklyCheckIn
+            moveTitle={card?.title}
+            movePlanText={movePlanText}
+            constraintLabel={constraintLabel}
+            onSubmit={handleFallCheckinSubmit}
+            onRequestHelp={() => {}}
+            onBack={() => setFallSubView("home")}
+          />
         </div>
       );
     }
