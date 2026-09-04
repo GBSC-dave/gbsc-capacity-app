@@ -128,6 +128,36 @@ export function FallWeek4Reassessment({ onComplete }) {
   );
 }
 
+/**
+ * Section 15 — same Constraint Impact measurement as Week 4's, without the "still the right
+ * constraint" branch question (that diagnostic check is a Week-4-only concept; by Week 8 this
+ * is just the final before/after data point alongside Baseline).
+ * @param {{ onComplete: (result: { constraintImpact: string }) => void }} props
+ */
+export function FallWeek8Reassessment({ onComplete }) {
+  const [constraintImpact, setConstraintImpact] = useState(null);
+
+  return (
+    <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginBottom: "1rem", fontFamily: SANS }}>
+      <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: "#999", letterSpacing: "0.06em", marginBottom: "0.8rem" }}>WEEK 8 CHECK-IN</div>
+
+      <ConstraintImpactTap value={constraintImpact} onChange={setConstraintImpact} />
+
+      <button
+        disabled={!constraintImpact}
+        onClick={() => onComplete({ constraintImpact })}
+        style={{
+          width: "100%", marginTop: "1.2rem", background: constraintImpact ? G : "#ccc", color: "#fff",
+          border: "none", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "bold",
+          cursor: constraintImpact ? "pointer" : "not-allowed",
+        }}
+      >
+        Continue →
+      </button>
+    </div>
+  );
+}
+
 const EXIT_REASON_OPTIONS = [
   { id: "graduated", label: "Move graduated — behavior is integrated" },
   { id: "replaced", label: "Move replaced — diagnosis/circumstances changed" },

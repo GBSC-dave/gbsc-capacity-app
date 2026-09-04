@@ -5,6 +5,7 @@ import { FallReflection } from "./fall/fall-reflection-ui.jsx";
 import { FallCoachSnapshot } from "./fall/fall-coach-snapshot-ui.jsx";
 import { FallWeeklyCheckIn } from "./fall/fall-weekly-checkin-ui.jsx";
 import { FallMidweekReset } from "./fall/fall-midweek-reset-ui.jsx";
+import { FallWeek4Reassessment, FallWeek8Reassessment } from "./fall/fall-constraint-impact-ui.jsx";
 import { FallCoachTriageDashboard } from "./fall/fall-coach-triage-ui.jsx";
 import { FallManageMove } from "./fall/fall-coach-manage-move-ui.jsx";
 import { FALL_CAPACITY_MOVES, getMoveCard } from "./fall/fall-moves-data.js";
@@ -1834,7 +1835,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [fallConstraint, setFallConstraint] = useState(null);
   const [fallWeeklyChecks, setFallWeeklyChecks] = useState([]);
   const [fallLoading, setFallLoading] = useState(true);
-  const [fallSubView, setFallSubView] = useState("home"); // home | checkin | midweek
+  const [fallSubView, setFallSubView] = useState("home"); // home | checkin | checkin-week4 | checkin-week8 | midweek
+  const [pendingCheckin, setPendingCheckin] = useState(null); // { payload, seasonWeek } — held between the main check-in and a Week 4/8 reassessment step
   const fallIsIntegrated = fallActiveMove?.status === "integrated";
   // Section 4 — "Stop applying that assignment's weekly plan limit" once Integrated.
   const effectiveWeeklyPlanLimit = fallIsIntegrated ? null : fallActiveMove?.weekly_plan_limit;
@@ -1870,9 +1872,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     await refreshFallState();
   }
 
-  async function handleFallCheckinSubmit(payload) {
+  // Section 19 — the Week 4/Week 8 reassessment is "bundled onto that week's check-in row, not
+  // a separate workflow," so it's one more screen in the same submission rather than a second
+  // RPC call: handleFallCheckinSubmit holds the main payload and detours through an extra step
+  // on weeks 4/8 before finalizeFallCheckin actually writes anything.
+  async function finalizeFallCheckin(payload, seasonWeek, extra) {
     const habitScore = calcWeeklyScore(payload.signals);
-    const seasonWeek = getFallSeasonWeek();
     await supabase.rpc("fall_submit_weekly_checkin", {
       p_member_id: currentMember.id, p_season: FALL_SEASON, p_week_key: getFallWeekKey(seasonWeek), p_season_week: seasonWeek,
       p_move_id: fallActiveMove?.id || null, p_signals: payload.signals, p_habit_score: habitScore,
@@ -1883,6 +1888,9 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       // later coach edit to the Move can't retroactively change what this feedback describes.
       p_move_dose_snapshot: fallActiveMove?.dose || null,
       p_move_plan_snapshot: fallActiveMove?.personalized_plan || null,
+      p_week4_still_important: extra?.stillImportant || null,
+      p_week4_constraint_impact: extra?.week4ConstraintImpact ? parseInt(extra.week4ConstraintImpact, 10) : null,
+      p_week8_constraint_impact: extra?.week8ConstraintImpact ? parseInt(extra.week8ConstraintImpact, 10) : null,
     });
 
     // Dual-write into Spring's own weeklyChecks array — same shape Spring's own check-in writes —
@@ -1907,11 +1915,31 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     await saveMember(updatedMember);
     setCurrentMember(updatedMember);
 
+    setPendingCheckin(null);
     setFallSubView("home");
     // First-ever Weekly Check-in just unlocked My Week/My Results (tabsLocked) — take them
     // straight there rather than leaving them on My Move to go find the newly-unlocked tab.
     if (existingWeeks.length === 0) setView("profile");
     await refreshFallState();
+  }
+
+  async function handleFallCheckinSubmit(payload) {
+    const seasonWeek = getFallSeasonWeek();
+    if (seasonWeek === 4) { setPendingCheckin({ payload, seasonWeek }); setFallSubView("checkin-week4"); return; }
+    if (seasonWeek === 8) { setPendingCheckin({ payload, seasonWeek }); setFallSubView("checkin-week8"); return; }
+    await finalizeFallCheckin(payload, seasonWeek, null);
+  }
+
+  async function handleWeek4ReassessmentComplete(result) {
+    await finalizeFallCheckin(pendingCheckin.payload, pendingCheckin.seasonWeek, {
+      stillImportant: result.stillImportant, week4ConstraintImpact: result.constraintImpact,
+    });
+  }
+
+  async function handleWeek8ReassessmentComplete(result) {
+    await finalizeFallCheckin(pendingCheckin.payload, pendingCheckin.seasonWeek, {
+      week8ConstraintImpact: result.constraintImpact,
+    });
   }
 
   async function handleFallMidweekComplete({ status, shiftToAnchor }) {
@@ -3966,6 +3994,26 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         </div>
       );
     }
+    if (fallSubView === "checkin-week4") {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          {hdr}
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
+            <FallWeek4Reassessment onComplete={handleWeek4ReassessmentComplete} />
+          </div>
+        </div>
+      );
+    }
+    if (fallSubView === "checkin-week8") {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          {hdr}
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
+            <FallWeek8Reassessment onComplete={handleWeek8ReassessmentComplete} />
+          </div>
+        </div>
+      );
+    }
     if (fallSubView === "midweek") {
       return (
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
@@ -4363,6 +4411,26 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             onRequestHelp={() => {}}
             onBack={() => setFallSubView("home")}
           />
+        </div>
+      );
+    }
+    if (fallSubView === "checkin-week4") {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          {hdr}
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
+            <FallWeek4Reassessment onComplete={handleWeek4ReassessmentComplete} />
+          </div>
+        </div>
+      );
+    }
+    if (fallSubView === "checkin-week8") {
+      return (
+        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
+          {hdr}
+          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
+            <FallWeek8Reassessment onComplete={handleWeek8ReassessmentComplete} />
+          </div>
         </div>
       );
     }
