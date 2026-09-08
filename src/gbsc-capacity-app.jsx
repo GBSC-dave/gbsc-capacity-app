@@ -607,6 +607,26 @@ function applyWeeklyPlanLimit(role, weeklyPlanLimit) {
   return role;
 }
 
+// Recovery signal (0-5 scale) for one weekly check. Spring-era checks self-rated
+// sleepQuality/energyLevel/physicalRecovery directly; Fall's weekly check-in (the only source
+// of weeklyChecks since the registration reorder) never asks those three — it has
+// sleepOpportunity/downshift instead. Bug fixed 2026-09-08: reading the old fields as 0 for
+// every Fall check-in silently zeroed this signal on every post-migration submission, so no
+// member could ever reach Expansion (a high score alone was never enough — Eric hit this
+// directly: a 97 still produced Builder) and Stabilizer's recovery-based signals always fired
+// regardless of the member's real data.
+function checkRecoverySignal(c) {
+  if (c.sleepQuality !== undefined || c.energyLevel !== undefined || c.physicalRecovery !== undefined) {
+    const sleep    = parseInt(c.sleepQuality) || 0;
+    const energy   = parseInt(c.energyLevel) || 0;
+    const recovery = parseInt(c.physicalRecovery) || 0;
+    return (sleep + energy + recovery) / 3;
+  }
+  const sleepOppScore = { "5+ nights": 5, "3–4 nights": 3.5, "3-4 nights": 3.5, "1–2 nights": 1.5, "1-2 nights": 1.5, "Rarely": 0 }[c.sleepOpportunity] ?? 0;
+  const downshiftScore = { "3+ times": 5, "1–2 times": 2.5, "1-2 times": 2.5, "None": 0 }[c.downshift] ?? 0;
+  return (sleepOppScore + downshiftScore) / 2;
+}
+
 function getDeclaredWeek(allChecks, weeklyPlanLimit) {
   const nonBaseline = (allChecks || []).filter(c => c && !c.isBaseline);
   // Fall back to baseline check when no weekly checks exist yet
@@ -618,15 +638,11 @@ function getDeclaredWeek(allChecks, weeklyPlanLimit) {
   const score = latest.score;
 
   // Pull signals from latest check-in
-  const sleep    = parseInt(latest.sleepQuality) || 0;
-  const energy   = parseInt(latest.energyLevel) || 0;
-  const recovery = parseInt(latest.physicalRecovery) || 0;
   const hasMajorDisruption = latest.disruption === "Major disruption";
   const hasSomeDisruption  = latest.disruption === "Some disruption";
   const workouts = { "0": 0, "1": 1, "2": 2, "3": 3, "4+": 4 }[latest.workouts] ?? 0;
 
-  // Recovery signal: avg of sleep/energy/recovery (out of 5)
-  const recoverySignal = (sleep + energy + recovery) / 3;
+  const recoverySignal = checkRecoverySignal(latest);
 
   // Trend signals (week 3+)
   let consistencyTrend = null;
@@ -635,7 +651,7 @@ function getDeclaredWeek(allChecks, weeklyPlanLimit) {
     const prev2 = nonBaseline.slice(-3, -1);
     const avgPrevScore = prev2.reduce((s, c) => s + c.score, 0) / prev2.length;
     consistencyTrend = score >= avgPrevScore ? "up" : "down";
-    const avgPrevRecovery = prev2.reduce((s, c) => ((parseInt(c.sleepQuality)||0) + (parseInt(c.energyLevel)||0) + (parseInt(c.physicalRecovery)||0)) / 3, 0) / prev2.length;
+    const avgPrevRecovery = prev2.reduce((s, c) => s + checkRecoverySignal(c), 0) / prev2.length;
     recoveryTrend = recoverySignal >= avgPrevRecovery ? "up" : "down";
   }
 
@@ -780,11 +796,15 @@ function getDeclaredWeek(allChecks, weeklyPlanLimit) {
   const zone2Val = { "0-30": 0, "30-60": 1, "60-90": 2, "90+": 3, "0–30 min": 0, "30–60 min": 1, "60–90 min": 2, "90+ min": 3 }[latest.zone2] ?? 0;
   const sleepOpp = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 }[latest.sleepOpportunity] ?? 0;
   const reg      = { "None": 0, "1-2 times": 1, "3+ times": 2 }[latest.downshift ?? latest.regulation] ?? 0;
+  // "sleep"/"recovery" reuse the same checkRecoverySignal() value computed above rather than
+  // the old dead sleepQuality/physicalRecovery fields — same bug as the role algorithm's
+  // recoverySignal, just a second usage site (this one crashed instead of silently reading 0,
+  // since those bare variables no longer existed after the role-algorithm fix).
   const focusOptions = [
-    { key: "sleep",    score: sleep / 5,      label: "Sleep consistency" },
+    { key: "sleep",    score: recoverySignal / 5,      label: "Sleep consistency" },
     { key: "aerobic",  score: zone2Val / 3,   label: "Aerobic volume" },
     { key: "protein",  score: protein / 3,    label: "Protein consistency" },
-    { key: "recovery", score: recovery / 5,   label: "Recovery quality" },
+    { key: "recovery", score: recoverySignal / 5,   label: "Recovery quality" },
     { key: "reg",      score: reg / 2,        label: "Recovery actions" },
     { key: "sleepOpp", score: sleepOpp / 3,   label: "Sleep opportunity" },
   ].sort((a, b) => a.score - b.score);
@@ -797,7 +817,7 @@ function getDeclaredWeek(allChecks, weeklyPlanLimit) {
     cappedByMove,
     reasonLine: cappedByMove ? "Held here by your current Move — not this week's signals." : reasonLines[role],
     whyLine: cappedByMove
-      ? "Your coach set this week's ceiling as part of your current Move. It isn't a read on how this week's going — your other signals are still being tracked as usual."
+      ? "Eric set this week's ceiling as part of your current Move. It isn't a read on how this week's going — your other signals are still being tracked as usual."
       : whyLines[role],
     focusSignal,
     ...cfg,
@@ -917,15 +937,20 @@ function ProfileTabs({ setView, active, locked }) {
     <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
       {tabs.map((tab) => {
         const isActive = tab.key === active;
+        // Eric's ask (2026-09-08): once My Week/My Results appear alongside it (i.e. not
+        // locked), My Move should stand out 25% bigger than the other two tabs.
+        const emphasize = tab.key === "move" && !locked;
         return (
           <button key={tab.key} onClick={() => setView(tab.view)}
             style={{
               pointerEvents: "auto", cursor: "pointer", borderRadius: "0 0 10px 10px",
               backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-              fontSize: "0.6rem", fontWeight: "bold", letterSpacing: "0.12em",
+              fontSize: emphasize ? "0.75rem" : "0.6rem", fontWeight: "bold", letterSpacing: "0.12em",
               border: isActive ? "none" : "1px solid rgba(255,255,255,0.15)",
               borderTop: "none",
-              padding: isActive ? "0.3rem 1.1rem 0.5rem" : "0.25rem 1rem 0.4rem",
+              padding: emphasize
+                ? (isActive ? "0.375rem 1.375rem 0.625rem" : "0.3125rem 1.25rem 0.5rem")
+                : (isActive ? "0.3rem 1.1rem 0.5rem" : "0.25rem 1rem 0.4rem"),
               background: isActive ? "rgba(45,45,45,0.92)" : "rgba(60,60,60,0.75)",
               color: isActive ? G : "rgba(255,255,255,0.5)",
             }}>
@@ -2356,7 +2381,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           <div style={{ textAlign: "center", marginBottom: "1.8rem" }}>
             <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: DARK, marginBottom: "0.5rem" }}>Welcome to Capacity Season</div>
             <div style={{ fontSize: "0.88rem", color: "#666", lineHeight: 1.65, maxWidth: "360px", margin: "0 auto" }}>
-              First, a couple minutes on your profile. Then a short Capacity Reflection — the most important part — so your coach can match you with your Move. About 7 minutes total.
+              First, a couple minutes on your profile. Then a short Capacity Reflection — the most important part — so Eric can match you with your Move. About 7 minutes total.
             </div>
           </div>
           <div style={{ fontSize: "0.72rem", color: "#aaa", letterSpacing: "0.05em", marginBottom: "0.9rem" }}>Your profile</div>
@@ -4649,8 +4674,8 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             <ProfileTabs setView={setView} active="move" locked={tabsLocked} />
           </div>
           <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem", paddingTop: "2.2rem", textAlign: "center" }}>
-            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Waiting on your coach</div>
-            <div style={{ color: "#666" }}>Your coach is reviewing your Reflection and will confirm your Fall Move soon.</div>
+            <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: DARK, marginBottom: "0.6rem" }}>Waiting on Eric</div>
+            <div style={{ color: "#666" }}>Eric is reviewing your Reflection and will confirm your Fall Move soon.</div>
             {firstCheckinBanner}
           </div>
         </div>
@@ -4659,12 +4684,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
 
     if (!fallActiveMove) {
       const NO_MOVE_COPY = {
-        programming_adjustment: "Your coach adjusted your training plan for this season instead of assigning a Capacity Move.",
-        deeper_look_first: "Your coach wants to take a closer look before assigning a Move. They'll follow up with you directly.",
-        refer_evaluate: "Your coach recommended a professional evaluation before continuing. They'll be in touch.",
+        programming_adjustment: "Eric adjusted your training plan for this season instead of assigning a Capacity Move.",
+        deeper_look_first: "Eric wants to take a closer look before assigning a Move. He'll follow up with you directly.",
+        refer_evaluate: "Eric recommended a professional evaluation before continuing. He'll be in touch.",
         no_move_needed: "You're already functioning well — no Capacity Move needed right now. Keep up the great work.",
       };
-      const bodyText = NO_MOVE_COPY[fallState.pathway] || "Your coach is updating your Move for this season — check back soon.";
+      const bodyText = NO_MOVE_COPY[fallState.pathway] || "Eric is updating your Move for this season — check back soon.";
       return (
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
           <div style={{ position: "sticky", top: 0, zIndex: 20 }}>
@@ -4705,7 +4730,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
                   {fallActiveMove.personalized_plan || card.activeDoseText}
                 </div>
                 <div style={{ color: "#666", fontSize: "0.9rem", lineHeight: 1.6 }}>
-                  Keep using this plan while it continues to help. Let your coach know if you need support again.
+                  Keep using this plan while it continues to help. Let Eric know if you need support again.
                 </div>
               </div>
             </div>

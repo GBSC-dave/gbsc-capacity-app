@@ -246,7 +246,7 @@ export function FallWeeklyCheckIn({ moveTitle, movePlanText, constraintLabel, on
             fontSize: "0.85rem", fontWeight: "600", padding: "0.7rem", margin: "1.2rem 0",
           }}
         >
-          {helpRequested ? "✓ Help requested — your coach will reach out" : "Need help with your Move?"}
+          {helpRequested ? "✓ Help requested — Eric will reach out" : "Need help with your Move?"}
         </button>
 
         {validationMsg && (

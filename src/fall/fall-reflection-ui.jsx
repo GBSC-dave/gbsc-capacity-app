@@ -242,7 +242,7 @@ export function FallReflection({ onComplete, onBack }) {
                   style={{ width: "100%", padding: "0.7rem", border: "1.5px solid #e0e0e0", borderRadius: "10px", fontSize: "0.9rem", fontFamily: SANS, boxSizing: "border-box" }}
                 />
               </F>
-              <div style={{ color: "#888", fontSize: "0.8rem" }}>Your coach will follow up on this one directly.</div>
+              <div style={{ color: "#888", fontSize: "0.8rem" }}>Eric will follow up on this one directly.</div>
             </div>
           )}
         </div>
