@@ -68,20 +68,21 @@ const WEEK4_STILL_IMPORTANT_OPTIONS = [
 const WEEK4_FLAGS_FOR_REVIEW = new Set(["no_wrong_thing", "not_sure"]);
 
 /**
- * Section 19 — bundled into the Week-4 main check-in, not a separate workflow.
- * @param {{ onComplete: (result: { stillImportant: string, constraintImpact: string, flaggedForReview: boolean }) => void }} props
+ * Section 19 — bundled into the Week-4 main check-in, not a separate workflow. Does NOT ask
+ * the constraint-impact question again (2026-09-08 fix) — that's already asked every week,
+ * including this one, as part of the regular Move questions; re-asking it here produced two
+ * different answers to the same prompt in one submission. The impact score for this week's
+ * formal check is simply that same weekly answer.
+ * @param {{ onComplete: (result: { stillImportant: string, flaggedForReview: boolean }) => void }} props
  */
 export function FallWeek4Reassessment({ onComplete }) {
   const [stillImportant, setStillImportant] = useState(null);
-  const [constraintImpact, setConstraintImpact] = useState(null);
-
-  const requiredFilled = !!stillImportant && !!constraintImpact;
 
   return (
     <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginBottom: "1rem", fontFamily: SANS }}>
       <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: "#999", letterSpacing: "0.06em", marginBottom: "0.8rem" }}>WEEK 4 CHECK-IN</div>
 
-      <div style={{ marginBottom: "1.2rem" }}>
+      <div>
         <div style={{ fontWeight: "600", color: DARK, fontSize: "0.95rem", marginBottom: "0.5rem" }}>
           Is this still the most important thing getting in your way?
         </div>
@@ -105,51 +106,18 @@ export function FallWeek4Reassessment({ onComplete }) {
         </div>
       </div>
 
-      <ConstraintImpactTap value={constraintImpact} onChange={setConstraintImpact} />
-
       <button
-        disabled={!requiredFilled}
+        disabled={!stillImportant}
         onClick={() =>
           onComplete({
             stillImportant,
-            constraintImpact,
             flaggedForReview: WEEK4_FLAGS_FOR_REVIEW.has(stillImportant),
           })
         }
         style={{
-          width: "100%", marginTop: "1.2rem", background: requiredFilled ? G : "#ccc", color: "#fff",
+          width: "100%", marginTop: "1.2rem", background: stillImportant ? G : "#ccc", color: "#fff",
           border: "none", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "bold",
-          cursor: requiredFilled ? "pointer" : "not-allowed",
-        }}
-      >
-        Continue →
-      </button>
-    </div>
-  );
-}
-
-/**
- * Section 15 — same Constraint Impact measurement as Week 4's, without the "still the right
- * constraint" branch question (that diagnostic check is a Week-4-only concept; by Week 8 this
- * is just the final before/after data point alongside Baseline).
- * @param {{ onComplete: (result: { constraintImpact: string }) => void }} props
- */
-export function FallWeek8Reassessment({ onComplete }) {
-  const [constraintImpact, setConstraintImpact] = useState(null);
-
-  return (
-    <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginBottom: "1rem", fontFamily: SANS }}>
-      <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: "#999", letterSpacing: "0.06em", marginBottom: "0.8rem" }}>WEEK 8 CHECK-IN</div>
-
-      <ConstraintImpactTap value={constraintImpact} onChange={setConstraintImpact} />
-
-      <button
-        disabled={!constraintImpact}
-        onClick={() => onComplete({ constraintImpact })}
-        style={{
-          width: "100%", marginTop: "1.2rem", background: constraintImpact ? G : "#ccc", color: "#fff",
-          border: "none", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "bold",
-          cursor: constraintImpact ? "pointer" : "not-allowed",
+          cursor: stillImportant ? "pointer" : "not-allowed",
         }}
       >
         Continue →

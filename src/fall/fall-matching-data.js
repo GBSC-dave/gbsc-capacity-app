@@ -33,6 +33,14 @@ export const STRUCTURED_REASONS = [
   { id: "safety_scope_concern", label: "Safety/scope concern" },
   { id: "no_meaningful_problem", label: "No meaningful problem to solve" },
   { id: "other", label: "Other" },
+  // 2026-09-08 — initial-assignment override reasons (Eric's data-confirmation ask). Same
+  // column/constraint as above, on the 'assigned' event; 'safety_scope_concern'/'other' are
+  // shared with the list above on purpose.
+  { id: "different_mechanism_identified", label: "Different mechanism identified" },
+  { id: "better_fit_for_member", label: "Better fit for the member" },
+  { id: "easier_to_execute", label: "Easier to execute" },
+  { id: "structural_overload", label: "Structural overload" },
+  { id: "new_information_from_conversation", label: "New information from conversation" },
 ];
 
 // Terrains with no locked default in Section 9 — the mechanism is genuinely ambiguous by spec

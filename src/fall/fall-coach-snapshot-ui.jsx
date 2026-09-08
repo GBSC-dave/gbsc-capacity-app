@@ -50,6 +50,20 @@ const DOSE_OPTIONS = [
   { id: "expansion", label: "Expansion" },
 ];
 
+// Eric's data-confirmation ask (2026-09-08) — required whenever the coach picks a Move other
+// than the algorithm's primary recommendation, so the export can distinguish an override from
+// agreement and say why. 'safety_scope_concern' and 'other' share wording/values with the
+// existing dose-change/close reasons (Section 28) on purpose — same column, same meaning.
+const OVERRIDE_REASON_OPTIONS = [
+  { id: "different_mechanism_identified", label: "Different mechanism identified" },
+  { id: "better_fit_for_member", label: "Better fit for the member" },
+  { id: "easier_to_execute", label: "Easier to execute" },
+  { id: "structural_overload", label: "Structural overload" },
+  { id: "safety_scope_concern", label: "Safety or scope concern" },
+  { id: "new_information_from_conversation", label: "New information from conversation" },
+  { id: "other", label: "Other" },
+];
+
 const WEEKLY_LIMIT_OPTIONS = [
   { id: "no_limit", label: "No limit" },
   { id: "anchor", label: "Anchor" },
@@ -73,7 +87,7 @@ function defaultWeeklyPlanLimit(moveKey, currentDeclaredRole) {
  *   reflection: { answers: object, stopFlagged: boolean, match: { pathway: string|null, primary: string|null, alternate: string|null, note: string|null } },
  *   objectiveContext?: string,  // e.g. attendance/testing/history — Spring-side data, not part of the Reflection itself
  *   currentDeclaredRole?: "anchor"|"builder"|"expansion"|null,  // member's live getDeclaredWeek() role, for the weekly plan limit's default
- *   onConfirm: (decision: { pathway: string, moveId: string|null, dose: string|null, coachNote: string, weeklyPlanLimit: string|null, personalizedPlan: string|null }) => void,
+ *   onConfirm: (decision: { pathway: string, moveId: string|null, dose: string|null, coachNote: string, weeklyPlanLimit: string|null, personalizedPlan: string|null, overrideReason: string|null }) => void,
  *   onBack?: () => void,
  * }} props
  */
@@ -87,6 +101,7 @@ export function FallCoachSnapshot({ member, reflection, objectiveContext, curren
   const [weeklyPlanLimit, setWeeklyPlanLimit] = useState(() => (match?.primary ? defaultWeeklyPlanLimit(match.primary, currentDeclaredRole) : "no_limit"));
   const [personalizedPlan, setPersonalizedPlan] = useState("");
   const [coachNote, setCoachNote] = useState("");
+  const [overrideReason, setOverrideReason] = useState(null);
   const [validationMsg, setValidationMsg] = useState("");
 
   useEffect(() => {
@@ -94,17 +109,26 @@ export function FallCoachSnapshot({ member, reflection, objectiveContext, curren
   }, [moveId]);
 
   const isCapacityMove = pathway === PATHWAYS.CAPACITY_MOVE;
-  const canConfirm = isCapacityMove ? !!moveId && !!dose : !!pathway;
+  const isOverride = isCapacityMove && !!moveId && !!match?.primary && moveId !== match.primary;
+  useEffect(() => {
+    if (!isOverride) setOverrideReason(null);
+  }, [isOverride]);
+  const canConfirm = isCapacityMove ? !!moveId && !!dose && (!isOverride || !!overrideReason) : !!pathway;
 
   const handleConfirm = () => {
     if (!canConfirm) {
-      setValidationMsg(isCapacityMove ? "Pick a Move and a dose before confirming." : "Pick a pathway before confirming.");
+      setValidationMsg(
+        isCapacityMove
+          ? (isOverride && !overrideReason ? "Pick a reason for choosing a different Move than recommended." : "Pick a Move and a dose before confirming.")
+          : "Pick a pathway before confirming."
+      );
       return;
     }
     onConfirm({
       pathway, moveId: isCapacityMove ? moveId : null, dose: isCapacityMove ? dose : null,
       coachNote: coachNote.trim(), weeklyPlanLimit: isCapacityMove ? weeklyPlanLimit : null,
       personalizedPlan: isCapacityMove ? (personalizedPlan.trim() || null) : null,
+      overrideReason: isOverride ? overrideReason : null,
     });
   };
 
@@ -219,6 +243,22 @@ export function FallCoachSnapshot({ member, reflection, objectiveContext, curren
                 </div>
               )}
             </SectionCard>
+
+            {isOverride && (
+              <SectionCard title="Why a different Move than recommended?">
+                <select
+                  value={overrideReason || ""}
+                  onChange={(e) => setOverrideReason(e.target.value || null)}
+                  style={{ width: "100%", padding: "0.6rem 0.7rem", border: "1.5px solid #e0e0e0", borderRadius: "8px", fontSize: "0.85rem", fontFamily: SANS, background: "#fff" }}
+                >
+                  <option value="">Select a reason…</option>
+                  {OVERRIDE_REASON_OPTIONS.map((opt) => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+                </select>
+                {overrideReason === "other" && (
+                  <div style={{ fontSize: "0.78rem", color: "#888", marginTop: "0.5rem" }}>Add detail in the Coach note below.</div>
+                )}
+              </SectionCard>
+            )}
 
             <SectionCard title="A/B/E dose (Section 12 — coach may personalize)">
               <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.6rem" }}>

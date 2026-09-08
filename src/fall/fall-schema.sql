@@ -86,6 +86,21 @@ alter table fall_weekly_checks add column if not exists week4_constraint_impact 
 alter table fall_weekly_checks add column if not exists week8_constraint_impact smallint
   check (week8_constraint_impact between 1 and 5);
 
+-- MIGRATION (2026-09-08, Eric's data-confirmation ask) — widen structured_reason to also cover
+-- the 7 initial-assignment override reasons (reused where wording already overlapped:
+-- 'safety_scope_concern' and 'other'). This same column, on the 'assigned' event, is now how
+-- an algorithm-override reason is captured — no new table/column needed.
+alter table fall_move_events drop constraint if exists fall_move_events_structured_reason_check;
+alter table fall_move_events add constraint fall_move_events_structured_reason_check
+  check (structured_reason in (
+    'wrong_constraint','constraint_correct_mechanism_wrong','constraint_mechanism_correct_move_wrong',
+    'objective_information_changed','member_clarified','move_not_helping','move_too_difficult',
+    'constraint_improved','life_circumstances_changed','programming_issue','safety_scope_concern',
+    'no_meaningful_problem','other',
+    'different_mechanism_identified','better_fit_for_member','easier_to_execute','structural_overload',
+    'new_information_from_conversation'
+  ));
+
 -- One-time backfill for members who completed Reflection before fall_constraints existed —
 -- without this, every existing test member's My Results Constraint Impact card would show
 -- nothing until they redid Reflection, which isn't a repeatable flow. Skips anyone who
@@ -401,12 +416,16 @@ $$ language plpgsql;
 -- MIGRATION (2026-09-03, point 14): no new param — constraint_id is looked up server-side
 -- from fall_member_state.active_constraint_id rather than passed in, so the link can never
 -- drift from whatever the member's actual current constraint record is.
+-- MIGRATION (2026-09-08, Eric's data-confirmation ask): signature gained p_override_reason —
+-- logged onto the same 'assigned' event, only meaningful when p_move_key differs from
+-- p_candidate_primary (the app only sends a value in that case) — drop the 9-arg version first.
 drop function if exists fall_confirm_move(text, text, text, text, text, text, text);
 drop function if exists fall_confirm_move(text, text, text, text, text, text, text, text);
+drop function if exists fall_confirm_move(text, text, text, text, text, text, text, text, text);
 create or replace function fall_confirm_move(
   p_member_id text, p_season text, p_move_key text, p_dose text,
   p_candidate_primary text, p_candidate_alternate text, p_coach_note text, p_weekly_plan_limit text,
-  p_personalized_plan text
+  p_personalized_plan text, p_override_reason text
 ) returns uuid as $$
 declare
   v_move_id uuid;
@@ -419,8 +438,8 @@ begin
   values (p_member_id, p_season, p_move_key, p_dose, 'active', p_candidate_primary, p_candidate_alternate, p_coach_note, p_weekly_plan_limit, p_personalized_plan, v_constraint_id)
   returning id into v_move_id;
 
-  insert into fall_move_events (move_id, member_id, event_type, coach_note)
-  values (v_move_id, p_member_id, 'assigned', p_coach_note);
+  insert into fall_move_events (move_id, member_id, event_type, coach_note, structured_reason)
+  values (v_move_id, p_member_id, 'assigned', p_coach_note, p_override_reason);
 
   insert into fall_member_state (member_id, season, pathway, active_move_id, dose)
   values (p_member_id, p_season, 'capacity_move', v_move_id, p_dose)

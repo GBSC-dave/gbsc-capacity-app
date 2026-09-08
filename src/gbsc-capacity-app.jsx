@@ -5,11 +5,11 @@ import { FallReflection } from "./fall/fall-reflection-ui.jsx";
 import { FallCoachSnapshot } from "./fall/fall-coach-snapshot-ui.jsx";
 import { FallWeeklyCheckIn } from "./fall/fall-weekly-checkin-ui.jsx";
 import { FallMidweekReset } from "./fall/fall-midweek-reset-ui.jsx";
-import { FallWeek4Reassessment, FallWeek8Reassessment } from "./fall/fall-constraint-impact-ui.jsx";
+import { FallWeek4Reassessment } from "./fall/fall-constraint-impact-ui.jsx";
 import { FallCoachTriageDashboard } from "./fall/fall-coach-triage-ui.jsx";
 import { FallManageMove } from "./fall/fall-coach-manage-move-ui.jsx";
 import { FALL_CAPACITY_MOVES, getMoveCard } from "./fall/fall-moves-data.js";
-import { matchCandidateMove } from "./fall/fall-matching-data.js";
+import { matchCandidateMove, STRUCTURED_REASONS } from "./fall/fall-matching-data.js";
 import { Q5_OPTIONS } from "./fall/fall-reflection-data.js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -984,6 +984,172 @@ async function loadFallWeeklyChecks(memberId) {
 }
 
 
+// Eric's data-confirmation ask (2026-09-08) — a season-end CSV export, not a dashboard. Two
+// files (Participant Summary, Weekly Check-Ins) joined by participant_id, per his spec.
+function triggerCSVDownload(filename, headers, rows) {
+  const escape = (v) => {
+    const s = v === undefined || v === null ? "" : String(v);
+    return s.includes(",") || s.includes('"') || s.includes("\n") ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function moveTitle(moveKey) {
+  if (!moveKey) return "";
+  return FALL_CAPACITY_MOVES[moveKey]?.title || moveKey;
+}
+function structuredReasonLabel(id) {
+  if (!id) return "";
+  return STRUCTURED_REASONS.find((r) => r.id === id)?.label || id;
+}
+
+const PROGRESS_CHECK_OUTCOMES = {
+  continue: "Continue current Move unchanged",
+  modify: "Modify how the current Move is applied",
+  switch: "Switch to a different Move",
+  resolved: "Problem largely resolved",
+  deeper_look: "Deeper Look or referral needed",
+};
+
+// Derives Eric's 5-category "formal Move Progress Check" outcome from data already collected,
+// rather than asking a new question (Section: "if existing flows already capture an equivalent
+// decision, map the existing responses instead of adding another question"). Looks at what
+// actually happened to the member's Move in the window after that week's check-in: a
+// coach-logged Move switch/dose change/graduation wins; otherwise "Deeper Look" comes from the
+// member's own Week 4 "wrong thing/not sure" answer (the one signal we have for it — there's no
+// separate coach-side "referred" state today); otherwise it's a plain "continue."
+function deriveProgressCheckOutcome(weekNum, memberChecks, memberMoves, memberEventsSorted) {
+  const weekCheck = memberChecks.find((c) => c.season_week === weekNum);
+  if (!weekCheck) return { outcome: "", moveBefore: "", moveAfter: "", date: "" };
+
+  const moveBeforeRow = memberMoves.find((m) => m.id === weekCheck.move_id) || null;
+  const moveBefore = moveTitle(moveBeforeRow?.move_key);
+
+  const nextCheck = weekNum === 4 ? memberChecks.find((c) => c.season_week === 8) : null;
+  const windowStart = weekCheck.submitted_at;
+  const windowEnd = nextCheck ? nextCheck.submitted_at : null;
+  const eventsInWindow = memberEventsSorted.filter(
+    (e) => e.occurred_at > windowStart && (!windowEnd || e.occurred_at <= windowEnd)
+  );
+
+  const switched = eventsInWindow.find((e) => e.event_type === "replaced");
+  const resolved = eventsInWindow.find((e) => e.event_type === "graduated" || e.event_type === "integrated");
+  const modified = eventsInWindow.find((e) => e.event_type === "dose_changed");
+
+  let outcome, decisionEvent, moveAfter = moveBefore;
+  if (switched) {
+    outcome = PROGRESS_CHECK_OUTCOMES.switch;
+    decisionEvent = switched;
+    const newMove = memberMoves.find((m) => m.assigned_at > switched.occurred_at);
+    moveAfter = moveTitle(newMove?.move_key) || "";
+  } else if (resolved) {
+    outcome = PROGRESS_CHECK_OUTCOMES.resolved;
+    decisionEvent = resolved;
+  } else if (modified) {
+    outcome = PROGRESS_CHECK_OUTCOMES.modify;
+    decisionEvent = modified;
+  } else if (weekNum === 4 && ["no_wrong_thing", "not_sure"].includes(weekCheck.week4_still_important)) {
+    outcome = PROGRESS_CHECK_OUTCOMES.deeper_look;
+    decisionEvent = null;
+  } else {
+    outcome = PROGRESS_CHECK_OUTCOMES.continue;
+    decisionEvent = null;
+  }
+
+  const dateSrc = decisionEvent ? decisionEvent.occurred_at : weekCheck.submitted_at;
+  return { outcome, moveBefore, moveAfter, date: dateSrc ? dateSrc.slice(0, 10) : "" };
+}
+
+async function downloadFallExportCSVs(members, checksByMember, movesById) {
+  const [{ data: constraints }, { data: allMoves }, { data: events }] = await Promise.all([
+    supabase.from("fall_constraints").select("*").eq("season", FALL_SEASON),
+    supabase.from("fall_moves").select("*").eq("season", FALL_SEASON).order("assigned_at", { ascending: true }),
+    supabase.from("fall_move_events").select("*").order("occurred_at", { ascending: true }),
+  ]);
+  const constraintById = {};
+  for (const c of constraints || []) constraintById[c.id] = c;
+  const movesByMember = {};
+  for (const mv of allMoves || []) (movesByMember[mv.member_id] ||= []).push(mv);
+  const eventsByMove = {};
+  for (const e of events || []) (eventsByMove[e.move_id] ||= []).push(e);
+
+  const summaryHeaders = [
+    "participant_id", "name", "email", "starting_constraint", "baseline_impact_1to5",
+    "algorithm_recommended_move", "coach_assigned_move", "override", "override_reason",
+    "week4_outcome", "week4_move_before", "week4_move_after", "week4_decision_date",
+    "week8_outcome", "week8_move_before", "week8_move_after", "week8_decision_date",
+    "final_constraint_impact_1to5", "week8_completed",
+  ];
+  const summaryRows = [];
+
+  const weeklyHeaders = [
+    "participant_id", "week", "submission_date", "move_active_that_week",
+    "move_use", "move_helpfulness", "constraint_impact_1to5", "help_requested",
+  ];
+  const weeklyRows = [];
+
+  for (const m of members) {
+    // Fall participants only — a member never assigned a season here has no fall_member_state row.
+    const memberChecks = checksByMember[m.id] || [];
+    const memberMoves = (movesByMember[m.id] || []).slice().sort((a, b) => (a.assigned_at || "").localeCompare(b.assigned_at || ""));
+    if (memberChecks.length === 0 && memberMoves.length === 0) continue;
+
+    const memberEventsSorted = memberMoves
+      .flatMap((mv) => eventsByMove[mv.id] || [])
+      .sort((a, b) => (a.occurred_at || "").localeCompare(b.occurred_at || ""));
+
+    const firstMove = memberMoves[0] || null;
+    const assignedEvent = firstMove ? (eventsByMove[firstMove.id] || []).find((e) => e.event_type === "assigned") : null;
+    const isOverride = !!(firstMove?.candidate_primary && firstMove?.move_key && firstMove.candidate_primary !== firstMove.move_key);
+
+    // Constraint: whichever fall_constraints row this member's first Move points to, falling
+    // back to none if they never reached assignment (e.g. Deeper Look/Refer pathway).
+    const constraint = firstMove?.constraint_id ? constraintById[firstMove.constraint_id] : null;
+
+    const week4 = deriveProgressCheckOutcome(4, memberChecks, memberMoves, memberEventsSorted);
+    const week8 = deriveProgressCheckOutcome(8, memberChecks, memberMoves, memberEventsSorted);
+
+    const latestImpact = memberChecks
+      .slice()
+      .sort((a, b) => (b.season_week || 0) - (a.season_week || 0))
+      .find((c) => c.move_constraint_impact != null);
+
+    summaryRows.push([
+      m.id, m.name, m.email,
+      constraint?.constraint_label || "", constraint?.baseline_rating ?? "",
+      moveTitle(firstMove?.candidate_primary), moveTitle(firstMove?.move_key),
+      firstMove ? (isOverride ? "YES" : "NO") : "",
+      isOverride ? structuredReasonLabel(assignedEvent?.structured_reason) : "",
+      week4.outcome, week4.moveBefore, week4.moveAfter, week4.date,
+      week8.outcome, week8.moveBefore, week8.moveAfter, week8.date,
+      latestImpact ? latestImpact.move_constraint_impact : "",
+      memberChecks.some((c) => c.season_week === 8) ? "YES" : "NO",
+    ]);
+
+    for (const c of memberChecks.slice().sort((a, b) => a.season_week - b.season_week)) {
+      const move = c.move_id ? movesById[c.move_id] : null;
+      weeklyRows.push([
+        m.id, c.season_week, (c.submitted_at || "").slice(0, 10),
+        moveTitle(move?.move_key),
+        c.move_used || "", c.move_helped || "",
+        c.move_constraint_impact ?? "",
+        c.help_requested ? "YES" : "NO",
+      ]);
+    }
+  }
+
+  const today = localDateStr();
+  triggerCSVDownload(`fall-participant-summary-${today}.csv`, summaryHeaders, summaryRows);
+  triggerCSVDownload(`fall-weekly-checkins-${today}.csv`, weeklyHeaders, weeklyRows);
+}
+
 // Coach-facing Fall tab: queue of members needing Snapshot review + confirmation, plus the Triage dashboard.
 function FallCoachTab({ members }) {
   const [subTab, setSubTab] = useState("queue"); // queue | triage
@@ -992,6 +1158,16 @@ function FallCoachTab({ members }) {
   const [movesById, setMovesById] = useState({});
   const [selectedMemberId, setSelectedMemberId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await downloadFallExportCSVs(members, checksByMember, movesById);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function refresh() {
     setLoading(true);
@@ -1024,6 +1200,7 @@ function FallCoachTab({ members }) {
         p_member_id: memberId, p_season: FALL_SEASON, p_move_key: decision.moveId, p_dose: decision.dose,
         p_candidate_primary: match?.primary || null, p_candidate_alternate: match?.alternate || null, p_coach_note: decision.coachNote || null,
         p_weekly_plan_limit: decision.weeklyPlanLimit || "no_limit", p_personalized_plan: decision.personalizedPlan || null,
+        p_override_reason: decision.overrideReason || null,
       });
     } else {
       await supabase.rpc("fall_set_pathway", { p_member_id: memberId, p_season: FALL_SEASON, p_pathway: decision.pathway });
@@ -1124,7 +1301,7 @@ function FallCoachTab({ members }) {
     return (
       <div>
         <div style={{ display: "flex", gap: "0.5rem", padding: "1rem 1.5rem 0" }}>
-          {[["queue", "Pending Review"], ["triage", "Triage"]].map(([tab, label]) => (
+          {[["queue", "Pending Review"], ["triage", "Triage"], ["export", "Export Data"]].map(([tab, label]) => (
             <button key={tab} onClick={() => setSubTab(tab)}
               style={{ background: subTab === tab ? G : "none", color: subTab === tab ? "#fff" : "#888", border: "1.5px solid " + (subTab === tab ? G : "#ddd"), borderRadius: "999px", padding: "0.4rem 1rem", fontSize: "0.82rem", fontWeight: "bold", cursor: "pointer" }}>
               {label}
@@ -1136,11 +1313,36 @@ function FallCoachTab({ members }) {
     );
   }
 
+  if (subTab === "export") {
+    return (
+      <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
+        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.2rem" }}>
+          {[["queue", "Pending Review"], ["triage", "Triage"], ["export", "Export Data"]].map(([tab, label]) => (
+            <button key={tab} onClick={() => setSubTab(tab)}
+              style={{ background: subTab === tab ? G : "none", color: subTab === tab ? "#fff" : "#888", border: "1.5px solid " + (subTab === tab ? G : "#ddd"), borderRadius: "999px", padding: "0.4rem 1rem", fontSize: "0.82rem", fontWeight: "bold", cursor: "pointer" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.5rem" }}>
+          <div style={{ fontWeight: "bold", color: DARK, fontSize: "1rem", marginBottom: "0.5rem" }}>Season data export</div>
+          <div style={{ color: "#888", fontSize: "0.85rem", lineHeight: 1.5, marginBottom: "1.2rem" }}>
+            Downloads two CSVs: a Participant Summary (one row per member — starting constraint, algorithm recommendation vs. coach assignment, Week 4/8 outcomes, final impact) and Weekly Check-Ins (one row per submitted check-in). <code>participant_id</code> joins the two.
+          </div>
+          <button onClick={handleExport} disabled={exporting}
+            style={{ width: "100%", background: G, color: "#fff", border: "none", borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "bold", cursor: exporting ? "default" : "pointer", opacity: exporting ? 0.7 : 1 }}>
+            {exporting ? "Preparing…" : "⬇ Download Fall Data (2 CSVs)"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const pending = members.filter((m) => statesByMember[m.id]?.reflection_answers && !statesByMember[m.id]?.pathway);
   return (
     <div style={{ maxWidth: "700px", margin: "0 auto", padding: "1.5rem" }}>
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.2rem" }}>
-        {[["queue", "Pending Review"], ["triage", "Triage"]].map(([tab, label]) => (
+        {[["queue", "Pending Review"], ["triage", "Triage"], ["export", "Export Data"]].map(([tab, label]) => (
           <button key={tab} onClick={() => setSubTab(tab)}
             style={{ background: subTab === tab ? G : "none", color: subTab === tab ? "#fff" : "#888", border: "1.5px solid " + (subTab === tab ? G : "#ddd"), borderRadius: "999px", padding: "0.4rem 1rem", fontSize: "0.82rem", fontWeight: "bold", cursor: "pointer" }}>
             {label}
@@ -1835,7 +2037,7 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   const [fallConstraint, setFallConstraint] = useState(null);
   const [fallWeeklyChecks, setFallWeeklyChecks] = useState([]);
   const [fallLoading, setFallLoading] = useState(true);
-  const [fallSubView, setFallSubView] = useState("home"); // home | checkin | checkin-week4 | checkin-week8 | midweek
+  const [fallSubView, setFallSubView] = useState("home"); // home | checkin | checkin-week4 | midweek
   const [pendingCheckin, setPendingCheckin] = useState(null); // { payload, seasonWeek } — held between the main check-in and a Week 4/8 reassessment step
   const fallIsIntegrated = fallActiveMove?.status === "integrated";
   // Section 4 — "Stop applying that assignment's weekly plan limit" once Integrated.
@@ -1875,22 +2077,25 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   // Section 19 — the Week 4/Week 8 reassessment is "bundled onto that week's check-in row, not
   // a separate workflow," so it's one more screen in the same submission rather than a second
   // RPC call: handleFallCheckinSubmit holds the main payload and detours through an extra step
-  // on weeks 4/8 before finalizeFallCheckin actually writes anything.
+  // on week 4 before finalizeFallCheckin actually writes anything. The week4/8 constraint-impact
+  // columns are NOT asked separately (2026-09-08 fix — that duplicated the regular weekly Move
+  // question) — they're just this week's own moveConstraintImpact answer, copied.
   async function finalizeFallCheckin(payload, seasonWeek, extra) {
     const habitScore = calcWeeklyScore(payload.signals);
+    const constraintImpact = payload.moveConstraintImpact ? parseInt(payload.moveConstraintImpact, 10) : null;
     await supabase.rpc("fall_submit_weekly_checkin", {
       p_member_id: currentMember.id, p_season: FALL_SEASON, p_week_key: getFallWeekKey(seasonWeek), p_season_week: seasonWeek,
       p_move_id: fallActiveMove?.id || null, p_signals: payload.signals, p_habit_score: habitScore,
       p_move_used: payload.moveUsed, p_move_helped: payload.moveHelped,
-      p_move_constraint_impact: payload.moveConstraintImpact ? parseInt(payload.moveConstraintImpact, 10) : null,
+      p_move_constraint_impact: constraintImpact,
       p_help_requested: payload.helpRequested,
       // Data requirements — "snapshot of the Move ID, dose, and plan text being rated," so a
       // later coach edit to the Move can't retroactively change what this feedback describes.
       p_move_dose_snapshot: fallActiveMove?.dose || null,
       p_move_plan_snapshot: fallActiveMove?.personalized_plan || null,
       p_week4_still_important: extra?.stillImportant || null,
-      p_week4_constraint_impact: extra?.week4ConstraintImpact ? parseInt(extra.week4ConstraintImpact, 10) : null,
-      p_week8_constraint_impact: extra?.week8ConstraintImpact ? parseInt(extra.week8ConstraintImpact, 10) : null,
+      p_week4_constraint_impact: seasonWeek === 4 ? constraintImpact : null,
+      p_week8_constraint_impact: seasonWeek === 8 ? constraintImpact : null,
     });
 
     // Dual-write into Spring's own weeklyChecks array — same shape Spring's own check-in writes —
@@ -1926,19 +2131,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
   async function handleFallCheckinSubmit(payload) {
     const seasonWeek = getFallSeasonWeek();
     if (seasonWeek === 4) { setPendingCheckin({ payload, seasonWeek }); setFallSubView("checkin-week4"); return; }
-    if (seasonWeek === 8) { setPendingCheckin({ payload, seasonWeek }); setFallSubView("checkin-week8"); return; }
     await finalizeFallCheckin(payload, seasonWeek, null);
   }
 
   async function handleWeek4ReassessmentComplete(result) {
     await finalizeFallCheckin(pendingCheckin.payload, pendingCheckin.seasonWeek, {
-      stillImportant: result.stillImportant, week4ConstraintImpact: result.constraintImpact,
-    });
-  }
-
-  async function handleWeek8ReassessmentComplete(result) {
-    await finalizeFallCheckin(pendingCheckin.payload, pendingCheckin.seasonWeek, {
-      week8ConstraintImpact: result.constraintImpact,
+      stillImportant: result.stillImportant,
     });
   }
 
@@ -4004,16 +4202,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
         </div>
       );
     }
-    if (fallSubView === "checkin-week8") {
-      return (
-        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-          {hdr}
-          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
-            <FallWeek8Reassessment onComplete={handleWeek8ReassessmentComplete} />
-          </div>
-        </div>
-      );
-    }
     if (fallSubView === "midweek") {
       return (
         <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
@@ -4420,16 +4608,6 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
           {hdr}
           <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
             <FallWeek4Reassessment onComplete={handleWeek4ReassessmentComplete} />
-          </div>
-        </div>
-      );
-    }
-    if (fallSubView === "checkin-week8") {
-      return (
-        <div style={{ minHeight: "100vh", background: "transparent", fontFamily: SANS }}>
-          {hdr}
-          <div style={{ maxWidth: "480px", margin: "0 auto", padding: "1.5rem" }}>
-            <FallWeek8Reassessment onComplete={handleWeek8ReassessmentComplete} />
           </div>
         </div>
       );
