@@ -1163,7 +1163,13 @@ function FallCoachTab({ members }) {
   async function handleExport() {
     setExporting(true);
     try {
-      await downloadFallExportCSVs(members, checksByMember, movesById);
+      // Re-fetch immediately before generating the CSVs — checksByMember/movesById can be
+      // stale (a coach who's had this tab open a while won't have today's newest check-ins
+      // in React state yet), and staleness in a season-end export is worse than staleness in
+      // the live dashboard. Use refresh()'s own return value, not the state it also sets,
+      // since a setState here wouldn't be visible in this same closure until the next render.
+      const fresh = await refresh();
+      await downloadFallExportCSVs(members, fresh.checksByMember, fresh.movesById);
     } finally {
       setExporting(false);
     }
@@ -1189,6 +1195,7 @@ function FallCoachTab({ members }) {
     for (const mv of moves || []) movesMap[mv.id] = mv;
     setMovesById(movesMap);
     setLoading(false);
+    return { checksByMember: checksMap, movesById: movesMap };
   }
   useEffect(() => { refresh(); }, []);
 
