@@ -937,19 +937,20 @@ function ProfileTabs({ setView, active, locked }) {
     <div style={{ position: "absolute", left: 0, right: 0, top: "100%", display: "flex", justifyContent: "center", gap: "3px", pointerEvents: "none", zIndex: 19 }}>
       {tabs.map((tab) => {
         const isActive = tab.key === active;
-        // Eric's ask (2026-09-08): once My Week/My Results appear alongside it (i.e. not
-        // locked), My Move should stand out 25% bigger than the other two tabs.
+        // Eric's ask (2026-09-08, bumped from 25% to 50% same day): once My Week/My Results
+        // appear alongside it (i.e. not locked), My Move should stand out 50% bigger than the
+        // other two tabs — sizes below are the original values scaled 1.5x.
         const emphasize = tab.key === "move" && !locked;
         return (
           <button key={tab.key} onClick={() => setView(tab.view)}
             style={{
               pointerEvents: "auto", cursor: "pointer", borderRadius: "0 0 10px 10px",
               backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-              fontSize: emphasize ? "0.75rem" : "0.6rem", fontWeight: "bold", letterSpacing: "0.12em",
+              fontSize: emphasize ? "0.9rem" : "0.6rem", fontWeight: "bold", letterSpacing: "0.12em",
               border: isActive ? "none" : "1px solid rgba(255,255,255,0.15)",
               borderTop: "none",
               padding: emphasize
-                ? (isActive ? "0.375rem 1.375rem 0.625rem" : "0.3125rem 1.25rem 0.5rem")
+                ? (isActive ? "0.45rem 1.65rem 0.75rem" : "0.375rem 1.5rem 0.6rem")
                 : (isActive ? "0.3rem 1.1rem 0.5rem" : "0.25rem 1rem 0.4rem"),
               background: isActive ? "rgba(45,45,45,0.92)" : "rgba(60,60,60,0.75)",
               color: isActive ? G : "rgba(255,255,255,0.5)",
@@ -2470,10 +2471,13 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const latest = (currentMember.weeklyChecks || []).filter(c => c && !c.isBaseline).slice(-1)[0];
             const getKeepSteady = () => {
               if (!latest) return "Consistency";
-              const recovery = parseInt(latest.physicalRecovery) || 0;
-              const sleep = parseInt(latest.sleepQuality) || 0;
+              // Bug fixed 2026-09-08: physicalRecovery/sleepQuality are Spring-era fields Fall's
+              // check-in never sets, so this always read 0/0 and this line always said "Sleep"
+              // for every Fall member regardless of their real signals — checkRecoverySignal()
+              // (same helper used in the role algorithm) gives a real Fall-native equivalent.
+              const recovery = checkRecoverySignal(latest);
               const protein = { "Rarely": 0, "Some days": 1, "Most days": 2, "Yes (most days)": 3 }[latest.protein] ?? 1;
-              if (recovery <= 2 || sleep <= 2) return "Sleep";
+              if (recovery <= 2) return "Sleep";
               if (protein <= 1) return "Nutrition";
               return "Consistency";
             };
@@ -3336,6 +3340,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
             const downshiftMap = { "None": 0, "1-2 times": 1, "1–2 times": 1, "3+ times": 2 };
             const movementMap = { "Low": 0, "Moderate": 1, "High": 2 };
             const sleepOppMap = { "Rarely": 0, "1-2 nights": 1, "3-4 nights": 2, "5+ nights": 3, "1–2 nights": 1, "3–4 nights": 2 };
+            // Sleep Quality/Energy/Recovery only mean anything for Spring-era checks that
+            // actually collected them — Fall's weekly check-in doesn't ask these. Bug fixed
+            // 2026-09-08: including them unconditionally meant every Fall member's "Main
+            // limiter" badge above always falsely pointed at one of these three (all reading
+            // as 0/5, tied for weakest, regardless of the member's real signals).
+            const hasLegacyRecoveryFields = latest.sleepQuality !== undefined || latest.energyLevel !== undefined || latest.physicalRecovery !== undefined;
             const rows = [
               { label: "Training",  value: workoutMap[latest.workouts] ?? 0, max: 4, display: `${latest.workouts} workouts` },
               { label: "Zone 2",    value: zone2Map[latest.zone2] ?? (latest.aerobic90 === "Yes" ? 3 : latest.aerobic90 === "Close" ? 1 : 0), max: 3, display: latest.zone2 || latest.aerobic90 || "—" },
@@ -3344,9 +3354,11 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               { label: "Protein",   value: proteinMap[latest.protein ?? latest.proteinFloor] ?? 0, max: 3, display: latest.protein || latest.proteinFloor || "—" },
               { label: "Sleep Opp.",value: sleepOppMap[latest.sleepOpportunity] ?? 0, max: 3, display: latest.sleepOpportunity || "—" },
               { label: "Downshift", value: downshiftMap[latest.downshift ?? latest.regulation] ?? 0, max: 2, display: latest.downshift || latest.regulation || "—" },
-              { label: "Sleep Quality", value: parseInt(latest.sleepQuality) || 0, max: 5, display: `${latest.sleepQuality}/5` },
-              { label: "Energy",    value: parseInt(latest.energyLevel) || 0, max: 5, display: `${latest.energyLevel}/5` },
-              { label: "Recovery",  value: parseInt(latest.physicalRecovery) || 0, max: 5, display: `${latest.physicalRecovery}/5` },
+              ...(hasLegacyRecoveryFields ? [
+                { label: "Sleep Quality", value: parseInt(latest.sleepQuality) || 0, max: 5, display: `${latest.sleepQuality}/5` },
+                { label: "Energy",    value: parseInt(latest.energyLevel) || 0, max: 5, display: `${latest.energyLevel}/5` },
+                { label: "Recovery",  value: parseInt(latest.physicalRecovery) || 0, max: 5, display: `${latest.physicalRecovery}/5` },
+              ] : []),
             ];
             const sortedRows   = [...rows].sort((a,b) => (b.value/b.max) - (a.value/a.max));
             const topDriver    = sortedRows[0];
@@ -5850,9 +5862,9 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.protein ?? "—"}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.sleepOpportunity ?? "—"}</td>
                         <td style={{ padding: "0.5rem 0.7rem" }}>{c.downshift ?? "—"}</td>
-                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.sleepQuality}/5</td>
-                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.energyLevel}/5</td>
-                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.physicalRecovery}/5</td>
+                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.sleepQuality ? `${c.sleepQuality}/5` : "—"}</td>
+                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.energyLevel ? `${c.energyLevel}/5` : "—"}</td>
+                        <td style={{ padding: "0.5rem 0.7rem" }}>{c.physicalRecovery ? `${c.physicalRecovery}/5` : "—"}</td>
                         <td style={{ padding: "0.5rem 0.7rem", color: c.disruption === "Major disruption" ? "#c07030" : c.disruption === "Some disruption" ? "#b09020" : "#aaa" }}>
                           {c.disruption === "Major disruption" ? <><GBSCIcon name="wave" size={12} color="#888580" strokeWidth={0}/> Major</> : c.disruption === "Some disruption" ? "〰️ Some" : "—"}
                         </td>
@@ -5921,12 +5933,17 @@ function CoachDashboard({ members, loadMembers, pods, setPods, onBack }) {
       .filter(({ drop }) => drop > 0)
       .sort((a, b) => b.drop - a.drop);
 
-    // ── Low recovery: latest check physicalRecovery <= 2
+    // ── Low recovery: latest check physicalRecovery <= 2. Bug fixed 2026-09-08: this 1-5
+    // self-rating is a Spring-era field Fall's weekly check-in never collects, so it read as
+    // 0 for every Fall member and flagged the entire active roster every week. Requires the
+    // field to actually be present now — Fall doesn't have an equivalent signal yet, so this
+    // card just goes quiet (not false-alarm) for the current season until one's built.
     const lowRecovery = members
       .map(m => {
         const checks = (m.weeklyChecks || []).filter(c => c && !c.isBaseline);
         if (!checks.length) return null;
         const last = checks[checks.length - 1];
+        if (last.physicalRecovery === undefined) return null;
         const rec = parseInt(last.physicalRecovery) || 0;
         const sleep = parseInt(last.sleepQuality) || 0;
         const energy = parseInt(last.energyLevel) || 0;

@@ -19,11 +19,20 @@ export const TRIAGE_STATES = {
   BLUE: "BLUE",
 };
 
-const MOVE_LEVEL_RANK = { "Below Anchor": 0, "Anchor": 1, "Builder": 2, "Expansion": 3 };
-
+// MIGRATION (2026-09-08, caught during a scoring audit, not asked for): this function was
+// still written against move_level_reached/helpfulness/difficulty — the ORIGINAL, since-replaced
+// weekly Move questions (see fall-schema.sql's "SUPERSEDED (2026-09-03)" columns). Point 3's
+// simpler trio (move_used/move_helped/move_constraint_impact, wired into FallWeeklyCheckIn)
+// doesn't have those field names or a 1-5 difficulty rating at all, so every real check-in since
+// Point 3 shipped was silently missing all of them — every condition below fell through to its
+// default, meaning Triage has been showing GREEN for every member regardless of their actual
+// data (including members who'd tapped "Need help," since even that read the wrong field name).
+// Rebuilt against the real fields, same qualitative intent from the header comment above. These
+// thresholds are a fresh interpretation, same as the original ones were — flag to Eric to tune
+// once real weekly data shows whether they feel right.
 /**
  * @param {{
- *   recentChecks: Array<{ moveLevelReached: string, helpfulness: string, difficulty: string, helpRequested: boolean }>, // chronological, most recent LAST
+ *   recentChecks: Array<{ move_used: string, move_helped: string, move_constraint_impact: number, help_requested: boolean }>, // chronological, most recent LAST — real fall_weekly_checks rows
  *   scopeConcernFlag?: boolean, // coach-set manually elsewhere (Section 6.1 SAFE / Section 28 "Safety/scope concern")
  * }} input
  * @returns {{ state: string|null, reason: string }} state is null when there's no data yet to judge.
@@ -37,39 +46,32 @@ export function deriveTriageState({ recentChecks = [], scopeConcernFlag = false 
   }
 
   const latest = recentChecks[recentChecks.length - 1];
-  const latestHelpfulness = latest.helpfulness ? parseInt(latest.helpfulness, 10) : null;
-  const latestDifficulty = latest.difficulty ? parseInt(latest.difficulty, 10) : null;
 
-  if (latest.helpRequested) {
+  if (latest.help_requested) {
     return { state: TRIAGE_STATES.RED, reason: "Requested help this week" };
   }
-  if (latestHelpfulness !== null && latestHelpfulness <= 2) {
-    return { state: TRIAGE_STATES.RED, reason: "Helpfulness ≤2 this week" };
+  if (latest.move_helped === "not_really") {
+    return { state: TRIAGE_STATES.RED, reason: "Reported the Move isn't helping" };
   }
   const lastThree = recentChecks.slice(-3);
-  const belowAnchorCount = lastThree.filter((c) => c.moveLevelReached === "Below Anchor").length;
-  if (belowAnchorCount >= 2) {
-    return { state: TRIAGE_STATES.RED, reason: `Below Anchor in ${belowAnchorCount} of the last ${lastThree.length} check-ins` };
+  const neverUsedCount = lastThree.filter((c) => c.move_used === "never").length;
+  if (neverUsedCount >= 2) {
+    return { state: TRIAGE_STATES.RED, reason: `Move not used in ${neverUsedCount} of the last ${lastThree.length} check-ins` };
   }
 
   const lastTwo = recentChecks.slice(-2);
   const strongStreak =
     lastTwo.length === 2 &&
-    lastTwo.every((c) => {
-      const rank = MOVE_LEVEL_RANK[c.moveLevelReached] ?? 0;
-      const help = c.helpfulness ? parseInt(c.helpfulness, 10) : 0;
-      const diff = c.difficulty ? parseInt(c.difficulty, 10) : 5;
-      return rank >= 1 && help >= 4 && diff <= 3;
-    });
+    lastTwo.every((c) => c.move_used === "most_of_the_time" && c.move_helped === "definitely");
   if (strongStreak) {
-    return { state: TRIAGE_STATES.BLUE, reason: "Strong execution + helpfulness + manageable difficulty across the last 2 check-ins" };
+    return { state: TRIAGE_STATES.BLUE, reason: "Used it most of the time and reported it definitely helped, 2 check-ins in a row" };
   }
 
-  if (latest.moveLevelReached === "Below Anchor" || (latestDifficulty !== null && latestDifficulty >= 4)) {
-    return { state: TRIAGE_STATES.YELLOW, reason: latest.moveLevelReached === "Below Anchor" ? "Below Anchor this week (not yet repeated)" : "Difficult to fit in this week" };
+  if (latest.move_used === "never" || latest.move_used === "sometimes") {
+    return { state: TRIAGE_STATES.YELLOW, reason: latest.move_used === "never" ? "Didn't use the Move this week (not yet repeated)" : "Used the Move only sometimes this week" };
   }
 
-  return { state: TRIAGE_STATES.GREEN, reason: "At intended dose or better, helpful, manageable" };
+  return { state: TRIAGE_STATES.GREEN, reason: "Used the Move most of the time or better, no concerns reported" };
 }
 
 /** Convenience — counts + sort order (Priority first) for the dashboard summary row. */
