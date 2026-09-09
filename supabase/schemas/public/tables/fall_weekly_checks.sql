@@ -1,0 +1,47 @@
+CREATE TABLE "public"."fall_weekly_checks" (
+  "id"                      uuid                     NOT NULL DEFAULT gen_random_uuid(),
+  "member_id"               text                     NOT NULL,
+  "season"                  text                     NOT NULL DEFAULT 'fall_2026'::text,
+  "week_key"                text                     NOT NULL,
+  "season_week"             smallint                 NOT NULL,
+  "move_id"                 uuid,
+  "signals"                 jsonb,
+  "habit_score"             smallint,
+  "move_level_reached"      text,
+  "helpfulness"             smallint,
+  "difficulty"              smallint,
+  "friction_reason"         text,
+  "help_requested"          boolean                  NOT NULL DEFAULT false,
+  "midweek_status"          text,
+  "midweek_shift_to_anchor" boolean,
+  "week4_still_important"   text,
+  "week4_constraint_impact" smallint,
+  "week8_constraint_impact" smallint,
+  "submitted_at"            timestamp with time zone,
+  "created_at"              timestamp with time zone NOT NULL DEFAULT now(),
+  "updated_at"              timestamp with time zone NOT NULL DEFAULT now(),
+  "move_used"               text,
+  "move_helped"             text,
+  "move_constraint_impact"  smallint,
+  "move_dose_snapshot"      text,
+  "move_plan_snapshot"      text,
+  CONSTRAINT "fall_weekly_checks_difficulty_check" CHECK (((difficulty >= 1) AND (difficulty <= 5))),
+  CONSTRAINT "fall_weekly_checks_helpfulness_check" CHECK (((helpfulness >= 1) AND (helpfulness <= 5))),
+  CONSTRAINT "fall_weekly_checks_member_id_week_key_key" UNIQUE (member_id, week_key),
+  CONSTRAINT "fall_weekly_checks_midweek_status_check" CHECK ((midweek_status = ANY (ARRAY['on_track'::text, 'adjust'::text, 'got_away'::text]))),
+  CONSTRAINT "fall_weekly_checks_move_constraint_impact_check" CHECK (((move_constraint_impact >= 1) AND (move_constraint_impact <= 5))),
+  CONSTRAINT "fall_weekly_checks_move_helped_check" CHECK ((move_helped = ANY (ARRAY['not_really'::text, 'somewhat'::text, 'definitely'::text, 'too_soon_to_tell'::text]))),
+  CONSTRAINT "fall_weekly_checks_move_id_fkey" FOREIGN KEY (move_id) REFERENCES public.fall_moves(id),
+  CONSTRAINT "fall_weekly_checks_move_level_reached_check" CHECK ((move_level_reached = ANY (ARRAY['Below Anchor'::text, 'Anchor'::text, 'Builder'::text, 'Expansion'::text]))),
+  CONSTRAINT "fall_weekly_checks_move_used_check" CHECK ((move_used = ANY (ARRAY['never'::text, 'sometimes'::text, 'most_of_the_time'::text, 'no_opportunity'::text]))),
+  CONSTRAINT "fall_weekly_checks_pkey" PRIMARY KEY (id),
+  CONSTRAINT "fall_weekly_checks_season_week_check" CHECK (((season_week >= 1) AND (season_week <= 8))),
+  CONSTRAINT "fall_weekly_checks_week4_constraint_impact_check" CHECK (((week4_constraint_impact >= 1) AND (week4_constraint_impact <= 5))),
+  CONSTRAINT "fall_weekly_checks_week4_still_important_check"
+    CHECK ((week4_still_important = ANY (ARRAY['yes_still_most_important'::text, 'no_improved'::text, 'no_wrong_thing'::text, 'not_sure'::text]))),
+  CONSTRAINT "fall_weekly_checks_week8_constraint_impact_check" CHECK (((week8_constraint_impact >= 1) AND (week8_constraint_impact <= 5)))
+);
+
+CREATE INDEX idx_fall_weekly_checks_member ON public.fall_weekly_checks USING btree (member_id, season);
+
+GRANT DELETE, INSERT, MAINTAIN, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE ON TABLE "public"."fall_weekly_checks" TO "anon", "authenticated", "postgres", "service_role";

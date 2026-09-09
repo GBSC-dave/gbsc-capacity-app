@@ -1,9 +1,11 @@
--- RETIRED (2026-09-09) — this file's content was copied into
--- supabase/migrations/20260909222517_baseline_fall_schema.sql and applied via the Supabase
--- CLI (`supabase db push`). Kept here, unchanged, purely as historical narrative — the inline
--- "why" comments below explain decisions the raw schema dump in supabase/schemas/ doesn't
--- capture. New schema changes from here on are new files in supabase/migrations/, applied
--- with `supabase db push` (staging first, then production), not edits to this file.
+-- BASELINE MIGRATION (2026-09-09) — captures everything already hand-applied to staging via
+-- the SQL Editor over the past ~2 weeks, promoted into the CLI-managed migrations workflow.
+-- Every statement below is idempotent (create table/column if not exists, drop+recreate
+-- function/constraint) by design, so running this against staging (which already has all of
+-- it) is a safe no-op, and running it against a fresh database (production, when we go live)
+-- creates everything from scratch. This file is a straight copy of src/fall/fall-schema.sql
+-- as of this date — that file is now retired in favor of this migrations folder; new schema
+-- changes from here on are new migration files, not edits to that old file.
 --
 -- Fall 2026 — Supabase schema for the four fall_* tables
 -- Source: GBSC Fall 2026 Capacity Method — Dave Handoff Source of Truth v4 Final, Section 2
