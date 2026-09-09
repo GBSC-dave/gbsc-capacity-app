@@ -1366,8 +1366,12 @@ function FallCoachTab({ members }) {
   }
 
   if (subTab === "triage") {
+    // Bug fixed 2026-09-09, caught testing the new safety flag live: a member flagged before
+    // they'd been assigned a pathway (e.g. flagged straight from Pending Review) never showed
+    // up here at all, since the filter required a pathway — exactly backwards, since a safety
+    // concern on a not-yet-triaged member is if anything more urgent to keep visible, not less.
     const triageMembers = members
-      .filter((m) => statesByMember[m.id]?.pathway)
+      .filter((m) => statesByMember[m.id]?.pathway || statesByMember[m.id]?.scope_concern_flag)
       .map((m) => ({ id: m.id, name: m.name, fallRecentChecks: checksByMember[m.id] || [], scopeConcernFlag: statesByMember[m.id]?.scope_concern_flag }));
     return (
       <div>
