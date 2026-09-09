@@ -2224,6 +2224,19 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
       p_member_id: currentMember.id, p_season: FALL_SEASON, p_week_key: getFallWeekKey(seasonWeek), p_season_week: seasonWeek,
       p_status: status, p_shift_to_anchor: shiftToAnchor,
     });
+    // Bug fixed 2026-09-10: this only ever wrote to fall_weekly_checks — the local
+    // weeklyChecks mirror (what My Week's own "already did midweek this week" gate below,
+    // and the coach's Insights "Win the Week Loop," both read) never got midweekStatus/
+    // midweekDate, so neither could ever see a real value from a Fall submission.
+    const existingWeeks = currentMember.weeklyChecks || [];
+    const realWeekIndices = existingWeeks.map((c, i) => (c && !c.isBaseline ? i : null)).filter(i => i !== null);
+    const lastIdx = realWeekIndices[realWeekIndices.length - 1];
+    if (lastIdx !== undefined) {
+      const updatedWeeks = existingWeeks.map((c, i) => i === lastIdx ? { ...c, midweekStatus: status, midweekDate: localDateStr() } : c);
+      const updatedMember = { ...currentMember, weeklyChecks: updatedWeeks };
+      await saveMember(updatedMember);
+      setCurrentMember(updatedMember);
+    }
     setFallSubView("home");
   }
 
@@ -4325,6 +4338,12 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
     const existingWeeksForGate = (currentMember.weeklyChecks || []).filter(c => c && !c.isBaseline);
     const lastCheckForGate = existingWeeksForGate.length > 0 ? existingWeeksForGate[existingWeeksForGate.length - 1] : null;
     const alreadyCheckedInThisWeek = lastCheckForGate && lastCheckForGate.date && !isEligibleForCheckin(lastCheckForGate.date);
+    // Bug fixed 2026-09-10: isMidweekWindow() (Wed-Sat) existed but was never actually called
+    // anywhere — Midweek Reset had no day gate at all, reachable any day of the week. Also adds
+    // an "already done this week" gate, now possible since handleFallMidweekComplete's dual-write
+    // fix above means midweekStatus is real data instead of always null.
+    const midweekWindowOpen = isMidweekWindow();
+    const alreadyDidMidweekThisWeek = alreadyCheckedInThisWeek && !!lastCheckForGate?.midweekStatus;
 
     const sectionCardStyle = { background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.2rem 1.3rem", marginBottom: "1rem" };
     const sectionLabelStyle = { fontSize: "0.68rem", fontWeight: "bold", color: dw.color, letterSpacing: "0.06em", marginBottom: "0.6rem", textTransform: "uppercase" };
@@ -4417,10 +4436,20 @@ function MemberPortal({ view, setView, members, currentMember, setCurrentMember,
               Weekly Check-In
             </button>
           )}
-          <button onClick={() => setFallSubView("midweek")}
-            style={{ width: "100%", background: "#fff", color: dw.textSupport, border: `1.5px solid ${dw.color}66`, borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "600", cursor: "pointer" }}>
-            Midweek Reset
-          </button>
+          {alreadyDidMidweekThisWeek ? (
+            <div style={{ background: "#f7f7f5", border: "1.5px solid #eee", borderRadius: "12px", padding: "0.9rem", textAlign: "center" }}>
+              <div style={{ color: "#888", fontWeight: "bold", fontSize: "0.9rem" }}>✓ Midweek Reset done</div>
+            </div>
+          ) : midweekWindowOpen ? (
+            <button onClick={() => setFallSubView("midweek")}
+              style={{ width: "100%", background: "#fff", color: dw.textSupport, border: `1.5px solid ${dw.color}66`, borderRadius: "12px", padding: "0.9rem", fontSize: "0.95rem", fontWeight: "600", cursor: "pointer" }}>
+              Midweek Reset
+            </button>
+          ) : (
+            <div style={{ background: "#f7f7f5", border: "1.5px solid #eee", borderRadius: "12px", padding: "0.9rem", textAlign: "center" }}>
+              <div style={{ color: "#aaa", fontWeight: "600", fontSize: "0.9rem" }}>Midweek Reset opens Wednesday</div>
+            </div>
+          )}
         </div>
       </div>
     );
