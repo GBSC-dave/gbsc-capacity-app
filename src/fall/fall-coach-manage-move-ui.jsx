@@ -66,10 +66,12 @@ function ReasonPicker({ value, onChange }) {
  *   onSetPersonalizedPlan: (plan: string) => void,
  *   onMarkIntegrated: () => void,
  *   onCloseMove: (eventType: "graduated"|"replaced", structuredReason: string, note: string, exitImpact: number|null) => void,
+ *   scopeConcernFlag?: boolean,
+ *   onSetScopeConcernFlag: (flag: boolean) => void,
  *   onBack?: () => void,
  * }} props
  */
-export function FallManageMove({ member, move, latestMoveCheckin, onAddNote, onChangeDose, onSetWeeklyPlanLimit, onSetPersonalizedPlan, onMarkIntegrated, onCloseMove, onBack }) {
+export function FallManageMove({ member, move, latestMoveCheckin, onAddNote, onChangeDose, onSetWeeklyPlanLimit, onSetPersonalizedPlan, onMarkIntegrated, onCloseMove, scopeConcernFlag, onSetScopeConcernFlag, onBack }) {
   const mv = FALL_CAPACITY_MOVES[move.move_key];
 
   const [note, setNote] = useState(move.coach_note || "");
@@ -140,6 +142,31 @@ export function FallManageMove({ member, move, latestMoveCheckin, onAddNote, onC
           <div style={{ fontSize: "1.3rem", fontWeight: "bold" }}>{member?.name || "Member"}</div>
           <div style={{ color: "#aaa", fontSize: "0.85rem" }}>{move.move_key} — {mv.title}</div>
           <div style={{ color: "#777", fontSize: "0.75rem", marginTop: "0.4rem" }}>Currently on: {move.dose?.toUpperCase()}</div>
+        </div>
+
+        <div style={{
+          background: scopeConcernFlag ? "#fff4f2" : CARD, border: scopeConcernFlag ? "1.5px solid #f0a898" : "none",
+          borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.1rem 1.3rem", marginBottom: "1rem",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem",
+        }}>
+          <div>
+            <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: scopeConcernFlag ? "#c0402a" : "#999", letterSpacing: "0.06em", marginBottom: "0.3rem" }}>
+              {scopeConcernFlag ? "⚑ FLAGGED FOR SAFETY/SCOPE REVIEW" : "SAFETY / SCOPE CONCERN"}
+            </div>
+            <div style={{ fontSize: "0.8rem", color: scopeConcernFlag ? "#a04030" : "#888", lineHeight: 1.4 }}>
+              {scopeConcernFlag ? "Showing as Priority in Triage regardless of check-in data." : "Manually escalate this member to Priority in Triage, independent of their check-in signals."}
+            </div>
+          </div>
+          <button
+            onClick={() => onSetScopeConcernFlag(!scopeConcernFlag)}
+            style={{
+              flexShrink: 0, background: scopeConcernFlag ? "#fff" : "#e05030", color: scopeConcernFlag ? "#c0402a" : "#fff",
+              border: scopeConcernFlag ? "1.5px solid #e05030" : "none", borderRadius: "10px",
+              padding: "0.6rem 1rem", fontWeight: "bold", fontSize: "0.82rem", cursor: "pointer", whiteSpace: "nowrap",
+            }}
+          >
+            {scopeConcernFlag ? "Clear Flag" : "Flag for Review"}
+          </button>
         </div>
 
         <SectionCard title={latestMoveCheckin ? `Latest Move check-in · ${new Date(latestMoveCheckin.submitted_at).toLocaleDateString()}` : "Latest Move check-in"}>

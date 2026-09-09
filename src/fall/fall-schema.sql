@@ -550,6 +550,21 @@ begin
 end;
 $$ language plpgsql;
 
+-- MIGRATION (2026-09-09) — the scope_concern_flag column already existed and fall-triage-data.js
+-- already read it, but nothing anywhere ever set it: no RPC, no UI. Found during a scoring
+-- audit — the flag-honoring logic in Triage worked when tested by setting the column directly,
+-- there was just no way for a coach to actually trigger it. A plain setting on the member's
+-- state row, keyed by member_id/season like fall_member_state itself — not tied to a specific
+-- Move, since a safety/scope concern is about the member, not the Move they happen to have.
+create or replace function fall_set_scope_concern_flag(
+  p_member_id text, p_season text, p_flag boolean
+) returns void as $$
+begin
+  update fall_member_state set scope_concern_flag = p_flag, updated_at = now()
+  where member_id = p_member_id and season = p_season;
+end;
+$$ language plpgsql;
+
 
 -- ═════════════════════════════════════════════════════════════════════════════
 -- Notes / deliberate tradeoffs

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { G, DARK, CARD, CARD_SHADOW, PAGE_BG, LIGHT_BG, SANS, F } from "./theme.jsx";
 import { FallReflection } from "./fall/fall-reflection-ui.jsx";
@@ -674,8 +674,14 @@ function getDeclaredWeek(allChecks, weeklyPlanLimit) {
   ].filter(Boolean).length;
   const performerUnlocked = performerSignals >= 2;
 
-  // Performer: high score, good recovery, no disruption, safeguard met
-  const isPerformer = performerUnlocked && score >= 80 && recoverySignal >= 3.5 && !hasMajorDisruption && workouts >= 3;
+  // Performer: high score, good recovery, no disruption, safeguard met. Gate fixed 2026-09-09
+  // (David's call, after a boundary-testing audit surfaced it): was workouts >= 3, which meant
+  // exactly 2 workouts could never reach Expansion even with every other signal maxed — a dead
+  // zone, since 2 satisfies neither this gate nor the stabilizerSignals workouts<2 check below.
+  // 2 already meets Anchor's own baseline training target elsewhere in the app, so requiring
+  // more than that just to be ELIGIBLE for a stronger week (on top of score>=80 and
+  // recoverySignal>=3.5 already being required) was an unintentionally high bar.
+  const isPerformer = performerUnlocked && score >= 80 && recoverySignal >= 3.5 && !hasMajorDisruption && workouts >= 2;
 
   // Stabilizer: clear signal
   const isStabilizer = stabilizerSignals >= 2 || score < 55 || hasMajorDisruption;
@@ -1185,6 +1191,7 @@ function FallCoachTab({ members }) {
   const [selectedMemberId, setSelectedMemberId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [refreshingBg, setRefreshingBg] = useState(false);
 
   async function handleExport() {
     setExporting(true);
@@ -1201,8 +1208,14 @@ function FallCoachTab({ members }) {
     }
   }
 
-  async function refresh() {
-    setLoading(true);
+  // showLoading=false is used for background refreshes (tab navigation, the manual ↻ button)
+  // so the screen doesn't blank out every time — only the very first load shows the full
+  // "Loading…" state. Bug fixed 2026-09-09: this data only ever refreshed on mount or after a
+  // coach action, so Triage/Pending Review could silently go stale for the whole time a coach
+  // had the tab open (a member's real activity elsewhere wouldn't show up without a full page
+  // reload) — the same staleness class already fixed for Export on 2026-09-08.
+  async function refresh({ showLoading = true } = {}) {
+    if (showLoading) setLoading(true); else setRefreshingBg(true);
     const [{ data: states }, { data: checks }, { data: moves }] = await Promise.all([
       supabase.from("fall_member_state").select("*").eq("season", FALL_SEASON),
       supabase.from("fall_weekly_checks").select("*").eq("season", FALL_SEASON).order("season_week", { ascending: true }),
@@ -1220,10 +1233,15 @@ function FallCoachTab({ members }) {
     const movesMap = {};
     for (const mv of moves || []) movesMap[mv.id] = mv;
     setMovesById(movesMap);
-    setLoading(false);
+    if (showLoading) setLoading(false); else setRefreshingBg(false);
     return { checksByMember: checksMap, movesById: movesMap };
   }
   useEffect(() => { refresh(); }, []);
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) { didMountRef.current = true; return; }
+    refresh({ showLoading: false });
+  }, [subTab]);
 
   async function handleConfirm(memberId, decision) {
     if (decision.pathway === "capacity_move") {
@@ -1280,7 +1298,23 @@ function FallCoachTab({ members }) {
     await refresh();
   }
 
+  async function handleSetScopeConcernFlag(memberId, flag) {
+    await supabase.rpc("fall_set_scope_concern_flag", { p_member_id: memberId, p_season: FALL_SEASON, p_flag: flag });
+    await refresh({ showLoading: false });
+  }
+
   if (loading) return <div style={{ padding: "3rem", textAlign: "center", color: "#aaa" }}>Loading…</div>;
+
+  // Shared manual refresh for this tab's own data (fall_member_state/fall_weekly_checks/
+  // fall_moves) — separate from the top-level Coach Dashboard's "↻ Refresh" button, which only
+  // reloads `members` and doesn't touch this tab's own fetch. Auto-refreshes on tab switch too
+  // (see the subTab effect above); this covers a coach who stays on one subTab for a while.
+  const refreshBtn = (
+    <button onClick={() => refresh({ showLoading: false })} disabled={refreshingBg}
+      style={{ background: "none", border: "1.5px solid #ddd", color: "#888", borderRadius: "999px", padding: "0.4rem 0.9rem", fontSize: "0.78rem", fontWeight: "bold", cursor: refreshingBg ? "default" : "pointer", opacity: refreshingBg ? 0.6 : 1 }}>
+      {refreshingBg ? "Refreshing…" : "↻ Refresh"}
+    </button>
+  );
 
   if (selectedMemberId) {
     const member = members.find((m) => m.id === selectedMemberId);
@@ -1306,6 +1340,8 @@ function FallCoachTab({ members }) {
           onSetPersonalizedPlan={(plan) => handleSetPersonalizedPlan(activeMove.id, plan)}
           onMarkIntegrated={() => handleMarkIntegrated(activeMove.id, selectedMemberId)}
           onCloseMove={(eventType, reason, note, exitImpact) => handleCloseMove(activeMove.id, selectedMemberId, eventType, reason, note, exitImpact)}
+          scopeConcernFlag={state?.scope_concern_flag}
+          onSetScopeConcernFlag={(flag) => handleSetScopeConcernFlag(selectedMemberId, flag)}
           onBack={() => setSelectedMemberId(null)}
         />
       );
@@ -1322,6 +1358,8 @@ function FallCoachTab({ members }) {
         reflection={{ answers: state.reflection_answers, stopFlagged: state.stop_flagged, match: state.stop_flagged ? null : match }}
         currentDeclaredRole={currentDeclaredRole}
         onConfirm={(decision) => handleConfirm(selectedMemberId, decision)}
+        scopeConcernFlag={state?.scope_concern_flag}
+        onSetScopeConcernFlag={(flag) => handleSetScopeConcernFlag(selectedMemberId, flag)}
         onBack={() => setSelectedMemberId(null)}
       />
     );
@@ -1340,6 +1378,7 @@ function FallCoachTab({ members }) {
               {label}
             </button>
           ))}
+          {refreshBtn}
         </div>
         <FallCoachTriageDashboard members={triageMembers} onSelectMember={setSelectedMemberId} />
       </div>
@@ -1356,6 +1395,7 @@ function FallCoachTab({ members }) {
               {label}
             </button>
           ))}
+          {refreshBtn}
         </div>
         <div style={{ background: CARD, borderRadius: "16px", boxShadow: CARD_SHADOW, padding: "1.5rem" }}>
           <div style={{ fontWeight: "bold", color: DARK, fontSize: "1rem", marginBottom: "0.5rem" }}>Season data export</div>
@@ -1381,6 +1421,7 @@ function FallCoachTab({ members }) {
             {label}
           </button>
         ))}
+        {refreshBtn}
       </div>
       {pending.length === 0 && <div style={{ textAlign: "center", color: "#aaa", padding: "3rem" }}>No Reflections waiting on review.</div>}
       {pending.map((m) => (

@@ -88,10 +88,12 @@ function defaultWeeklyPlanLimit(moveKey, currentDeclaredRole) {
  *   objectiveContext?: string,  // e.g. attendance/testing/history — Spring-side data, not part of the Reflection itself
  *   currentDeclaredRole?: "anchor"|"builder"|"expansion"|null,  // member's live getDeclaredWeek() role, for the weekly plan limit's default
  *   onConfirm: (decision: { pathway: string, moveId: string|null, dose: string|null, coachNote: string, weeklyPlanLimit: string|null, personalizedPlan: string|null, overrideReason: string|null }) => void,
+ *   scopeConcernFlag?: boolean,
+ *   onSetScopeConcernFlag: (flag: boolean) => void,
  *   onBack?: () => void,
  * }} props
  */
-export function FallCoachSnapshot({ member, reflection, objectiveContext, currentDeclaredRole, onConfirm, onBack }) {
+export function FallCoachSnapshot({ member, reflection, objectiveContext, currentDeclaredRole, onConfirm, scopeConcernFlag, onSetScopeConcernFlag, onBack }) {
   const { answers, stopFlagged, match } = reflection;
   const q6Options = answers.q5 ? Q6_BRANCHES[answers.q5] || [] : [];
 
@@ -155,6 +157,31 @@ export function FallCoachSnapshot({ member, reflection, objectiveContext, curren
             </div>
           </div>
         )}
+
+        <div style={{
+          background: scopeConcernFlag ? "#fff4f2" : CARD, border: scopeConcernFlag ? "1.5px solid #f0a898" : "1.5px solid #eee",
+          borderRadius: "12px", padding: "0.9rem 1.1rem", marginBottom: "1rem",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem",
+        }}>
+          <div>
+            <div style={{ fontSize: "0.72rem", fontWeight: "bold", color: scopeConcernFlag ? "#c0402a" : "#999", letterSpacing: "0.06em", marginBottom: "0.2rem" }}>
+              {scopeConcernFlag ? "⚑ FLAGGED FOR SAFETY/SCOPE REVIEW" : "SAFETY / SCOPE CONCERN"}
+            </div>
+            <div style={{ fontSize: "0.8rem", color: scopeConcernFlag ? "#a04030" : "#888" }}>
+              {scopeConcernFlag ? "Showing as Priority in Triage regardless of check-in data." : "Manually escalate to Priority in Triage — independent of the pathway/Move decision below."}
+            </div>
+          </div>
+          <button
+            onClick={() => onSetScopeConcernFlag(!scopeConcernFlag)}
+            style={{
+              flexShrink: 0, background: scopeConcernFlag ? "#fff" : "#e05030", color: scopeConcernFlag ? "#c0402a" : "#fff",
+              border: scopeConcernFlag ? "1.5px solid #e05030" : "none", borderRadius: "10px",
+              padding: "0.6rem 1rem", fontWeight: "bold", fontSize: "0.82rem", cursor: "pointer", whiteSpace: "nowrap",
+            }}
+          >
+            {scopeConcernFlag ? "Clear Flag" : "Flag for Review"}
+          </button>
+        </div>
 
         <SectionCard title="Capacity Direction">
           <Row label="Wants health to make possible" value={labelFor(Q1_OPTIONS, answers.q1)} />
