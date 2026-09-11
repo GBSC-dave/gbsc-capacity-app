@@ -52,107 +52,6 @@ create table if not exists fall_constraints (
   created_at timestamptz not null default now()
 );
 
--- MIGRATION (2026-09-03) — run this against the already-existing staging fall_moves table;
--- the CREATE TABLE below already includes the column for anyone standing up fresh.
-alter table fall_moves add column if not exists weekly_plan_limit text
-  check (weekly_plan_limit in ('no_limit','anchor','builder','expansion'));
-
--- MIGRATION (2026-09-03, point 2) — same as above, for the personalized plan field.
-alter table fall_moves add column if not exists personalized_plan text
-  check (char_length(personalized_plan) <= 300);
-
--- MIGRATION (2026-09-03, point 3) — the three weekly Move questions' new, simpler columns.
-alter table fall_weekly_checks add column if not exists move_used text
-  check (move_used in ('never','sometimes','most_of_the_time','no_opportunity'));
-alter table fall_weekly_checks add column if not exists move_helped text
-  check (move_helped in ('not_really','somewhat','definitely','too_soon_to_tell'));
-alter table fall_weekly_checks add column if not exists move_constraint_impact smallint
-  check (move_constraint_impact between 1 and 5);
-
--- MIGRATION (2026-09-03, point 4) — add 'integrated' to both check constraints. Default
--- (unnamed) constraint names from the original CREATE TABLE statements.
-alter table fall_moves drop constraint if exists fall_moves_status_check;
-alter table fall_moves add constraint fall_moves_status_check
-  check (status in ('active','graduated','replaced','integrated'));
-alter table fall_move_events drop constraint if exists fall_move_events_event_type_check;
-alter table fall_move_events add constraint fall_move_events_event_type_check
-  check (event_type in ('assigned','dose_changed','coach_note_added','integration_candidate','integrated','graduated','replaced','reactivated'));
-
--- MIGRATION (2026-09-03, point 14) — links from fall_member_state/fall_moves to the
--- fall_constraints record above, plus the weekly-check-in snapshot columns.
-alter table fall_member_state add column if not exists active_constraint_id uuid references fall_constraints(id);
-alter table fall_moves add column if not exists constraint_id uuid references fall_constraints(id);
-alter table fall_weekly_checks add column if not exists move_dose_snapshot text;
-alter table fall_weekly_checks add column if not exists move_plan_snapshot text;
-
--- MIGRATION (2026-09-04, Section 19) — Week 4/Week 8 reassessment columns. These already
--- appear in the CREATE TABLE above for anyone standing up fresh, but the staging table
--- predates that block, so run this against it explicitly (safe to re-run).
-alter table fall_weekly_checks add column if not exists week4_still_important text
-  check (week4_still_important in ('yes_still_most_important','no_improved','no_wrong_thing','not_sure'));
-alter table fall_weekly_checks add column if not exists week4_constraint_impact smallint
-  check (week4_constraint_impact between 1 and 5);
-alter table fall_weekly_checks add column if not exists week8_constraint_impact smallint
-  check (week8_constraint_impact between 1 and 5);
-
--- MIGRATION (2026-09-08, Eric's data-confirmation ask) — widen structured_reason to also cover
--- the 7 initial-assignment override reasons (reused where wording already overlapped:
--- 'safety_scope_concern' and 'other'). This same column, on the 'assigned' event, is now how
--- an algorithm-override reason is captured — no new table/column needed.
-alter table fall_move_events drop constraint if exists fall_move_events_structured_reason_check;
-alter table fall_move_events add constraint fall_move_events_structured_reason_check
-  check (structured_reason in (
-    'wrong_constraint','constraint_correct_mechanism_wrong','constraint_mechanism_correct_move_wrong',
-    'objective_information_changed','member_clarified','move_not_helping','move_too_difficult',
-    'constraint_improved','life_circumstances_changed','programming_issue','safety_scope_concern',
-    'no_meaningful_problem','other',
-    'different_mechanism_identified','better_fit_for_member','easier_to_execute','structural_overload',
-    'new_information_from_conversation'
-  ));
-
--- One-time backfill for members who completed Reflection before fall_constraints existed —
--- without this, every existing test member's My Results Constraint Impact card would show
--- nothing until they redid Reflection, which isn't a repeatable flow. Skips anyone who
--- already has an active_constraint_id (safe to re-run). Uses fall_member_state.created_at's
--- date as the best available stand-in for "when Reflection was completed."
-do $$
-declare
-  r record;
-  v_constraint_id uuid;
-  v_label text;
-begin
-  for r in
-    select * from fall_member_state
-    where reflection_answers is not null and active_constraint_id is null and baseline_constraint_impact is not null
-  loop
-    v_label := case
-      when r.reflection_answers->>'q5' = 'other' then coalesce(r.reflection_answers->>'q5Other', 'Something else')
-      when r.reflection_answers->>'q5' = 'training_consistency' then 'Training consistency'
-      when r.reflection_answers->>'q5' = 'daily_movement' then 'Daily movement'
-      when r.reflection_answers->>'q5' = 'meal_structure' then 'Meal structure / nutrition'
-      when r.reflection_answers->>'q5' = 'food_availability' then 'Food availability / convenience'
-      when r.reflection_answers->>'q5' = 'sleep' then 'Sleep'
-      when r.reflection_answers->>'q5' = 'stress_downshift' then 'Stress / downshift'
-      when r.reflection_answers->>'q5' = 'weekends' then 'Weekends'
-      when r.reflection_answers->>'q5' = 'all_or_nothing' then 'All-or-nothing / plan fragility'
-      when r.reflection_answers->>'q5' = 'environment' then 'Environment / defaults'
-      when r.reflection_answers->>'q5' = 'overload' then 'Overload / lack of margin'
-      when r.reflection_answers->>'q5' = 'support' then 'Support / accountability'
-      when r.reflection_answers->>'q5' = 'recovery_depletion' then 'Recovery / unexplained depletion'
-      when r.reflection_answers->>'q5' = 'physical' then 'Pain, injury, or physical limitation'
-      else coalesce(r.reflection_answers->>'q5', 'Constraint')
-    end;
-
-    insert into fall_constraints (member_id, season, constraint_key, constraint_label, baseline_rating, baseline_date)
-    values (r.member_id, r.season, coalesce(r.reflection_answers->>'q5', 'other'), v_label, r.baseline_constraint_impact, r.created_at::date)
-    returning id into v_constraint_id;
-
-    update fall_member_state set active_constraint_id = v_constraint_id where id = r.id;
-    update fall_moves set constraint_id = v_constraint_id where member_id = r.member_id and season = r.season and constraint_id is null;
-  end loop;
-end $$;
-
--- ─────────────────────────────────────────────────────────────────────────────
 -- fall_moves — one row per Move assignment episode. Per the original scope doc, only
 -- THREE statuses are ever persisted here — everything richer in Section 20's lifecycle
 -- language (active_learning, active_building, integration_candidate, reactivated, etc.)
@@ -338,6 +237,116 @@ create index if not exists idx_fall_move_events_move on fall_move_events (move_i
 
 
 -- ═════════════════════════════════════════════════════════════════════════════
+-- REORDERED (2026-09-11) — the original version of this file interleaved the historical
+-- incremental ALTER statements (below) between the CREATE TABLE statements, matching the exact
+-- sequence they were hand-applied to staging over time (where the target tables already existed).
+-- That ordering is invalid against a genuinely empty database: production's first push failed at
+-- the first ALTER referencing fall_moves, before fall_moves was created later in the file. Fixed
+-- by moving all five CREATE TABLE statements before every ALTER/backfill statement. Every
+-- statement remains exactly as originally written and fully idempotent, so this reorder does not
+-- change the resulting schema — only the order operations run in, which now works from empty.
+
+-- MIGRATION (2026-09-03) — run this against the already-existing staging fall_moves table;
+-- the CREATE TABLE below already includes the column for anyone standing up fresh.
+alter table fall_moves add column if not exists weekly_plan_limit text
+  check (weekly_plan_limit in ('no_limit','anchor','builder','expansion'));
+
+-- MIGRATION (2026-09-03, point 2) — same as above, for the personalized plan field.
+alter table fall_moves add column if not exists personalized_plan text
+  check (char_length(personalized_plan) <= 300);
+
+-- MIGRATION (2026-09-03, point 3) — the three weekly Move questions' new, simpler columns.
+alter table fall_weekly_checks add column if not exists move_used text
+  check (move_used in ('never','sometimes','most_of_the_time','no_opportunity'));
+alter table fall_weekly_checks add column if not exists move_helped text
+  check (move_helped in ('not_really','somewhat','definitely','too_soon_to_tell'));
+alter table fall_weekly_checks add column if not exists move_constraint_impact smallint
+  check (move_constraint_impact between 1 and 5);
+
+-- MIGRATION (2026-09-03, point 4) — add 'integrated' to both check constraints. Default
+-- (unnamed) constraint names from the original CREATE TABLE statements.
+alter table fall_moves drop constraint if exists fall_moves_status_check;
+alter table fall_moves add constraint fall_moves_status_check
+  check (status in ('active','graduated','replaced','integrated'));
+alter table fall_move_events drop constraint if exists fall_move_events_event_type_check;
+alter table fall_move_events add constraint fall_move_events_event_type_check
+  check (event_type in ('assigned','dose_changed','coach_note_added','integration_candidate','integrated','graduated','replaced','reactivated'));
+
+-- MIGRATION (2026-09-03, point 14) — links from fall_member_state/fall_moves to the
+-- fall_constraints record above, plus the weekly-check-in snapshot columns.
+alter table fall_member_state add column if not exists active_constraint_id uuid references fall_constraints(id);
+alter table fall_moves add column if not exists constraint_id uuid references fall_constraints(id);
+alter table fall_weekly_checks add column if not exists move_dose_snapshot text;
+alter table fall_weekly_checks add column if not exists move_plan_snapshot text;
+
+-- MIGRATION (2026-09-04, Section 19) — Week 4/Week 8 reassessment columns. These already
+-- appear in the CREATE TABLE above for anyone standing up fresh, but the staging table
+-- predates that block, so run this against it explicitly (safe to re-run).
+alter table fall_weekly_checks add column if not exists week4_still_important text
+  check (week4_still_important in ('yes_still_most_important','no_improved','no_wrong_thing','not_sure'));
+alter table fall_weekly_checks add column if not exists week4_constraint_impact smallint
+  check (week4_constraint_impact between 1 and 5);
+alter table fall_weekly_checks add column if not exists week8_constraint_impact smallint
+  check (week8_constraint_impact between 1 and 5);
+
+-- MIGRATION (2026-09-08, Eric's data-confirmation ask) — widen structured_reason to also cover
+-- the 7 initial-assignment override reasons (reused where wording already overlapped:
+-- 'safety_scope_concern' and 'other'). This same column, on the 'assigned' event, is now how
+-- an algorithm-override reason is captured — no new table/column needed.
+alter table fall_move_events drop constraint if exists fall_move_events_structured_reason_check;
+alter table fall_move_events add constraint fall_move_events_structured_reason_check
+  check (structured_reason in (
+    'wrong_constraint','constraint_correct_mechanism_wrong','constraint_mechanism_correct_move_wrong',
+    'objective_information_changed','member_clarified','move_not_helping','move_too_difficult',
+    'constraint_improved','life_circumstances_changed','programming_issue','safety_scope_concern',
+    'no_meaningful_problem','other',
+    'different_mechanism_identified','better_fit_for_member','easier_to_execute','structural_overload',
+    'new_information_from_conversation'
+  ));
+
+-- One-time backfill for members who completed Reflection before fall_constraints existed —
+-- without this, every existing test member's My Results Constraint Impact card would show
+-- nothing until they redid Reflection, which isn't a repeatable flow. Skips anyone who
+-- already has an active_constraint_id (safe to re-run). Uses fall_member_state.created_at's
+-- date as the best available stand-in for "when Reflection was completed."
+do $$
+declare
+  r record;
+  v_constraint_id uuid;
+  v_label text;
+begin
+  for r in
+    select * from fall_member_state
+    where reflection_answers is not null and active_constraint_id is null and baseline_constraint_impact is not null
+  loop
+    v_label := case
+      when r.reflection_answers->>'q5' = 'other' then coalesce(r.reflection_answers->>'q5Other', 'Something else')
+      when r.reflection_answers->>'q5' = 'training_consistency' then 'Training consistency'
+      when r.reflection_answers->>'q5' = 'daily_movement' then 'Daily movement'
+      when r.reflection_answers->>'q5' = 'meal_structure' then 'Meal structure / nutrition'
+      when r.reflection_answers->>'q5' = 'food_availability' then 'Food availability / convenience'
+      when r.reflection_answers->>'q5' = 'sleep' then 'Sleep'
+      when r.reflection_answers->>'q5' = 'stress_downshift' then 'Stress / downshift'
+      when r.reflection_answers->>'q5' = 'weekends' then 'Weekends'
+      when r.reflection_answers->>'q5' = 'all_or_nothing' then 'All-or-nothing / plan fragility'
+      when r.reflection_answers->>'q5' = 'environment' then 'Environment / defaults'
+      when r.reflection_answers->>'q5' = 'overload' then 'Overload / lack of margin'
+      when r.reflection_answers->>'q5' = 'support' then 'Support / accountability'
+      when r.reflection_answers->>'q5' = 'recovery_depletion' then 'Recovery / unexplained depletion'
+      when r.reflection_answers->>'q5' = 'physical' then 'Pain, injury, or physical limitation'
+      else coalesce(r.reflection_answers->>'q5', 'Constraint')
+    end;
+
+    insert into fall_constraints (member_id, season, constraint_key, constraint_label, baseline_rating, baseline_date)
+    values (r.member_id, r.season, coalesce(r.reflection_answers->>'q5', 'other'), v_label, r.baseline_constraint_impact, r.created_at::date)
+    returning id into v_constraint_id;
+
+    update fall_member_state set active_constraint_id = v_constraint_id where id = r.id;
+    update fall_moves set constraint_id = v_constraint_id where member_id = r.member_id and season = r.season and constraint_id is null;
+  end loop;
+end $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- RPC patch functions — per the architecture decision to prefer targeted patches over
 -- whole-row upserts, avoiding races between coach and member edits touching the same row.
 -- ═════════════════════════════════════════════════════════════════════════════
